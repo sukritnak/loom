@@ -1,0 +1,19 @@
+{
+  "project": "my-app",
+  "mode": "new",
+  "services": [
+    { "id": "web",    "side": "fe", "path": "web",    "stack": "next" },
+    { "id": "admin",  "side": "fe", "path": "admin",  "stack": "vite-react" },
+    { "id": "api",    "side": "be", "path": "api",    "stack": "fastapi" },
+    { "id": "worker", "side": "be", "path": "worker", "stack": "node" }
+  ],
+  "autonomy": "L1",
+  "dashboard": "agent-dashboard",
+  "_help": {
+    "mode": "'new' = agents scaffold the folders below · 'existing' = operate on them as-is",
+    "services": "one entry per FE/BE folder (many allowed). id = short name, side = fe|be, path = relative to THIS file's folder or absolute, stack = framework hint",
+    "stack.fe": "next | vite-react | sveltekit | astro | ''",
+    "stack.be": "fastapi | node-express | nest | go | ''",
+    "autonomy": "L1 report-only | L2 assisted (no merge) | L3 unattended"
+  }
+}

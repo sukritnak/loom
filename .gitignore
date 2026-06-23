@@ -1,0 +1,11 @@
+.DS_Store
+.active-project
+.base-dir
+# per-project runtime artifacts (live at the destination project, not in this blueprint)
+loop.config.json
+STATE.md
+status.json
+.env
+.env.*
+!.env.example
+node_modules/
