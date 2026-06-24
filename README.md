@@ -18,15 +18,16 @@ A team of **9 AI agents** working in a **loop** (plan → build → verify → i
 
 ## Three-layer architecture
 
-```
-Blueprint (Base = this repo)       control folder (~/Documents/coding/agent-build/my-app)
-────────────────────────────       ──────────────────────────────────────────────────────
-.claude/agents/  team definitions ─┐ loop.config.json   ← service list + mode + autonomy
-hermes-skills/   for Hermes      ─┤ STATE.md           ← loop memory (resumable sessions)
-tools/           shared scripts  ─┤ (no tools/ here — call Base via ~/.loop-base)
-agent-dashboard/ live board     ─┘ real code → at service paths (may be elsewhere on disk)
-```
-
+| What | **Base** (this repo) | **Control folder** (`<base-dir>/<name>`) |
+| ---- | -------------------- | ------------------------------------------ |
+| **Role** | Blueprint — shared by all jobs | One job — config + memory only |
+| **Agent team** | `.claude/agents/` | — (installed machine-wide via `deploy.sh`) |
+| **Hermes skills** | `hermes-skills/` | — |
+| **Shared tools** | `tools/` | — (call Base via `~/.loop-base`) |
+| **Dashboard** | `agent-dashboard/` | — |
+| **Job config** | — | `loop.config.json` — services, mode, autonomy |
+| **Loop memory** | — | `STATE.md` — resumable between sessions |
+| **Application code** | — | `services[].path` — may live elsewhere on disk |
 
 | Layer              | Location              | Contents                                                                        |
 | ------------------ | --------------------- | ------------------------------------------------------------------------------- |

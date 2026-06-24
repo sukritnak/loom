@@ -18,14 +18,16 @@
 
 ## สถาปัตยกรรม 3 ชั้น
 
-```
-Blueprint (Base = this repo)       control folder (~/Documents/coding/agent-build/my-app)
-────────────────────────────       ──────────────────────────────────────────────────────
-.claude/agents/  team definitions ─┐ loop.config.json   ← service list + mode + autonomy
-hermes-skills/   for Hermes      ─┤ STATE.md           ← loop memory (resumable sessions)
-tools/           shared scripts  ─┤ (no tools/ here — call Base via ~/.loop-base)
-agent-dashboard/ live board     ─┘ real code → at service paths (may be elsewhere on disk)
-```
+| อะไร | **Base** (repo นี้) | **Control folder** (`<base-dir>/<name>`) |
+| ---- | -------------------- | ---------------------------------------- |
+| **บทบาท** | พิมพ์เขียว — ใช้ร่วมทุกงาน | หนึ่งงาน — มีแค่ config + memory |
+| **ทีม agent** | `.claude/agents/` | — (ติดตั้งระดับเครื่องผ่าน `deploy.sh`) |
+| **Hermes skills** | `hermes-skills/` | — |
+| **tools ร่วม** | `tools/` | — (เรียก Base ผ่าน `~/.loop-base`) |
+| **Dashboard** | `agent-dashboard/` | — |
+| **config งาน** | — | `loop.config.json` — services, mode, autonomy |
+| **ความจำ loop** | — | `STATE.md` — ต่อ session ได้ |
+| **โค้ดแอป** | — | `services[].path` — อาจอยู่ที่อื่นบนดิสก์ |
 
 | ชั้น | ตำแหน่ง | เนื้อหา |
 | ----- | -------- | -------- |
