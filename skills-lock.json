@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "docker-containerization": {
+      "source": "ailabs-393/ai-labs-claude-skills",
+      "sourceType": "github",
+      "skillPath": "packages/skills/docker-containerization/SKILL.md",
+      "computedHash": "6ce7d7d9c41cf4904a588c2960e0934a94bfe6771b73c8245e14353dc4577002"
+    },
     "ponytail": {
       "source": "DietrichGebert/ponytail",
       "sourceType": "github",

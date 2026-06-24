@@ -60,3 +60,17 @@ Do not expand scope during triage. Rejected findings go back to QA with a one-li
 - Use the `xlsx` skill to build a prioritized backlog or feature matrix.
 - Use the `deep-research` skill for deeper market, competitor, or user research.
 - Use the **handoff** skill to hand work to another session/IDE (captures state + suggested skills).
+
+## Project run discovery (every agent)
+Per in-scope service (`loop.config.json` → `services[]`), **read before you write AC or test scenarios**:
+| File | Extract |
+|------|---------|
+| `package.json` | `scripts`: dev, build, test, start, lint |
+| `Makefile` | targets (note `make test`, `make dev`, …) |
+| `Dockerfile`, `docker-compose.yml`, `compose.yaml` | build/run, ports, health checks |
+
+Ground AC in real commands (e.g. "Given dev server running via `npm run dev`"). Reference `.env.example` only — never `.env`.
+
+If run surface is missing, flag it in **Open questions** and ask loop-orch to delegate `fe`/`be` to add
+`package.json` scripts, a `Makefile`, and containers via **docker-containerization**. You may author
+thin Makefile/scripts yourself when the deliverable is documentation-only.

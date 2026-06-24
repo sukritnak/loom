@@ -9,7 +9,7 @@ DEST="${1:-$HOME/.hermes/skills}"
 # team roles + loop spec only (human guides stay in repo — not Hermes skills)
 NEEDED=(loop-start loop-orch pm design fe fe-anim be be-sr qa LOOP)
 
-EXTERNAL=(solid postgres-best-practices docker-containerization perf-lighthouse threejs-animation ponytail ponytail-review ponytail-audit)
+EXTERNAL=(solid postgres-best-practices docker-containerization perf-lighthouse threejs-animation ponytail ponytail-review ponytail-audit hexagonal-architecture)
 
 mkdir -p "$DEST"
 find "$DEST" -mindepth 1 -maxdepth 1 -exec rm -rf {} +

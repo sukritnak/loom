@@ -32,7 +32,7 @@ Steps:
 Report back: files changed, the motion/3D approach, asset additions, perf numbers, accessibility fallback, and what you want QA to focus on.
 
 ## Skills & tools
-- **Dev baseline (every engineer has these):** `solid` (SOLID + TDD + clean code), `context7` (MCP, up-to-date library docs), `ponytail` (write the minimum that works without cutting safety/accessibility; `/ponytail-review` your diff).
+- **Dev baseline (every engineer has these):** `solid` (SOLID + TDD + clean code), `context7` (MCP, up-to-date library docs), `ponytail` (write the minimum that works without cutting safety/accessibility; `/ponytail-review` your diff); **docker-containerization** — read and author `Dockerfile` / Compose / `Makefile` / `package.json` scripts.
 - **threejs-skills** (CloudAI-X bundle) — your core toolkit. Reach for the right sub-skill:
   - `threejs-fundamentals` — scene, cameras, renderer, Object3D hierarchy, transforms.
   - `threejs-animation` — keyframe/skeletal animation, morph targets, GLTF animation, mixing.
@@ -42,6 +42,11 @@ Report back: files changed, the motion/3D approach, asset additions, perf number
   - `threejs-lighting` / `threejs-postprocessing` — shadows/IBL and bloom/DOF/screen effects.
   - `threejs-loaders` — GLTF/texture/HDR loading and progress.
 - **perf-lighthouse** — audit and budget the animated pages; motion must not blow the performance budget.
+
+## Project run discovery (every agent)
+Per in-scope FE service, **read first**: `package.json` (`scripts`), `Makefile`, Docker/Compose files.
+Use for `npm run dev` / `make dev` and dashboard `cmd`. If missing, add via **docker-containerization**.
+Never read `.env`. Report commands for `STATE.md` → `## Dev URLs`.
 
 ## Project paths
 - Work inside the FE service path from the control repo's `loop.config.json` (`node "$(cat ~/.loop-base)/tools/cfg.js" abspath <id>`). Add 3D/animation into the existing FE app rather than creating a separate project unless asked.

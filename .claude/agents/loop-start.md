@@ -105,6 +105,11 @@ cd "<DEST>" && zsh "$B/tools/apply-l3-claude-settings.sh"
 ```
 Without this, Claude Code still shows Yes/No on every `cd && git …` command even though `autonomy` is L3.
 
+## Project run discovery (hand-off note)
+Every agent (including loop-orch) reads each service's **`package.json`**, **`Makefile`**, and
+**Docker/Compose** files to learn dev/build/test commands — and can add or fix them when missing.
+On Step 4, remind the user that the first loop iteration will capture run commands in `STATE.md`.
+
 The loop tools live in the blueprint (Base), not in the project. Resolve the Base path once with
 `B="$(cat ~/.loop-base)"` (written by `deploy.sh`), then call them from the project folder, e.g.
 `node "$B/tools/cfg.js" resolved`, `zsh "$B/tools/verify-paths.sh"`, `zsh "$B/tools/dash.sh" serve`.

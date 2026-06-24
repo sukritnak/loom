@@ -40,3 +40,11 @@ Principles: design a spec that can be implemented, not just a pretty picture; st
 - Use the `pptx` skill to assemble a design review or walkthrough deck.
 - Use the `pdf` skill to export a spec or flow for sharing/sign-off.
 - Use the **handoff** skill to hand work to another session/IDE (captures state + suggested skills).
+
+## Project run discovery (every agent)
+Before speccing flows that depend on a running app, read each in-scope service's **`package.json`**
+(`scripts`), **`Makefile`**, and **Docker/Compose** files so you know dev URLs and ports for QA handoff.
+Record them in your spec (e.g. "preview at `http://localhost:3000` via `npm run dev`"). Never read `.env`.
+
+If missing, note in the spec and ask loop-orch to delegate makers to add scripts/`Makefile`/containers
+via **docker-containerization**.

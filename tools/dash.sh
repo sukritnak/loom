@@ -4,7 +4,6 @@
 # Base board, and each line is tagged with the project name so you can tell work apart.
 #
 #   zsh tools/dash.sh serve              # open the central dashboard (Star-Office)
-#   zsh tools/dash.sh simple [PORT]      # open the zero-dep fallback board
 #   zsh tools/dash.sh <status-cmd...>    # forward to agent-status.js, auto-tagged with project
 #                                         #   set · log · say · report · wait · delegate · skill · cmd · progress · file · event · loop · reset
 #   zsh tools/dash.sh where              # print the resolved Base dashboard path
@@ -35,8 +34,7 @@ fi
 cmd="${1:-}"
 case "$cmd" in
   serve)        shift; exec zsh "$DASH/serve.sh" "$@" ;;
-  simple)       shift; exec zsh "$DASH/serve.sh" simple "$@" ;;
   where)        echo "$DASH"; exit 0 ;;
-  "" )          echo "usage: dash.sh serve|simple|where| <status-cmd...>" >&2; exit 1 ;;
+  "" )          echo "usage: dash.sh serve|where| <status-cmd...>" >&2; exit 1 ;;
   *)            exec env LOOP_PROJECT="$project" node "$DASH/agent-status.js" "$@" ;;
 esac

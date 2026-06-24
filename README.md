@@ -93,6 +93,79 @@ Step 3 — lock target (.active-project in Loom) — no new folder
 
 > **control folder ≠ 1 service** — one control can list many services (e.g. frontend + api) in a single `loop.config.json`.
 
+---
+
+## How it works
+
+### System overview
+
+```mermaid
+flowchart TB
+  subgraph loom ["Loom — Blueprint (this repo)"]
+    agents["9 agent definitions"]
+    tools["shared tools"]
+    dash["central dashboard"]
+  end
+
+  subgraph job ["Control folder — one per job"]
+    cfg["loop.config.json"]
+    mem["STATE.md"]
+  end
+
+  subgraph services ["Real code — services[].path"]
+    fe["Frontend repo(s)"]
+    be["Backend repo(s)"]
+  end
+
+  you(["You"]) -->|loop-start| job
+  job -->|loop-orch delegates| agents
+  agents -->|edit| fe
+  agents -->|edit| be
+  agents -->|dash.sh / hooks| dash
+  cfg -.->|points to| fe
+  cfg -.->|points to| be
+  tools --> job
+```
+
+### Loop cycle (one iteration)
+
+```mermaid
+flowchart TD
+  A([New task]) --> B[loop-orch loads STATE + config]
+  B --> C[PM: acceptance criteria]
+  C --> D{UI work?}
+  D -->|yes| E[Designer: flows + states]
+  D -->|no| F
+  E --> F[BE / FE build in parallel]
+  F --> G[QA: tests + browser AC]
+  G -->|PASS| H([Update STATE.md · human gate if L1/L2])
+  G -->|FAIL| I[PM triage → feedback to owner]
+  I -->|round ≤ 3| F
+  I -->|stuck / no progress| J([Human gate])
+```
+
+### Live dashboard data flow
+
+The pixel office is **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** (vendored under `agent-dashboard/star-office/`). Loom adds a bridge and activity feed on top.
+
+```mermaid
+flowchart LR
+  orch["loop-orch / makers"]
+  cli["zsh tools/dash.sh"]
+  hook["Claude Code hooks<br/>cc-dash-bridge.js"]
+  json["status.json"]
+  bridge["star-office-bridge.js"]
+  ui["Star-Office UI<br/>:19000"]
+
+  orch --> cli
+  hook --> cli
+  cli --> json
+  json --> bridge
+  bridge --> ui
+```
+
+---
+
 ### Example: code in one place, control in another
 
 Suppose legacy repos live under `~/Documents/coding/legacy/` (code stays put):
@@ -183,6 +256,8 @@ zsh tools/install-external-skills.sh && zsh tools/install-hermes-skills.sh
 | `ponytail-review` | fe, be | Review over-engineering / legacy orient |
 | `ponytail-audit` | loop-orch | Whole-service tech debt scan (when needed) |
 | `postgres-best-practices` | be-sr | DB / Postgres |
+| `docker-containerization` | all agents | [ailabs-393/ai-labs-claude-skills](https://skills.sh/ailabs-393/ai-labs-claude-skills/docker-containerization) |
+| `hexagonal-architecture` | be, be-sr | Ports & Adapters — [affaan-m/ECC](https://github.com/affaan-m/ECC) |
 | `threejs-animation` | fe-anim | 3D / motion |
 | `perf-lighthouse` | qa, fe | Web performance audits |
 | `qa-browser` | qa | Real-browser FE/UI testing |
@@ -668,7 +743,6 @@ Every project/session reports here; each log line is tagged with the project nam
 ```zsh
 # Open board (from anywhere)
 zsh tools/dash.sh serve          # Star-Office pixel office → http://localhost:19000
-zsh tools/dash.sh simple         # zero-dep fallback (port 8787)
 zsh tools/dash.sh where          # central board path
 
 # Report status (from control folder for correct project tag)
@@ -694,18 +768,19 @@ EOF
 ```
 
 Commands: `say` (long multiline speech) · `delegate` · `skill` · `cmd` · `event` · `log` · `set`
-Feed keeps 800 lines · simple board shows 250 · Star-Office **Loop Activity** panel (Yesterday memo removed for space)
+Feed keeps 800 lines · Star-Office **Loop Activity** panel shows recent activity + speech bubbles
 
 Opens on `deploy.sh` · at `loop-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
 
-**Star-Office dashboard** (`agent-dashboard/star-office/`) — pixel office from
-[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI) (MIT code; art non-commercial use)
+**Star-Office dashboard** (`agent-dashboard/star-office/`) — vendored from
+**[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** by [ringhyacinth](https://github.com/ringhyacinth).
+Code is **MIT**; **art assets are for non-commercial learning use only** (see upstream LICENSE).
+Loom layers: `star-office-bridge.js`, Loop Activity panel, `cc-dash-bridge.js` (Claude Code → board), and `agent-status.js` feed commands (`file`, `report`, `wait`, …).
 - `star-office-bridge.js` mirrors loop `status.json` → office + `activity.json` (`GET /activity`)
 - **Loop Activity** panel shows full **say/report/test** text · readable system font · wrapped bubbles
 - 8 role characters in zones (orch = main, others as guests)
 - Office plaque = project name
 - First run creates a small venv + installs flask
-- No Python? use `dash.sh simple`
 
 ---
 
@@ -725,7 +800,6 @@ zsh "$B/tools/verify-paths.sh"      # check folder access / prep create (mode ne
 zsh "$B/tools/scaffold-all.sh"      # scaffold all services
 zsh "$B/tools/scaffold-all.sh" api  # scaffold service id=api only
 zsh "$B/tools/dash.sh" serve        # open central board
-zsh "$B/tools/dash.sh" simple       # zero-dep board
 zsh "$B/tools/dash.sh" where        # central board path
 ```
 
@@ -740,6 +814,53 @@ zsh tools/dash.sh serve               # open board
 ```
 
 > Use **chat skills** (`loop-start`, `loop-orch`, …) or `zsh tools/*.sh` / `zsh "$B/tools/*.sh"`
+
+---
+
+## Credits & acknowledgments
+
+### Dashboard
+
+| Component | Credit |
+| --------- | ------ |
+| Pixel office UI | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [ringhyacinth](https://github.com/ringhyacinth). MIT code; art assets **non-commercial learning use only**. |
+| Loop integration | `star-office-bridge.js`, `agent-status.js`, `cc-dash-bridge.js`, `l3-permission-hook.js` — part of this repo |
+
+### Skills shipped with Loom (`hermes-skills/`)
+
+Built for this team (installed to `~/.hermes/skills/` by `deploy.sh`):
+
+`loop-start` · `loop-orch` · `pm` · `design` · `fe` · `fe-anim` · `be` · `be-sr` · `qa` · `LOOP`
+
+### External skills (`tools/install-external-skills.sh`)
+
+Installed to `~/.agents/skills/` on deploy (via `npx skills add` when available):
+
+| Skill | Used by | Notes |
+| ----- | ------- | ----- |
+| **solid** | all makers | SOLID, TDD, clean code |
+| **ponytail** · **ponytail-review** · **ponytail-audit** | all makers | minimum correct code; review / audit — [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) |
+| **postgres-best-practices** | be-sr | Postgres guidance |
+| **docker-containerization** | all agents | [ailabs-393/ai-labs-claude-skills](https://skills.sh/ailabs-393/ai-labs-claude-skills/docker-containerization) |
+| **hexagonal-architecture** | be, be-sr | Ports & Adapters — [affaan-m/ECC](https://github.com/affaan-m/ECC/blob/main/skills/hexagonal-architecture/SKILL.md) |
+| **perf-lighthouse** | fe | Lighthouse audits |
+| **threejs-animation** | fe-anim | Three.js animation helpers |
+| **qa** → Hermes **`qa-browser`** | qa | Browser QA — [browser-use/browser-use](https://github.com/browser-use/browser-use) (`tools/install-browser-use-qa.sh`) |
+
+### Recommended skills (install separately — referenced by agents)
+
+| Skill | Used by | Source / install |
+| ----- | ------- | ---------------- |
+| **context7** | fe, be, fe-anim, be-sr | MCP — up-to-date library docs |
+| **ui-ux-pro-max** | design | Design intelligence / UI spec |
+| **pm-skills** | pm | [phuryn/pm-skills](https://github.com/phuryn/pm-skills) marketplace |
+| **threejs-skills** | fe-anim | CloudAI-X Three.js skill bundle |
+| **handoff** | all | Session / IDE continuity |
+| **docx** · **pdf** · **pptx** · **xlsx** | pm, design, qa, orch | Deliverables when asked |
+
+### Methodology
+
+Loop flow is inspired by durable-state agent loops; see [LOOP.md](LOOP.md) and [Loop Engineering Guide 2026](https://tosea.ai/blog/loop-engineering-ai-agents-complete-guide-2026).
 
 ---
 

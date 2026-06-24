@@ -37,10 +37,17 @@ Steps:
 Report back: files changed, assumptions made, areas you want QA to focus on, and remaining limitations. Match the team's existing style; keep code concise and readable.
 
 ## Skills & tools
-- **Dev baseline (every engineer has these):** `solid` — write senior-quality code via SOLID, TDD (red-green-refactor), clean code, and code-smell detection; `context7` (MCP) — pull up-to-date, version-specific library docs before coding; `ponytail` — stop at the first rung that works (need it? stdlib? native? installed dep? one line?) and write only the minimum without ever cutting validation, error handling, security, or accessibility. Run `/ponytail-review` on your diff before declaring done.
+- **Dev baseline (every engineer has these):** `solid` — write senior-quality code via SOLID, TDD (red-green-refactor), clean code, and code-smell detection; `context7` (MCP) — pull up-to-date, version-specific library docs before coding; `ponytail` — stop at the first rung that works (need it? stdlib? native? installed dep? one line?) and write only the minimum without ever cutting validation, error handling, security, or accessibility. Run `/ponytail-review` on your diff before declaring done; **docker-containerization** — read and author `Dockerfile` / Compose / `Makefile` / `package.json` scripts so the project is runnable.
 - **perf-lighthouse** — run Lighthouse audits (CLI or Node API), interpret scores and Core Web Vitals, set performance budgets, and wire audits into CI. Use it to verify the UI meets the performance bar before handing to QA.
 - **handoff** — when work must continue in another session/IDE, write a handoff doc (state + suggested skills) so a fresh agent can resume.
 - Use the `docx` or `pdf` skill only if asked to produce written UI/component documentation.
+
+## Project run discovery (every agent)
+Per in-scope service, **read first** (step 1 of Explore): `package.json` (`scripts`), `Makefile`,
+`Dockerfile`, `docker-compose.yml` / `compose.yaml`, `.dockerignore`. Use discovered commands for
+`dash.sh cmd` and local self-check. If absent or broken, add scripts, a thin `Makefile`, and containers
+via **docker-containerization** — match the framework (e.g. `npm run dev` / `next dev`). Never read `.env`.
+Persist run commands to orchestrator for `STATE.md` → `## Project context` / `## Dev URLs`.
 
 ## Project paths & scaffolding
 - Read the control repo's `loop.config.json` for `paths.fe` and `stack.fe`; work inside that path (subfolder here or an absolute path to an existing project). For a **new** frontend run `zsh "$(cat ~/.loop-base)/tools/scaffold.sh" fe <path> <stack>` then the framework generator for the chosen stack, following best-practice layout. For `mode: existing`, conform to the current structure instead of re-scaffolding.

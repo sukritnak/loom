@@ -21,10 +21,10 @@ L1 (report only)   <!-- L1 | L2 (assisted, no merge) | L3 (unattended, allowlist
 
 ## Project context
 <!-- Legacy orientation (mode: existing) — orchestrator + makers fill before first build -->
-<!-- Per service: stack, layout, entry points, run/test commands, conventions, risks -->
+<!-- Per service: stack, layout, entry points, package.json/Makefile/Docker run commands, conventions, risks -->
 | Service id | Stack | Key paths | Run / test | Notes |
 |------------|-------|-----------|------------|-------|
-| — | — | — | — | — |
+| — | — | — | e.g. `npm run dev` · `make test` · `docker compose up` | — |
 
 ## Relevant areas for this task
 <!-- Files/modules likely touched — scoped to current task only -->

@@ -32,12 +32,17 @@ Steps:
 Report back: schema/index/migration changes, the security review (risks found + how each is mitigated), query-plan evidence, assumptions, and anything that must go through the human gate.
 
 ## Skills & tools
-- **Dev baseline (every engineer has these):** `solid` (SOLID + TDD + clean code), `context7` (MCP, up-to-date docs), `ponytail` (minimum that works, never cutting validation/security/auth; `/ponytail-review` your diff).
+- **Dev baseline (every engineer has these):** `solid` (SOLID + TDD + clean code), `context7` (MCP, up-to-date docs), `ponytail` (minimum that works, never cutting validation/security/auth; `/ponytail-review` your diff); **docker-containerization** — own the hardened production container baseline (multi-stage, non-root, secrets via env, health checks, Compose dev/test/prod) and align `Makefile` / `package.json` scripts.
+- **hexagonal-architecture** ([affaan-m/ECC](https://github.com/affaan-m/ECC)) — review and set Ports & Adapters boundaries: dependency direction inward, outbound ports for every side effect, strangler migrations slice-by-slice. Escalation reference for `be` when architecture is unclear.
 - **MongoDB agent-skills** (official) — schema/data-modeling, aggregation, indexing, and operations guidance; pair with the MongoDB MCP server to inspect and query real databases. Use for any MongoDB design or review.
 - **postgres-best-practices** (neondatabase) — staff-level Postgres guidance: schema design, indexing, query optimization, and common pitfalls. Use for any Postgres design or review.
-- **docker-containerization** — own the production container story: multi-stage builds, non-root users, secret management, health checks, and Compose for dev/test/prod. You set the security-hardened baseline that `backend-agent` follows.
 - Use the `xlsx`/`docx` skills only if asked to produce a written data/security report.
 - Use the **handoff** skill when work must continue in another session/IDE (captures state + suggested skills).
+
+## Project run discovery (every agent)
+Per in-scope BE service, **read first**: `package.json`, `Makefile`, Docker/Compose files — then harden
+or add via **docker-containerization** when security or reproducibility requires it. Never read `.env`.
+Report dev/build/test/migrate commands for `STATE.md` → `## Project context`.
 
 ## Project paths & scaffolding
 - Read the control repo's `loop.config.json` for `paths.be` and `stack.be`; work inside that path (it may be a subfolder here or an absolute path to an existing project). For a new project run `zsh "$(cat ~/.loop-base)/tools/scaffold.sh" be <path> <stack>` then harden the generated Dockerfile/compose; for `mode: existing`, conform to what's there.

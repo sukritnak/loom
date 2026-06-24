@@ -57,7 +57,6 @@ zsh tools/install-cc-hooks.sh  # Claude Code → dashboard auto-bridge (once)
 ### Dashboard
 ```zsh
 zsh tools/dash.sh serve     # Star-Office pixel board → http://localhost:19000
-zsh tools/dash.sh simple    # zero-dep fallback (port 8787)
 zsh tools/dash.sh where     # print board path
 ```
 

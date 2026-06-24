@@ -4,7 +4,6 @@
 # safe to call repeatedly (e.g. from deploy.sh or at loop-orch start).
 #
 #   zsh serve.sh                 # start on :19000 (override with STAR_BACKEND_PORT)
-#   zsh serve.sh simple [PORT]   # fall back to the old zero-dep single-file dashboard
 set -euo pipefail
 cd "$(dirname "$0")" || exit 1
 DASH="$(pwd)"
@@ -16,17 +15,6 @@ printf '%s\n' "$(cd "$DASH/.." && pwd)" > "$HOME/.loop-base" 2>/dev/null || true
 open_browser(){ ( command -v open >/dev/null && open "$1" ) 2>/dev/null || ( command -v xdg-open >/dev/null && xdg-open "$1" ) 2>/dev/null || true; }
 up(){ nc -z 127.0.0.1 "$1" 2>/dev/null || lsof -iTCP:"$1" -sTCP:LISTEN -P -n >/dev/null 2>&1; }
 
-# --- fallback: original zero-dep dashboard (no Python/Flask) ---
-if [ "${1:-}" = "simple" ]; then
-  PORT="${2:-8787}"; URL="http://localhost:$PORT"
-  if up "$PORT"; then echo "dashboard already running → $URL"; open_browser "$URL"; exit 0; fi
-  [ -f status.json ] || node agent-status.js reset "" >/dev/null 2>&1 || true
-  echo "AI Agent Software Team (simple) → $URL  — Ctrl+C to stop."
-  open_browser "$URL"
-  exec python3 -m http.server "$PORT"
-fi
-
-# --- default: Star-Office pixel dashboard ---
 PORT="${STAR_BACKEND_PORT:-19000}"; URL="http://localhost:$PORT"
 if up "$PORT"; then echo "Star-Office already running → $URL"; open_browser "$URL"; exit 0; fi
 

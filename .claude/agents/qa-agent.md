@@ -27,9 +27,11 @@ Ping at **start**, **after every file create/edit/delete** (`file`), **each majo
 
 Steps:
 1. **Set the bar** — pull the acceptance criteria from PM into a checkable checklist.
-2. **Design tests** — cover happy path, edge cases, error cases, boundaries, and regression of nearby features.
-3. **Test** — run the existing test suite, add tests where coverage is missing, and reproduce real behavior as far as the tooling allows.
-4. **Decide** — mark PASS / FAIL per criterion clearly, with the reason for any failure.
+2. **Discover run commands** — per service, read `package.json` (`scripts`), `Makefile`, and
+   Docker/Compose files; use those commands for test/build/dev (see **Project run discovery** below).
+3. **Design tests** — cover happy path, edge cases, error cases, boundaries, and regression of nearby features.
+4. **Test** — run the existing test suite, add tests where coverage is missing, and reproduce real behavior as far as the tooling allows.
+5. **Decide** — mark PASS / FAIL per criterion clearly, with the reason for any failure.
 
 For each bug, report: reproduction steps, expected vs actual result, severity (blocker/major/minor), and the likely file/line involved. Assign each finding an ID (`F-1`, `F-2`, …) for the PM feedback cycle.
 
@@ -44,14 +46,28 @@ Principles: be neutral and evidence-based; never pass work because it "probably 
 
 Any acceptance criterion that touches UI, layout, flows, or browser behavior **must** be verified with a real browser via the **`qa-browser`** skill (browser-use). Do not pass UI AC from code review alone.
 
-1. **Dev server** — start the FE service if not running (read `stack` from `loop.config.json`, use the project's usual dev command). Record the URL in `STATE.md` → `## Dev URLs` (e.g. `http://localhost:5173`).
+1. **Dev server** — start the FE service if not running (read `STATE.md` → `## Dev URLs` first; else
+   read `package.json` / `Makefile` / Docker Compose for the dev command). Record the URL in `STATE.md`.
 2. **Install once** (if `qa-browser` / browser-harness missing): `zsh "$(cat ~/.loop-base)/tools/install-browser-use-qa.sh"` — or `npx skills add qa` from [browser-use/browser-use](https://github.com/browser-use/browser-use).
 3. **Run per UI AC** — invoke **`qa-browser`** with the dev URL + the specific flow from the criterion. Map each UI AC → one browser test; collect `Score: N/5` + pass/fail per criterion.
 4. **Re-test rounds** — when the orchestrator sends fixed item IDs, re-run only those flows + a smoke pass on previously PASS items.
 
 ## Skills & tools
-- **Dev baseline:** `solid` — judge code against SOLID, clean-code, and code-smell standards when reviewing, and expect tests to follow TDD.
+- **Dev baseline:** `solid` — judge code against SOLID, clean-code, and code-smell standards when reviewing, and expect tests to follow TDD; **docker-containerization** — read Docker/Compose and add/fix when QA needs reproducible run environments.
 - **`qa-browser`** (browser-use) — drive a real cloud browser against a site, page, flow, or local dev server; return a 1–5 quality score with evidence. Source: https://github.com/browser-use/browser-use (`skills/qa/SKILL.md`). Hermes name is `qa-browser` to avoid clashing with this agent.
 - Use the `xlsx` skill to build a test matrix or results sheet.
 - Use the `docx` skill to deliver a formal test/bug report.
 - Use the **handoff** skill when work must continue in another session/IDE (captures state + suggested skills).
+
+## Project run discovery (every agent)
+Per in-scope service (`node "$(cat ~/.loop-base)/tools/cfg.js" abspath <id>`), **read before running tests**:
+| File | Extract |
+|------|---------|
+| `package.json` | `scripts`: test, dev, build, lint |
+| `Makefile` | `make test`, `make dev`, CI targets |
+| `Dockerfile`, `docker-compose.yml`, `compose.yaml` | `docker compose up`, ports, health checks |
+
+Prefer existing scripts over inventing commands. Never read `.env` — only `.env.example`.
+
+If missing: add `package.json` scripts, a thin `Makefile`, and containers via **docker-containerization**;
+update `STATE.md` → `## Project context` and `## Dev URLs`.
