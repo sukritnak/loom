@@ -40,7 +40,7 @@ This skill runs the test through **browser-harness** — a separate tool you ins
 
 **Before anything else, verify it's available:**
 
-```bash
+```zsh
 command -v browser-harness && browser-harness <<'PY'
 print("browser-harness OK")
 PY
@@ -48,7 +48,7 @@ PY
 
 If `browser-harness` is **not** on `PATH`, **install it yourself — don't make the user do it.** QA runs on a *cloud* browser, so the CLI is all you need: **none** of browser-harness's local-browser setup (`chrome://inspect`, `--remote-debugging-port`, the "Allow remote debugging" popup) applies here — skip all of it. The install is one-time (~30s), no clone:
 
-```bash
+```zsh
 command -v uv || curl -LsSf https://astral.sh/uv/install.sh | sh   # the uv installer, only if missing
 uv tool install "git+https://github.com/browser-use/browser-harness"
 command -v browser-harness                                         # verify it's on PATH now

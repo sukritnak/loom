@@ -36,7 +36,7 @@ store + HTTP runtime.)
 Fill in `task`, `startUrl` (the public URL — tunnel a localhost target first), and
 `judgeGroundTruth` (what success looks like), then run:
 
-```bash
+```zsh
 browser-harness <<'PY'
 import os, json, time, urllib.request, urllib.error, subprocess, sys
 KEY = os.environ.get("BROWSER_USE_API_KEY")

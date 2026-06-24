@@ -1,236 +1,692 @@
-# AI Agent Office — พิมพ์เขียวกลาง (control-repo blueprint)
+# Loom
 
-ทีม AI 8 ตัวที่ทำงานเป็น **loop** (วางแผน → สร้าง → ตรวจ → วน) ใช้ได้ทั้ง
-**Claude Code · Cursor · Hermes**
+**AI Agent Office** — central blueprint (control-repo) for software agent loops.
 
-> repo นี้คือ **ตัวกลาง/พิมพ์เขียว** — ไม่ใช่ที่เก็บโค้ดงานจริง
-> โปรเจกต์จริงถูกสร้างที่ `~/Documents/coding/agent-build/<ชื่อโปรเจกต์>`
-> และ `loop.config.json` จะอยู่ที่ **โปรเจกต์ปลายทาง** ไม่ใช่ใน repo นี้
+> **Language:** English (this document) · [ไทย](README-TH.md)
+>
+> **Workspace:** clone or open this repo as **`loom`** (the blueprint — not your app code).
 
----
+A team of **9 AI agents** working in a **loop** (plan → build → verify → iterate). Works on **Claude Code · Cursor · Hermes**.
 
-## เริ่มใช้ใน 3 ขั้น
+> This repo is the **blueprint (Base)** — not where your real project code lives.
+> Real code lives at `services[].path` in `loop.config.json` (relative or absolute).
+> Control folders (config + STATE) are created at `<base-dir>/<name>`, default `~/Documents/coding/agent-build`.
 
-เริ่มจากคำสั่งเดียว — เป็น wizard ถามทีละขั้นใน terminal:
-
-```bash
-make loop-start
-```
-
-มันจะไล่ถามให้เอง:
-
-1. **Deploy?** — ติดตั้ง/รีเฟรชทีมเข้า Claude Code + Hermes (เลือก y/n เอง)
-2. **Base folder** — กด Enter ใช้ค่า default หรือพิมพ์ path เอง (ไม่ต้องใส่ `DIR=`) ถ้าโฟลเดอร์ยังไม่มีจะถามสร้างให้
-3. **โปรเจกต์** — เลือกจากรายการที่เคยทำ / สร้างใหม่ (ถาม name + services) / เปิดของเดิมด้วย path เต็ม
-4. ปักหมุด `.active-project` แล้วพิมพ์คำสั่ง `Use loop-orch ...` ที่ชี้ไป `loop.config.json` ตัวที่ถูก
-
-จากนั้น `cd` เข้าโปรเจกต์ แล้วสั่งงานทีมในแพลตฟอร์มไหนก็ได้:
-
-```
-Use loop-orch at L1: เพิ่มฟีเจอร์รีเซ็ตรหัสผ่านทางอีเมล
-```
-
-### คำสั่งย่อย (ถ้าไม่อยากใช้ wizard)
-
-```bash
-make deploy                     # ติดตั้งทีมเข้าแพลตฟอร์ม (ครั้งเดียว/ต่อเครื่อง)
-make set-base DIR=~/work/proj   # ตั้งโฟลเดอร์ปลายทางถาวร (absolute & นอก repo)
-make new-project NAME=my-app    # สร้างโปรเจกต์ + wizard services (ไม่ปักหมุด)mmm
-make start NAME=my-app          # สร้างถ้ายังไม่มี + ปักหมุด + พิมพ์คำสั่ง
-make start                      # ใช้โปรเจกต์ที่ปักหมุดล่าสุด
-make list-project               # ดูโปรเจกต์ทั้งหมดที่เคยทำ + ตัวที่ active
-```
-
-loop-orch จะเช็ก `loop.config.json` ในโฟลเดอร์ปัจจุบันก่อน ถ้าไม่เจอจะอ่าน `.active-project` (กันแก้ผิดโปรเจกต์)
+**Why “Loom”?** Like Hermes carries messages and Ponytail trims code to the bone, **Loom** is where software loops get *woven* — plan, build, verify, repeat — with a team of agents on one thread. Short name for the blueprint; your real apps still live in control folders and service paths.
 
 ---
 
-## ทีม 8 ตัว (เรียกด้วยชื่อสั้น)
+## Three-layer architecture
 
+```
+Blueprint (Base = this repo)       control folder (~/Documents/coding/agent-build/my-app)
+────────────────────────────       ──────────────────────────────────────────────────────
+.claude/agents/  team definitions ─┐ loop.config.json   ← service list + mode + autonomy
+hermes-skills/   for Hermes      ─┤ STATE.md           ← loop memory (resumable sessions)
+tools/           shared scripts  ─┤ (no tools/ here — call Base via ~/.loop-base)
+agent-dashboard/ live board     ─┘ real code → at service paths (may be elsewhere on disk)
+```
 
-| ชื่อเรียก   | บทบาท                | ทำอะไร                                                      |
-| ----------- | -------------------- | ----------------------------------------------------------- |
-| `loop-orch` | Orchestrator         | อ่าน `STATE.md` + `loop.config.json` แล้วสั่งงานทีม วน loop |
-| `pm`        | Product              | แตกโจทย์เป็น acceptance criteria                            |
-| `design`    | Designer             | UX/UI flow, ระบุทุก state ก่อนส่ง FE                        |
-| `fe`        | Frontend             | เขียน UI ต่อ API จัดการทุก state                            |
-| `fe-anim`   | Frontend (motion/3D) | animation, Three.js/WebGL                                   |
-| `be`        | Backend              | API, business logic, data layer                             |
-| `be-sr`     | Senior Backend       | DB design + security review                                 |
-| `qa`        | QA                   | ตรวจกับ acceptance criteria → PASS/FAIL                     |
+| Layer | Location | Contents |
+| ----- | -------- | -------- |
+| **Base** | this repo | agent definitions, tools, dashboard, LOOP.md — **never copied to destinations** |
+| **control folder** | `<base-dir>/<name>` | `loop.config.json` + `STATE.md` only |
+| **real code** | per `services[].path` | frontend / backend the agents edit (may be separate repos) |
 
+**Key rules**
+- Never create a project or write `loop.config.json` inside Base / the current directory
+- Agents install machine-wide (`~/.claude/agents`, `~/.hermes/skills`) → usable from any project
+- tools + dashboard resolve Base via `~/.loop-base` (written by `deploy.sh` or `new-project.sh`)
+- 1 job = 1 control folder = 1 separable session
+- `.active-project` in Base stores the active control folder path (`loop-start` writes it)
 
-ดูวิธีการของ loop แบบเต็มได้ใน `[LOOP.md](LOOP.md)`
+**Custom base folder** via `loop-start` or env `BASE_DIR=/path`
+Resolution order: arg > `BASE_DIR` > `.base-dir` file in Base > default `~/Documents/coding/agent-build`
+Must be an absolute path outside Base.
+
+### Base folder vs control folder
+
+| | **base folder** | **control folder** |
+| - | --------------- | ------------------ |
+| **Question** | Where do **all jobs** live? | Which **job** to open inside it? |
+| **Example path** | `~/Documents/coding/agent-build` | `~/Documents/coding/agent-build/shop` |
+| **Contents** | A “shelf” for many jobs (no config) | That job's `loop.config.json` + `STATE.md` |
+| **Count** | Usually **one** per machine | **Many** jobs — one folder each |
+| **services** | N/A | One control can hold **many services** in one config |
+
+```
+loop-start step 1 → pick shelf (base)
+~/Documents/coding/agent-build/
+
+loop-start step 2 → pick job (control) or create new
+    ├── shop/          ← control job A (loop.config.json + STATE.md)
+    ├── portal/        ← control job B
+    └── my-app/        ← control job C
+```
+
+**How base affects control**
+
+| Topic | Base matters? |
+| ----- | ------------- |
+| Create new control folder | Yes — always `<base>/<job-name>/` |
+| List jobs in `loop-start` | Yes — scans `base/*/loop.config.json` |
+| `loop.config.json` contents | No — services / mode / paths live in control, not tied to base |
+| **relative** service paths | No — resolved from **control folder**, not base |
+| **absolute** service paths | No — can point anywhere on disk |
+| Change base later | Old jobs don't move — controls stay at their original paths |
+
+> **control folder ≠ 1 service** — one control can list many services (e.g. frontend + api) in a single `loop.config.json`.
+
+### Example: code in one place, control in another
+
+Suppose legacy repos live under `~/Documents/coding/legacy/` (code stays put):
+
+```
+~/Documents/coding/legacy/              ← real code (not base, not control)
+├── shop-frontend/
+├── shop-core/
+├── portal-client/
+├── portal-core/
+└── portal-data/
+```
+
+Set **base** = `~/Documents/coding/agent-build`, create **controls** per job:
+
+```
+~/Documents/coding/agent-build/
+├── shop/                               ← control job A
+│   ├── loop.config.json                ← 2 services pointing back to legacy/
+│   └── STATE.md
+└── portal/                             ← control job B
+    ├── loop.config.json                ← 3 services pointing back to legacy/
+    └── STATE.md
+```
+
+`loop.config.json` for job `shop` (`mode: existing`, no code move):
+
+```json
+{
+  "project": "shop",
+  "mode": "existing",
+  "autonomy": "L1",
+  "services": [
+    { "id": "frontend", "side": "fe", "path": "~/Documents/coding/legacy/shop-frontend", "stack": "" },
+    { "id": "core",     "side": "be", "path": "~/Documents/coding/legacy/shop-core",     "stack": "" }
+  ]
+}
+```
+
+Job `portal` is another control — three services point at `portal-*` under `legacy/`.
+
+**Why not one folder for base + control + code?**
+
+| Approach | Result |
+| -------- | ------ |
+| control = same folder as code (`legacy/loop.config.json`) | **One job only** — write config yourself + `cd` there |
+| Multiple jobs in one folder | **Not supported** — only one `loop.config.json` + `STATE.md` (config/memory collide) |
+| Separate controls under base (recommended) | Parallel sessions; switch `shop` / `portal` via `cd` or `loop-start` |
 
 ---
 
-## ใช้ในแต่ละแพลตฟอร์ม
+## Getting started
 
-**Claude Code** — `make deploy` คัดลอก subagents ไป `~/.claude/agents/` ใช้ได้ทุกโปรเจกต์
-เรียกด้วย `Use loop-orch at L1: ...` หรือ subagent อื่นตามชื่อ
+### 1) Install the team (once per machine) — run from Base
 
-**Cursor** — เปิดโฟลเดอร์โปรเจกต์ Cursor อ่าน `.claude/agents/` ให้อัตโนมัติ
-อยากได้ persona แยก: Settings → Custom Modes → เพิ่มทีละตัว วางเนื้อหาจาก `.claude/agents/*.md`
+```zsh
+zsh tools/deploy.sh
+```
 
-**Hermes** — `make deploy` ติดตั้ง 9 skill (`loop-orch pm design fe fe-anim be be-sr qa LOOP`)
-ไป `~/.hermes/skills/` พร้อม symlink skill ภายนอก
-เรียกด้วย slash command เช่น `/loop-orch`, `/be`
+First command does everything:
 
-> **ชนชื่อ `qa`:** ทีมนี้มี agent ชื่อ `qa` ส่วน browser-use ก็มี skill ชื่อ `qa`
-> ตัวติดตั้งจึงตั้ง browser-use เป็น `qa-browser` ใน Hermes เพื่อไม่ให้ทับกัน
+| Step | What it does |
+| ---- | ------------ |
+| agents | Copy subagents → `~/.claude/agents/` |
+| Hermes | Install team skills → `~/.hermes/skills/` |
+| **external skills** | Install recommended → `~/.agents/skills/` + Hermes symlinks |
+| Base path | Register `~/.loop-base` |
+| dashboard | Open `http://localhost:19000` |
+
+Skip external skills (no network / install later):
+
+```zsh
+DEPLOY_SKIP_EXTERNAL_SKILLS=1 zsh tools/deploy.sh
+```
+
+Install external skills later or retry after skip:
+
+```zsh
+zsh tools/install-external-skills.sh && zsh tools/install-hermes-skills.sh
+```
+
+**External skills installed by deploy**
+
+| skill | Used by | Purpose |
+| ----- | ------- | ------- |
+| `solid` | fe, be | SOLID, TDD, clean code |
+| `ponytail` | fe, be | Minimum code that works |
+| `ponytail-review` | fe, be | Review over-engineering / legacy orient |
+| `ponytail-audit` | loop-orch | Whole-service tech debt scan (when needed) |
+| `postgres-best-practices` | be-sr | DB / Postgres |
+| `threejs-animation` | fe-anim | 3D / motion |
+| `perf-lighthouse` | qa, fe | Web performance audits |
+| `qa-browser` | qa | Real-browser FE/UI testing |
+
+After editing agent definitions, sync all platforms:
+
+```zsh
+zsh tools/sync-agents.sh    # source = .claude/agents/
+```
+
+### 2) Start work — chat commands (primary)
+
+**New job or resume an existing project** — same command; no manual `cd` if you're in Base:
+
+```
+Use loop-start      ← Claude Code / Cursor
+/loop-start         ← Hermes
+```
+
+`loop-start` walks you through (see [base vs control](#base-folder-vs-control-folder)):
+
+1. **base folder** — where all jobs live (default `~/Documents/coding/agent-build` or your path)
+2. **control folder** — **open existing** (pick from list under base) or create `<job-name>` → `<base>/<job-name>/`
+3. (new jobs only) mode (`new` / `existing`), autonomy (L1/L2/L3), services (id / side / path / stack)
+4. Write/confirm `loop.config.json` + `STATE.md` at control folder, then hand off to `loop-orch`
+
+> `loop-start` always picks the right project before work begins.
+> `loop-orch` checks `loop.config.json` in cwd first; if missing, reads `.active-project` (wrong-project guard).
+
+Resume an existing session in detail → [Resume a session](#resume-a-session--reopen-a-project-you-already-set-up)
+
+Then assign work:
+
+```
+Use loop-orch at L1: <describe feature or bug>
+```
+
+Hermes: `/loop-orch run at L1: <task>`
+
+`loop-orch` asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) before delegating to any agent — answer Y or Enter to open the browser at `http://localhost:19000`.
+
+### 3) Terminal alternatives
+
+```zsh
+zsh tools/deploy.sh                  # install team (once per machine)
+zsh tools/new-project.sh my-app      # create control folder + config wizard
+zsh tools/dash.sh serve              # open central board (Star-Office)
+```
+
+`new-project.sh` creates a control folder at base — **does not copy tools/** (only `STATE.md`)
+then runs `init-config.sh` from Base to ask for services.
+
+### Can I stay in Base?
+
+Resume details → [Resume a session](#resume-a-session--reopen-a-project-you-already-set-up)
+
+| Action | OK from Base? | Notes |
+| ------ | ------------- | ----- |
+| `Use loop-start` / `Use loop-orch` | Yes | Uses `.active-project` or skill pins target |
+| `node cfg.js`, `verify-paths`, `scaffold` | No | Must `cd` into control folder (tools read cwd config) |
+| `dash.sh serve` / `where` | Yes | Central board; cwd-independent |
+| `dash.sh set/reset/log` | Yes but wrong tag | Without cwd config → project tag `(unknown)` |
 
 ---
 
-## `loop.config.json` — สร้างที่ปลายทาง ไม่ต้องเขียนเอง
+## Agent team
 
-ไม่ต้องสร้างไฟล์นี้ใน repo พิมพ์เขียว — `make new-project` (หรือ `make setup` ในโปรเจกต์)
-จะถามทีละขั้นแล้วเขียนให้ที่โปรเจกต์ปลายทาง path ของแต่ละ service อ้างอิงจากรากโปรเจกต์นั้น
-ตัวอย่างดูที่ `[loop.config.example.json](loop.config.example.json)`
+| Name | Role | Does |
+| ---- | ---- | ---- |
+| `loop-start` | Bootstrap | Start here — pick/create project + write `loop.config.json`, hand off to loop-orch |
+| `loop-orch` | Orchestrator | Read `STATE.md` + `loop.config.json`, delegate team, run loop |
+| `pm` | Product | Break down AC · **lead triage** on QA FAIL |
+| `design` | Designer | UX/UI flow, all states before FE |
+| `fe` | Frontend | UI against API, all states |
+| `fe-anim` | Frontend (motion/3D) | animation, Three.js/WebGL |
+| `be` | Backend | API, business logic, data layer |
+| `be-sr` | Senior Backend | DB design + security review |
+| `qa` | QA | AC → PASS/FAIL · FE/UI via **`qa-browser`** (browser-use) |
 
-ระดับความเป็นอิสระ (autonomy): **L1** รายงานอย่างเดียว · **L2** ช่วยเขียน (ไม่ merge) · **L3** อัตโนมัติ
-เริ่มที่ L1 เสมอ ขยับขึ้นเมื่อมั่นใจ
+**Feedback loop:** QA FAIL → PM triage → feedback packet to `fe`/`be`/… → fix → QA re-test (max 3 rounds) — logged in `STATE.md` → `## Feedback history`
 
----
+**`qa-browser`** is included in `zsh tools/deploy.sh` — see [step 1](#1-install-the-team-once-per-machine--run-from-base)
 
-## โครงไฟล์ใน repo นี้
-
-```
-.claude/agents/            8 agents — แหล่งต้นทาง (Claude Code ใช้ได้ทันที)
-hermes-skills/             SKILL.md สำหรับ Hermes (สร้างด้วย to-hermes-skills.sh)
-agent-dashboard/           กระดานสถานะสด (index.html, agent-status.js, serve.sh)
-tools/
-  loop-start.sh            wizard เริ่มต้น (deploy? → base → new/existing → ปักหมุด)
-  deploy.sh                ติดตั้งทีมไป Claude Code + Hermes
-  base-dir.sh              resolve โฟลเดอร์ปลายทาง (arg > BASE_DIR > .base-dir > default)
-  new-project.sh           สร้างโปรเจกต์จริงที่ base + เขียน loop.config.json
-  start-loop-orch.sh       ปักหมุดโปรเจกต์ปลายทาง (.active-project) + พิมพ์คำสั่ง loop-orch
-  init-config.sh           wizard เขียน loop.config.json (รันที่โปรเจกต์)
-  cfg.js · scaffold.sh · verify-paths.sh
-  to-hermes-skills.sh · install-hermes-skills.sh
-Makefile                   make deploy | new-project | setup | init | dashboard ...
-LOOP.md                    วิธีการของ loop (เป็น skill ด้วย)
-STATE.template.md          แม่แบบความจำของ loop (คัดลอกเป็น STATE.md ที่ปลายทาง)
-loop.config.example.json   ตัวอย่าง config
-```
-
-## external skills (ทางเลือก)
-
-```bash
-npx skills add solid ponytail ponytail-review perf-lighthouse \
-  postgres-best-practices docker-containerization threejs-animation qa
-```
+Full loop spec → [LOOP.md](LOOP.md) · Reference: [Loop Engineering Guide 2026](https://tosea.ai/blog/loop-engineering-ai-agents-complete-guide-2026)
 
 ---
 
-# คู่มือฉบับอ่านเอง (ภาษาไทย)
+## Platforms (Claude Code · Cursor · Hermes)
 
-> ส่วนนี้สำหรับคนใช้งานอ่านเอง ไม่ได้ส่งให้ agent — อธิบายวิธีใช้แต่ละแพลตฟอร์มและความต่าง
+| | Claude Code | Cursor | Hermes |
+| - | ----------- | ------ | ------ |
+| Team shape | subagents | `.claude/agents` + Custom Modes | SKILL.md (slash) |
+| Install | `zsh tools/deploy.sh` | open folder | `zsh tools/deploy.sh` |
+| Start | `Use loop-start` | `Use loop-start` | `/loop-start` |
+| Call agent | `Use be to ...` | chat / Custom Mode | `/be`, `/qa`, … |
+| Parallel work | full (worktree) | limited | yes (subagents) |
+| Automation/cron | via loop | — | built-in |
+| Strength | full loop | hands-on edit/review | headless + scheduling |
 
-## ภาพรวมแนวคิด
+### Claude Code
 
-repo นี้เป็น **พิมพ์เขียวกลาง (control-repo)** ทำหน้าที่ 2 อย่าง
-
-1. **เก็บนิยามทีม** 8 ตัว (ใน `.claude/agents/`) เป็นต้นทางเดียว
-2. **deploy** ทีมไปยังแพลตฟอร์ม + **bootstrap** โปรเจกต์งานจริง
-
-งานจริงไม่ได้อยู่ใน repo นี้ — อยู่ที่ `<base-dir>/<project>/` (ดีฟอลต์ `~/Documents/coding/agent-build`)
-ตั้งโฟลเดอร์ปลายทางเองได้: `make set-base DIR=/path` หรือ env `BASE_DIR=/path` (ลำดับ: arg > `BASE_DIR` > `.base-dir` > ดีฟอลต์)
-ต้องเป็น **absolute path และอยู่นอก repo นี้** — ห้ามใช้ current directory / โฟลเดอร์พิมพ์เขียว (กันสร้างโปรเจกต์ทับตัวเอง)
-โดยแต่ละโปรเจกต์มี `loop.config.json` + infra (Makefile, tools, dashboard) ของตัวเอง
-ส่วน agents ติดตั้งที่ระดับเครื่อง (`~/.claude/agents`, `~/.hermes/skills`) จึงเรียกได้จากทุกโปรเจกต์
-
-```
-พิมพ์เขียว (repo นี้)              โปรเจกต์ปลายทาง (~/Documents/coding/agent-build/my-app)
-─────────────────────             ──────────────────────────────────────────────
-.claude/agents/ (ต้นทาง)   ──┐    loop.config.json   ← service map (สร้างที่นี่)
-hermes-skills/             ──┤    STATE.md           ← ความจำของ loop
-tools/, Makefile, LOOP.md  ──┘    Makefile, tools/, agent-dashboard/  (คัดลอกมา)
-   │  make deploy → ติดตั้ง agents ระดับเครื่อง       web/ admin/ api/ ...  ← โค้ดจริง
-   │  make new-project → สร้างโฟลเดอร์ปลายทาง
-   └  make start → ปักหมุดว่ากำลังทำโปรเจกต์ไหน
-```
-
-## 1. Claude Code
-
-**ติดตั้ง:** `make deploy` คัดลอก subagents 8 ตัวไป `~/.claude/agents/` ใช้ได้ทุกโปรเจกต์ทันที
-
-**ใช้งาน:** เปิดโฟลเดอร์โปรเจกต์ปลายทางใน Claude Code แล้วพิมพ์
+`deploy.sh` copies subagents to `~/.claude/agents/` — usable in every project immediately.
 
 ```
-Use loop-orch at L1: เพิ่มระบบ login ด้วย Google
+Use loop-start
+Use loop-orch at L1: ...
+Use be to ...
+Use qa to ...
 ```
 
-หรือเรียก subagent ตรง ๆ: `Use be to ...`, `Use qa to ...`
+**Capabilities:** native subagents — parallel worktrees, context handoff, L1–L3 autonomy. Best full-loop experience.
 
-**ความสามารถ:** subagent แท้ — แตกงานขนานใน worktree, ส่งต่อ context กันได้, autonomy L1–L3 ครบ
-เป็นแพลตฟอร์มที่ loop ทำงานเต็มรูปแบบที่สุด
+### Cursor
 
-## 2. Cursor
+Open the folder — Cursor reads `.claude/agents/` automatically.
+Optional personas: Settings → Custom Modes → paste each `.claude/agents/*.md`.
 
-**ติดตั้ง:** เปิดโฟลเดอร์โปรเจกต์ — Cursor อ่าน `.claude/agents/` ให้อัตโนมัติ (ไม่ต้องตั้งค่าเพิ่ม)
-อยากได้ persona แยกชัด: Settings → Custom Modes → เพิ่มทีละตัว วางเนื้อหาจาก `.claude/agents/*.md`
+Chat like Claude Code (`Use loop-orch at L1: ...`) or switch Custom Modes.
 
-**ใช้งาน:** พิมพ์ในแชตเหมือน Claude Code (`Use loop-orch at L1: ...`)
-หรือสลับ Custom Mode ที่สร้างไว้
+**Capabilities:** great for interactive edits; less parallel fan-out than Claude Code. Good for hands-on fix/review.
 
-**ความสามารถ:** ดีสำหรับงานโต้ตอบ + แก้ทีละไฟล์เห็นภาพ การแตกงานขนานหลายตัวพร้อมกัน
-ทำได้จำกัดกว่า Claude Code (โมเดล agent เดียวต่อแชต) เหมาะเป็นที่ลงมือแก้/รีวิว
+### Hermes
 
-## 3. Hermes
+`deploy.sh` installs team skills (`loop-start loop-orch pm design fe fe-anim be be-sr qa LOOP`)
+to `~/.hermes/skills/` with external skill symlinks.
 
-**ติดตั้ง:** `make deploy` ติดตั้ง 9 skill (`loop-orch pm design fe fe-anim be be-sr qa LOOP`)
-ไป `~/.hermes/skills/` + symlink skill ภายนอกอัตโนมัติ
+```
+/loop-start
+/loop-orch
+/be
+/qa
+```
 
-**ใช้งาน:** เรียกด้วย slash command — `/loop-orch`, `/be`, `/qa` ฯลฯ
-รวม skill เป็น bundle ได้ เช่น
+Bundle skills:
 
-```bash
+```zsh
 hermes bundles create backend-dev -s be -s be-sr -s postgres-best-practices
 hermes bundles create frontend-dev -s fe -s fe-anim -s solid
 ```
 
-**ชนชื่อ `qa`:** ทีมมี agent ชื่อ `qa` และ browser-use ก็มี skill ชื่อ `qa`
-ตัวติดตั้งจึงตั้ง browser-use เป็น `**qa-browser`** ใน Hermes ไม่ให้ทับกัน
+> **`qa` name clash:** team agent `qa` vs browser-use skill `qa` → installer exposes browser-use as **`qa-browser`** in Hermes.
 
-**ความสามารถ:** รันแบบ autonomous/headless ได้, ตั้ง cron/automation, ต่อแชตหลายช่องทาง
-เหมาะกับงานวนอัตโนมัติเป็นรอบ (เช่น triage ทุกเช้า) แต่ต้องรันใน/ชี้ไปโฟลเดอร์โปรเจกต์ที่ถูก
+**Capabilities:** autonomous/headless, cron, multi-channel. Good for scheduled loops (e.g. morning triage). Must run from / point at the right control folder.
 
-## เทียบความต่าง
+> All three platforms read `loop.config.json` from the **folder you're in**. Start with `loop-start` to pin the right project.
 
+---
 
-|                | Claude Code         | Cursor                          | Hermes              |
-| -------------- | ------------------- | ------------------------------- | ------------------- |
-| รูปแบบทีม      | subagents           | `.claude/agents` + Custom Modes | SKILL.md (slash)    |
-| ติดตั้ง        | `make deploy`       | เปิดโฟลเดอร์                    | `make deploy`       |
-| เรียก          | `Use loop-orch ...` | แชต / Custom Mode               | `/loop-orch`        |
-| แตกงานขนาน     | เต็มที่ (worktree)  | จำกัด                           | ได้ (subagents)     |
-| อัตโนมัติ/cron | ผ่าน loop           | —                               | ในตัว               |
-| จุดเด่น        | loop เต็มรูปแบบ     | ลงมือแก้/รีวิว                  | headless + ตั้งเวลา |
+## loop.config.json
 
+Don't create this in Base — `loop-start` or
+`zsh "$(cat ~/.loop-base)/tools/init-config.sh"` (from control folder) walks you through it.
+One job can have many services; **each service can live at its own base path**.
 
-> ทั้ง 3 แพลตฟอร์มอ่านงานจาก `loop.config.json` ของ **โฟลเดอร์ที่กำลังเปิด/รันอยู่** เสมอ
-> ใช้ `make start` ปักหมุดก่อนทุกครั้งเพื่อกันแก้ผิดโปรเจกต์
-
-## ระดับ autonomy
-
-- **L1 — report only:** วางแผน/เสนอ ไม่ commit (เริ่มที่นี่เสมอ)
-- **L2 — assisted:** maker เขียนโค้ดใน worktree เรารีวิวแล้ว merge เอง
-- **L3 — unattended:** อัตโนมัติเต็ม เปิดเองเมื่อมั่นใจ — safety denylist ยังคงอยู่ทุกระดับ
-
-ขยับขึ้นทีละขั้นเมื่อระดับก่อนหน้า "น่าเบื่อ" (ไม่มีเซอร์ไพรส์) มาสักพัก รายละเอียดดู `LOOP.md`
-
-## งานประจำที่ใช้บ่อย
-
-```bash
-# ในโปรเจกต์ปลายทาง
-make config        # ดู services + path ที่ resolve แล้ว
-make verify        # เช็กว่าโฟลเดอร์เข้าถึงได้ / เตรียมสร้าง (โหมด new)
-make init          # scaffold ทุก service
-make dev SVC=api   # รัน dev server ของ service เดียว
-make dashboard     # เปิดกระดานสถานะสด
-make status        # ดู status.json ปัจจุบัน
+```json
+{
+  "project": "my-app",
+  "mode": "new",
+  "autonomy": "L1",
+  "services": [
+    { "id": "web",     "side": "fe", "path": "web",                        "stack": "nextjs" },
+    { "id": "admin",   "side": "fe", "path": "apps/admin",                 "stack": "vite-react" },
+    { "id": "api",     "side": "be", "path": "api",                        "stack": "nestjs" },
+    { "id": "billing", "side": "be", "path": "/Users/me/work/billing-svc", "stack": "node-express" }
+  ]
+}
 ```
 
-> dashboard เปิดให้อัตโนมัติอยู่แล้วทั้งตอน `make deploy` และตอนเริ่ม `loop-orch` (เด้ง browser ที่
-> `http://localhost:8787` ทันที) — `serve.sh` เรียกซ้ำได้ปลอดภัย ถ้าเปิดอยู่แล้วจะแค่โฟกัส browser
+### `services[]` fields
 
+| field | Meaning | Examples |
+| ----- | ------- | -------- |
+| `id` | Short unique name for commands like `scaffold-all.sh api` | `web`, `admin`, `api`, `worker` |
+| `side` | Which agents own it | `fe` = frontend/UI (fe, fe-anim) · `be` = backend/API/data (be, be-sr) |
+| `path` | Code location — **relative** = under control folder · **absolute/`~`** = anywhere | `web`, `apps/admin`, `~/Documents/coding/legacy/old-api` |
+| `stack` | Scaffold template | fe: `nextjs` `vite-react` `sveltekit` `astro` · be: `nestjs` `fastapi` `node-express` `go` · `""` = no scaffold |
+
+### `mode`
+
+| value | Meaning |
+| ----- | ------- |
+| `new` | Agents scaffold fresh folders at the given paths |
+| `existing` | Use code as-is — no scaffold (`stack` can be `""`) |
+
+### `path` rules
+
+- **relative** (`web`, `apps/admin`) → `<control folder>/web`, etc.
+- **absolute** (`/Users/me/.../old-api`) → used as-is; can point at separate repos
+- **`~`** → expanded to home
+- Mix relative + absolute in one config
+
+Check resolved paths (from control folder):
+
+```zsh
+B="$(cat ~/.loop-base)"
+node "$B/tools/cfg.js" resolved
+node "$B/tools/cfg.js" abspath api
+node "$B/tools/cfg.js" ids fe
+```
+
+Full example → [loop.config.example.json](loop.config.example.json)
+
+### Wizard prompts — how to type `path`
+
+When running `zsh tools/new-project.sh <name>` (from Base) or
+`zsh "$(cat ~/.loop-base)/tools/init-config.sh"` (in control folder), **`path`** accepts two forms (`←` = what you type):
+
+```text
+-- new service --
+  service id — short name, e.g. web/admin/api (blank = done): web        ←  service name
+  side — fe (frontend/UI) or be (backend/API/data) [fe]:                  ←  Enter = fe
+  path — relative (under this project) or absolute (its own base) [web]:  ←  Enter = "web" (subfolder under control)
+  stack hint — fe: nextjs|... / be: ...|go [nextjs]:                      ←  Enter = nextjs
+
+-- new service --
+  service id ...: api
+  side ... [fe]: be                                                       ←  type be
+  path ... [api]: /Users/me/Documents/coding/legacy/old-api               ←  absolute = existing folder elsewhere
+  stack ... [nestjs]:                                                     ←  Enter = nestjs (be default)
+
+-- new service --
+  service id ...:                                                         ←  blank Enter = done
+```
+
+Result — mixed paths in one config:
+
+```json
+"services": [
+  { "id": "web", "side": "fe", "path": "web",                                     "stack": "nextjs" },
+  { "id": "api", "side": "be", "path": "/Users/me/Documents/coding/legacy/old-api", "stack": "nestjs" }
+]
+```
+
+### Legacy sync — understand existing code first (`mode: existing`)
+
+On legacy code agents have **no prior context** — `loop-orch` runs **orientation (step 0b)** before clarify/build:
+
+1. Identify **in-scope services** from `loop.config.json` (don't scan whole repo unless needed)
+2. Delegate makers (`fe` / `be` / `be-sr`) to **read structure** — stack, entry points, tests, conventions
+3. **`/ponytail-review`** on **files/modules this task will touch** — over-engineering / risks
+4. **`/ponytail-audit`** — only when needed (huge codebase, blocking debt, or user asks); limit to relevant service folders
+5. Summarize in `STATE.md` → `## Project context` + `## Relevant areas for this task`
+
+```
+loop-orch: legacy orient — shop (fe+be)
+  → fe explore shop-frontend → ponytail-review on components to change
+  → be explore shop-core     → ponytail-review on relevant API layer
+  → write STATE.md, then PM / build
+```
+
+Requires `ponytail-review` / `ponytail-audit` — `deploy.sh` installs them — see [step 1](#1-install-the-team-once-per-machine--run-from-base)
+
+### Autonomy levels
+
+| Level | Meaning |
+| ----- | ------- |
+| **L1 — report only** | Plan/propose, no commits — **start here** |
+| **L2 — assisted** | Makers write in worktrees; you review and merge |
+| **L3 — unattended** | Full auto when trusted — safety denylist always applies |
+
+Move up one level when the previous feels boring (no surprises). Details in [LOOP.md](LOOP.md).
+
+---
+
+## Example: wrap existing folders as services (`mode: existing`)
+
+> Folder layout (`legacy/` + controls under `agent-build/`) is [above](#example-code-in-one-place-control-in-another) — this section is full setup steps.
+
+Legacy code under `~/Documents/coding/legacy/` — wrap folders as jobs
+**without moving/copying code** — absolute `path` + `mode: existing`.
+
+> Control folder is new under base; real code stays put.
+> 1 job = 1 control folder = separable sessions.
+
+### Job A — shop (2 services)
+
+```zsh
+zsh tools/new-project.sh shop          # new control at base, wizard mode=existing
+```
+
+```json
+{
+  "project": "shop",
+  "mode": "existing",
+  "autonomy": "L1",
+  "services": [
+    { "id": "frontend", "side": "fe", "path": "/Users/me/Documents/coding/legacy/shop-frontend", "stack": "" },
+    { "id": "core",     "side": "be", "path": "/Users/me/Documents/coding/legacy/shop-core",     "stack": "" }
+  ]
+}
+```
+
+### Job B — portal, separate session (3 services)
+
+```zsh
+zsh tools/new-project.sh portal
+```
+
+```json
+{
+  "project": "portal",
+  "mode": "existing",
+  "autonomy": "L1",
+  "services": [
+    { "id": "client",      "side": "fe", "path": "/Users/me/Documents/coding/legacy/portal-client", "stack": "" },
+    { "id": "core",        "side": "be", "path": "/Users/me/Documents/coding/legacy/portal-core",   "stack": "" },
+    { "id": "data-client", "side": "be", "path": "/Users/me/Documents/coding/legacy/portal-data",   "stack": "" }
+  ]
+}
+```
+
+> `side` routes to the right agents (fe/fe-anim vs be/be-sr) — adjust as needed.
+> `stack` can be `""` for existing (no scaffold).
+
+Verify before starting:
+
+```zsh
+cd ~/Documents/coding/agent-build/shop
+B="$(cat ~/.loop-base)"
+node "$B/tools/cfg.js" resolved
+zsh "$B/tools/verify-paths.sh"
+```
+
+### Via skill — `/loop-start` or `Use loop-start`
+
+No `zsh tools` required — chat step by step; skill writes `loop.config.json` (existing + absolute paths) at the control folder.
+
+```text
+You: Use loop-start
+loop-start: Where should projects live? [~/Documents/coding/agent-build]
+You: (Enter)
+loop-start: Existing projects: (none) — (1) open existing  (2) create new
+You: 2
+loop-start: Project name?
+You: shop
+loop-start: mode? new = scaffold / existing = use code you already have
+You: existing
+loop-start: autonomy? [L1]
+You: (Enter)
+loop-start: service — id / side / path / stack (blank = done)
+You: frontend · fe · ~/Documents/coding/legacy/shop-frontend · (blank)
+You: core · be · ~/Documents/coding/legacy/shop-core · (blank)
+You: (blank Enter = done)
+loop-start: ✓ Active project → ~/Documents/coding/agent-build/shop
+            wrote loop.config.json — next: Use loop-orch at L1: <task>
+```
+
+Same `loop.config.json` as job A above.
+
+> Same outcome: `new-project.sh`/`init-config.sh` (terminal) vs `loop-start` (chat).
+> Chat-only platforms (Hermes/Claude) → `/loop-start` is easiest.
+
+### Resume a session — reopen a project you already set up
+
+Loop memory lives in the control folder's `STATE.md` (`loop.config.json` too).
+**No need to recreate** — point back at the same control folder.
+
+#### Primary way — stay in Loom (no manual `cd`)
+
+Open Cursor/chat in **Loom** (this blueprint repo) and type:
+
+```
+Use loop-start
+```
+
+Example conversation:
+
+```
+You:        Use loop-start
+loop-start: Where should projects live?
+You:        ~/Documents/coding/agent-build          ← same base (or Enter if default matches)
+loop-start: Found existing projects:
+              1) shop   → .../agent-build/shop
+              2) portal → .../agent-build/portal
+            Open existing or create new?
+You:        1                                          ← pick shop
+loop-start: ✓ Active project → .../agent-build/shop
+            read STATE.md — continue with:
+            Use loop-orch at L1: <work to resume>
+You:        Use loop-orch at L1: continue from STATE — fix checkout bug
+```
+
+`loop-start` will:
+- list folders under base that have `loop.config.json`
+- **skip the wizard** when reopening existing (no mode/services questions)
+- write `.active-project` in Loom so `loop-orch` knows the active job
+
+Continue immediately — **stay in Loom chat** because `loop-orch` reads `.active-project` when cwd has no config:
+
+```
+Use loop-orch at L1: <continue task>
+```
+
+Hermes: `/loop-orch run at L1: <task>`
+
+#### When do you need to `cd`?
+
+| Action | Need `cd`? |
+| ------ | ---------- |
+| `Use loop-start` / `Use loop-orch` in chat | **No** — uses `.active-project` |
+| `verify-paths`, `scaffold`, `init-config`, `node cfg.js` | **Yes** — tools read `loop.config.json` from cwd |
+| `dash.sh serve` / `where` | **No** — central board |
+| `dash.sh set/reset/log` | Recommended `cd` to control — else project tag `(unknown)` |
+
+Prefer opening the folder in your IDE — open the **control folder** as workspace, then `Use loop-orch` (cwd has `loop.config.json`):
+
+```zsh
+# Optional — open control as Cursor workspace
+# File → Open Folder → ~/Documents/coding/agent-build/shop
+# chat: Use loop-orch at L1: <task>
+```
+
+Or `cd` in terminal for manual tools:
+
+```zsh
+cd ~/Documents/coding/agent-build/shop
+B="$(cat ~/.loop-base)"
+zsh "$B/tools/verify-paths.sh"
+```
+
+#### Switch jobs (`shop` ↔ `portal`)
+
+Run `Use loop-start` again → pick another control — or `cd` and invoke orch.
+Every platform uses the active project's `loop.config.json` — no mixing.
+
+#### New machine / never deployed
+
+Once from Loom:
+
+```zsh
+zsh tools/deploy.sh    # register ~/.loop-base
+```
+
+Then `Use loop-start` as usual — control folders + `STATE.md` remain on disk at their paths.
+
+---
+
+## Status dashboard
+
+One central board at Base (`agent-dashboard/`) — **never copied to destinations**
+Every project/session reports here; each log line is tagged with the project name.
+
+```zsh
+# Open board (from anywhere)
+zsh tools/dash.sh serve          # Star-Office pixel office → http://localhost:19000
+zsh tools/dash.sh simple         # zero-dep fallback (port 8787)
+zsh tools/dash.sh where          # central board path
+
+# Report status (from control folder for correct project tag)
+B="$(cat ~/.loop-base)"
+zsh "$B/tools/dash.sh" reset "<task title>"           # new task (keeps cross-project history)
+zsh "$B/tools/dash.sh" set orch work "planning" "received task"
+zsh "$B/tools/dash.sh" set pm   done "AC ready"
+zsh "$B/tools/dash.sh" set be   work "build /auth"
+zsh "$B/tools/dash.sh" loop 2                     # QA sent work back, round 2
+zsh "$B/tools/dash.sh" set qa   done "PASS all criteria"
+```
+
+Opens on `deploy.sh` · at `loop-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
+
+**Star-Office dashboard** (`agent-dashboard/star-office/`) — pixel office from
+[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI) (MIT code; art non-commercial use)
+- `star-office-bridge.js` mirrors loop `status.json` into the office
+- 8 role characters in zones (orch = main, others as guests)
+- Office plaque = project name
+- First run creates a small venv + installs flask
+- No Python? use `dash.sh simple`
+
+---
+
+## Common commands
+
+Tools live only in Base — run **from control folder** (so tools read cwd `loop.config.json`)
+but point scripts at Base via `~/.loop-base`:
+
+```zsh
+cd ~/Documents/coding/agent-build/my-app      # enter control folder first
+B="$(cat ~/.loop-base)"                        # Base path (written by deploy.sh)
+
+node "$B/tools/cfg.js" resolved      # services + resolved absolute paths
+node "$B/tools/cfg.js" get project   # read scalar config value
+node "$B/tools/cfg.js" abspath api   # absolute path for service id=api
+zsh "$B/tools/verify-paths.sh"      # check folder access / prep create (mode new)
+zsh "$B/tools/scaffold-all.sh"      # scaffold all services
+zsh "$B/tools/scaffold-all.sh" api  # scaffold service id=api only
+zsh "$B/tools/dash.sh" serve        # open central board
+zsh "$B/tools/dash.sh" simple       # zero-dep board
+zsh "$B/tools/dash.sh" where        # central board path
+```
+
+Run from Base directly (no config in cwd):
+
+```zsh
+zsh tools/deploy.sh                 # install team + register ~/.loop-base
+zsh tools/new-project.sh my-app       # create control folder + wizard
+zsh tools/sync-agents.sh              # sync agent defs to all platforms
+zsh tools/dash.sh serve               # open board
+```
+
+> Use **chat skills** (`loop-start`, `loop-orch`, …) or `zsh tools/*.sh` / `zsh "$B/tools/*.sh"`
+
+---
+
+## Base repo layout
+
+```
+.claude/agents/            9 agents — source of truth (Claude Code global, Cursor reads in-project)
+hermes-skills/             SKILL.md for Hermes (generated via to-hermes-skills.sh)
+agent-dashboard/           **central** live status board (Star-Office — all projects report here)
+tools/                     only in Base — every control folder shares via ~/.loop-base
+  deploy.sh                install team to Claude Code + Hermes + register Base at ~/.loop-base
+  sync-agents.sh           sync agent defs to all platforms (source = .claude/agents/)
+  new-project.sh           create control folder at base + config wizard (run from Base)
+  base-dir.sh              resolve destination folder (arg > BASE_DIR > .base-dir > default)
+  init-config.sh           wizard writes loop.config.json (run in control folder)
+  dash.sh                  talk to central board (serve / set / log) — auto-tags project name
+  scaffold-all.sh · scaffold.sh   scaffold services per config (mode=new)
+  cfg.js · verify-paths.sh        read config (from cwd) / verify folder access
+  to-hermes-skills.sh · install-hermes-skills.sh   build + install SKILL.md for Hermes
+LOOP.md                    loop methodology (also a skill)
+STATE.template.md          loop memory template (copied to STATE.md in control folder)
+loop.config.example.json   example config with _help for every field
+```

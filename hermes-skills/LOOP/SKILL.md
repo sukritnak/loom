@@ -5,31 +5,60 @@ description: Loop-engineering spec for this team — primitives (STATE.md, loop.
 # LOOP — the system that prompts the agents
 
 This team is built as a **loop**, not a one-shot chat. Following loop-engineering
-(Addy Osmani; Boris Cherny / Anthropic; cobusgreyling/loop-engineering): you stop
-hand-prompting agents and instead design the control system that prompts them and
+([Addy Osmani](https://addyo.substack.com); Boris Cherny / Anthropic; [complete guide 2026](https://tosea.ai/blog/loop-engineering-ai-agents-complete-guide-2026)):
+you stop hand-prompting agents and instead design the control system that prompts them and
 decides what to do next, iterating until the goal is met or it hands back to you.
+
+## Pattern (this team)
+
+**Orchestrator–Workers** + **Evaluator–Optimizer**: `loop-orch` delegates makers (`fe`/`be`/…)
+in isolated worktrees; `qa` evaluates against AC; on FAIL, `pm` triages and the cycle repeats.
+Feedback history in `STATE.md` is **Reflexion-style episodic memory** — lessons from failed
+rounds that makers read before retrying.
 
 ## Primitives (and where they live here)
 | Primitive | In this team |
 |-----------|--------------|
 | State / Memory | `STATE.md` — durable spine; orchestrator reads first, writes last |
-| Project map | `loop.config.json` — which FE/BE folders to work in (many services). **Not hand-written first** — `make setup` or `loop-orch` creates it on first run |
+| Project map | `loop.config.json` — which FE/BE folders to work in (many services). **Not hand-written first** — the `loop-start` skill (or `loop-orch`) creates it on first run |
 | Sub-agents (maker / checker) | makers = frontend-agent, backend-agent · checker = qa-agent |
 | Worktrees | makers run in isolated git worktrees for safe parallel work |
-| Skills & connectors | pm-skills, ui-ux-pro-max, context7, ponytail, browser-use qa |
+| Skills & connectors | pm-skills, ui-ux-pro-max, context7, ponytail (+ ponytail-review, ponytail-audit on legacy), browser-use qa |
 | Automation / scheduling | optional: run the loop on a cadence (see "Automate") |
 | Human gate | risky/ambiguous steps escalate to you with full context |
 
 ## Anatomy of one iteration
 ```
-load STATE.md + loop.config.json (create config first if missing — ask step by step or run make setup)
+load STATE.md + loop.config.json (create config first if missing — use loop-start or zsh "$(cat ~/.loop-base)/tools/init-config.sh")
+   → dashboard gate — ask «เปิด dashboard ดู agent ทำงานไหม? [Y/n]» (default Y); if yes → dash.sh serve (opens browser)
+   → legacy sync (mode: existing) — explore in-scope services, /ponytail-review on task-relevant code,
+     /ponytail-audit only if needed; write ## Project context to STATE.md
    → clarify (PM) → design (Designer, if UI)
    → build in parallel worktrees (Backend + Frontend, makers)
-   → verify (QA, checker: PASS/FAIL per acceptance criterion)
+   → verify (QA: unit/API tests + qa-browser for every FE/UI AC against dev server)
    → PASS? ── yes → persist STATE.md → human gate → done
-              └─ no → findings back to makers, loop++ (≤3 rounds) → build again
+              └─ no → PM lead triage → feedback packet per owner (fe/be/…)
+                        → makers fix tagged items → QA re-test → loop++ (≤3 rounds)
 ```
-Every transition is mirrored to the live dashboard via `agent-dashboard/agent-status.js`.
+FE/UI acceptance criteria are verified with **browser-use** (`qa-browser` skill) — real browser, not code review alone.
+Install once: `zsh "$(cat ~/.loop-base)/tools/install-browser-use-qa.sh"`
+Every transition is mirrored to the single central dashboard via `zsh "$(cat ~/.loop-base)/tools/dash.sh" ...`
+(tools live in the blueprint; dash tags each line with the project name, so one board shows all projects/sessions).
+
+## The three hard parts (and how we handle them)
+
+| Problem | Fix in this team |
+|---------|------------------|
+| **Context** — long loops overflow the window | Externalize to `STATE.md`; prune stale notes each round; sub-agents return summaries only; use **handoff** skill between sessions |
+| **Termination** — loops that never stop | Testable goal + AC in `STATE.md`; hard cap **3 feedback rounds**; human gate on round 3 FAIL; safety denylist |
+| **Verification** — reward signal must be honest | **Deterministic first** (tests, lint, typecheck, build) → **browser** (`qa-browser` for FE/UI AC) → never trust maker self-report; QA decides PASS/FAIL |
+
+## Failure modes to guard against
+
+- **No-progress loop** — same finding ID fails twice unchanged → escalate to human immediately (don't wait for round 3).
+- **Hallucinated success** — orchestrator never marks done without QA PASS on every AC.
+- **Reward hacking** — makers must not delete/skip tests to pass; QA checks test count + AC intent.
+- **Context rot** — if `STATE.md` grows past ~150 lines, compact Feedback history to last 2 rounds + Lessons only.
 
 ## Phased rollout (don't start unattended)
 - **L1 — report only**: the loop plans and proposes; no commits. Run here first.

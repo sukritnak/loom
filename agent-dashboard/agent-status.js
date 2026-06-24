@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /*
- * agent-status.js — live status writer for the AI Agent Office dashboard.
- * Writes status.json next to this file. The dashboard (index.html) polls it.
+ * agent-status.js — live status writer for the central AI Agent Office dashboard.
+ * Writes status.json next to this file (the ONE board in the blueprint). The dashboard polls it.
+ * Prefer calling it through `zsh tools/dash.sh <cmd...>` from a project: that resolves the Base
+ * dashboard and sets LOOP_PROJECT so every state/log line is tagged with the project name.
  *
  * Usage:
  *   node agent-status.js reset ["task title"]      reset all agents to idle, clear log
@@ -25,12 +27,16 @@ const path = require('path');
 const FILE = path.join(__dirname, 'status.json');
 const IDS = ['orch', 'pm', 'design', 'be', 'besr', 'fe', 'feanim', 'qa'];
 const STATES = ['idle', 'work', 'fix', 'done'];
+// Which project this call belongs to (set by tools/dash.sh from the project's loop.config.json).
+// This is the ONE central board: every project/session writes here, tagged so work is told apart.
+const PROJECT = process.env.LOOP_PROJECT || '';
 
 function emptyState(task) {
   const agents = {};
   IDS.forEach(id => { agents[id] = { state: 'idle', task: '' }; });
-  return { task: task || '', loop: 1, updatedAt: new Date().toISOString(), agents, log: [] };
+  return { task: task || '', project: PROJECT, loop: 1, updatedAt: new Date().toISOString(), agents, log: [] };
 }
+function tagProject(s) { if (PROJECT) s.project = PROJECT; }
 function load() {
   try { return JSON.parse(fs.readFileSync(FILE, 'utf8')); }
   catch (e) { return emptyState(''); }
@@ -44,32 +50,39 @@ function hhmm() {
   return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
 }
 function pushLog(s, who, msg) {
-  s.log.push({ t: hhmm(), who, msg });
-  if (s.log.length > 100) s.log = s.log.slice(-100);
+  s.log.push({ t: hhmm(), who, msg, project: s.project || PROJECT || '' });
+  if (s.log.length > 300) s.log = s.log.slice(-300); // ponytail: rolling cross-project history, cap 300
 }
 
 const [, , cmd, ...args] = process.argv;
 const s = load();
 
 switch ((cmd || '').toLowerCase()) {
-  case 'reset':
-    save(emptyState(args[0] || ''));
-    console.log('status reset' + (args[0] ? ' · task: ' + args[0] : ''));
+  case 'reset': {
+    // Keep the rolling log across tasks/projects/sessions (the central board sees ALL work);
+    // only reset agent states + task + loop, then drop a labelled separator.
+    const ns = emptyState(args[0] || '');
+    ns.log = Array.isArray(s.log) ? s.log : [];
+    pushLog(ns, 'orch', '── new task: ' + (PROJECT ? '[' + PROJECT + '] ' : '') + (args[0] || '(untitled)') + ' ──');
+    save(ns);
+    console.log('status reset' + (PROJECT ? ' · project: ' + PROJECT : '') + (args[0] ? ' · task: ' + args[0] : ''));
     break;
+  }
   case 'task':
     if (!args[0]) { console.error('usage: task "title"'); process.exit(1); }
-    s.task = args[0]; save(s); console.log('task set: ' + args[0]);
+    s.task = args[0]; tagProject(s); save(s); console.log('task set: ' + args[0]);
     break;
   case 'loop': {
     const n = parseInt(args[0], 10);
     if (!n) { console.error('usage: loop <n>'); process.exit(1); }
-    s.loop = n; save(s); console.log('loop = ' + n);
+    s.loop = n; tagProject(s); save(s); console.log('loop = ' + n);
     break;
   }
   case 'set': {
     const [id, state, taskText, logMsg] = args;
     if (!IDS.includes(id)) { console.error('bad id. use: ' + IDS.join(' | ')); process.exit(1); }
     if (!STATES.includes(state)) { console.error('bad state. use: ' + STATES.join(' | ')); process.exit(1); }
+    tagProject(s);
     s.agents[id].state = state;
     if (taskText != null) s.agents[id].task = taskText;
     if (logMsg) pushLog(s, id, logMsg);
@@ -80,7 +93,7 @@ switch ((cmd || '').toLowerCase()) {
   case 'log': {
     const [who, msg] = args;
     if (!who || !msg) { console.error('usage: log <who> "message"'); process.exit(1); }
-    pushLog(s, who, msg); save(s); console.log('logged: ' + who + ' ' + msg);
+    tagProject(s); pushLog(s, who, msg); save(s); console.log('logged: ' + who + ' ' + msg);
     break;
   }
   default:

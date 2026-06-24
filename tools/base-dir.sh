@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # Resolve the base folder where NEW projects are created. Single source of truth.
 # Precedence:  $1 (explicit arg) > $BASE_DIR env > .base-dir file > built-in default
-# Set your own default with:  make set-base DIR=/path   (writes .base-dir)
+# Set your own default by writing the path into the .base-dir file (loop-start does this for you).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEFAULT="$HOME/Documents/coding/agent-build"

@@ -7,11 +7,28 @@
 ## Goal
 <one sentence: what this loop is trying to achieve>
 
+## Done when (termination)
+<!-- Testable exit — loop stops only when ALL are true -->
+- [ ] Every AC in checklist is PASS (verified by QA, not makers)
+- [ ] Test suite green (or N/A documented)
+- [ ] No open blocker/major findings in latest feedback round
+
 ## Autonomy level
 L1 (report only)   <!-- L1 | L2 (assisted, no merge) | L3 (unattended, allowlist only) -->
 
 ## Current task
 <the feature/bug in flight>
+
+## Project context
+<!-- Legacy orientation (mode: existing) — orchestrator + makers fill before first build -->
+<!-- Per service: stack, layout, entry points, run/test commands, conventions, risks -->
+| Service id | Stack | Key paths | Run / test | Notes |
+|------------|-------|-----------|------------|-------|
+| — | — | — | — | — |
+
+## Relevant areas for this task
+<!-- Files/modules likely touched — scoped to current task only -->
+- —
 
 ## Loop round
 1
@@ -29,6 +46,23 @@ L1 (report only)   <!-- L1 | L2 (assisted, no merge) | L3 (unattended, allowlist
 ## Acceptance criteria
 - [ ] <criterion 1>
 - [ ] <criterion 2>
+
+## Dev URLs
+<!-- FE services under test — QA records after starting dev server -->
+| Service id | URL | Command |
+|------------|-----|---------|
+| web | http://localhost:5173 | npm run dev |
+
+## Feedback history
+<!-- PM lead writes ## Feedback round N after each QA FAIL -->
+### Feedback round 1
+| ID | AC | Finding | Owner | Severity | Action needed | Status |
+|----|----|---------|-------|----------|---------------|--------|
+| — | — | — | — | — | — | — |
+
+## Lessons learned (Reflexion)
+<!-- After each FAIL round: one line per root cause so makers don't repeat mistakes -->
+- Round 1: —
 
 ## Decisions log
 - <date> — <decision and why>

@@ -44,7 +44,7 @@ Say "stop ponytail" or "normal mode". Resume anytime with `/ponytail`.
 Default mode = `full`, auto-active every session. Change it:
 
 **Environment variable** (highest priority):
-```bash
+```zsh
 export PONYTAIL_DEFAULT_MODE=ultra
 ```
 

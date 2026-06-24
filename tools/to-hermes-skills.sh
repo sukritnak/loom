@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # Convert Claude Code subagent files (*-agent.md, tech-loop-orchestrator.md) into
 # SKILL.md skills for Hermes Agent (or any agentskills.io-compatible agent).
 # It keeps `name` + `description`, drops `tools:`/`model:`, and writes
@@ -8,7 +8,7 @@ set -euo pipefail
 SRC_DIR="${1:-.claude/agents}"        # where the agent .md files live
 OUT_DIR="${2:-hermes-skills}"         # output skills dir (copy to ~/.hermes/skills/)
 
-shopt -s nullglob
+setopt null_glob 2>/dev/null || true
 files=("$SRC_DIR"/*.md)
 [ ${#files[@]} -gt 0 ] || { echo "no .md files in $SRC_DIR"; exit 1; }
 
@@ -36,4 +36,4 @@ if [ -f LOOP.md ]; then
 fi
 
 echo "Done → $OUT_DIR"
-echo "Install into Hermes:  bash tools/install-hermes-skills.sh"
+echo "Install into Hermes:  zsh tools/install-hermes-skills.sh"

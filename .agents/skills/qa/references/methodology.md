@@ -19,7 +19,7 @@ To make the key available, prefer the **inline form** — `export BROWSER_USE_AP
 
 **A tunnel binary must also be installed and authed** — but only for a **localhost** target (a public URL skips the tunnel entirely, so don't block on this for public sites). Check before you rely on it, and recover if it's missing:
 
-```bash
+```zsh
 # ngrok is the default; cloudflared is the no-account fallback.
 command -v ngrok && ngrok config check        # installed AND authed?
 command -v cloudflared                         # fallback that needs no account/auth
@@ -31,7 +31,7 @@ command -v cloudflared                         # fallback that needs no account/
 
 **1. Tunnel the local port — with host-header rewrite.** ngrok is the default (already on `$PATH`); cloudflared is a friction-free alternative if installed. **Use `--host-header=rewrite`:** modern dev servers (Vite, Next, webpack, CRA) reject requests whose `Host` is an unknown public domain with a `403 Blocked request / host not allowed` (Vite's `server.allowedHosts`). Rewriting the Host to `localhost:PORT` makes the dev server see a local request. Start it in the background and read the assigned URL from ngrok's agent API — don't scrape stdout.
 
-```bash
+```zsh
 # dev server is on, say, http://localhost:3000
 ngrok http 3000 --host-header=rewrite --log=stdout > /tmp/qa-ngrok.log 2>&1 &
 sleep 3
@@ -47,7 +47,7 @@ For a **public** target, skip the tunnel — just use the URL directly in step 2
 
 **2. Spin up a cloud browser — with the BU proxy DISABLED — and drive the public URL.** `start_remote_daemon` creates the cloud browser, prints its `liveUrl`, and wires the daemon to `BU_NAME`. **Pass `proxyCountryCode=None`:** Browser Use's default residential proxy mangles ngrok's TLS, so the cloud browser lands on `chrome-error://` / `ERR_SSL_PROTOCOL_ERROR` even though `curl` and other sites work fine. Disabling the proxy fixes it.
 
-```bash
+```zsh
 browser-harness <<'PY'
 start_remote_daemon("qa", proxyCountryCode=None)   # proxy off — required for ngrok TLS to work
 PY
@@ -63,7 +63,7 @@ print(page_info())               # MUST show the app's real title — not chrome
 PY
 ```
 
-The bash `PUBLIC_URL` and the `browser-harness` Python heredoc are separate processes — interpolate the URL into the heredoc (note the **unquoted** `<<PY` above so `$PUBLIC_URL` expands), or read it from the temp file. On the cloud browser there's no user tab to clobber, so `goto_url` is fine. If you must change daemon options later (e.g. toggle the proxy), `restart_daemon("qa")` first — `start_remote_daemon` errors if a daemon for that name is already running.
+The shell `PUBLIC_URL` and the `browser-harness` Python heredoc are separate processes — interpolate the URL into the heredoc (note the **unquoted** `<<PY` above so `$PUBLIC_URL` expands), or read it from the temp file. On the cloud browser there's no user tab to clobber, so `goto_url` is fine. If you must change daemon options later (e.g. toggle the proxy), `restart_daemon("qa")` first — `start_remote_daemon` errors if a daemon for that name is already running.
 
 **3. Run the QA loop below** with `BU_NAME=qa` on every `browser-harness` call.
 

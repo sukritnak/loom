@@ -9,3 +9,11 @@ status.json
 .env.*
 !.env.example
 node_modules/
+# Star-Office (vendored dashboard) runtime files
+agent-dashboard/star-office/.venv/
+agent-dashboard/star-office/state.json
+agent-dashboard/star-office/agents-state.json
+agent-dashboard/star-office/join-keys.json
+agent-dashboard/star-office/runtime-config.json
+agent-dashboard/star-office/office-agent-state.json
+agent-dashboard/star-office/frontend/electron-standalone.html

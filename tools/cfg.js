@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /*
- * Read loop.config.json. Used by the Makefile, wizard, and verify script.
+ * Read loop.config.json. Used by the scaffold/verify scripts and the agents.
  *
- *   node tools/cfg.js get <dotted.key>      -> scalar (project, mode, autonomy, dashboard, base_dir)
+ *   node tools/cfg.js get <dotted.key>      -> scalar (project, mode, autonomy, base_dir)
  *   node tools/cfg.js services [fe|be]      -> TSV: id <tab> side <tab> declaredPath <tab> stack
  *   node tools/cfg.js resolved [fe|be]      -> TSV: id <tab> side <tab> ABSOLUTE_PATH <tab> stack
  *   node tools/cfg.js ids [fe|be]           -> space-separated service ids
@@ -30,7 +30,8 @@ const find = (id) => services.find((s) => s.id === id) || {};
 function abspath(id) {
   const s = find(id);
   if (!s.path) return '';
-  return path.isAbsolute(s.path) ? s.path : path.resolve(process.cwd(), s.path);
+  const p = expand(s.path);
+  return path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
 }
 
 const tsv = (list, p) => list.map((s) => [s.id, s.side, p(s), s.stack || ''].join('\t')).join('\n');
@@ -49,4 +50,4 @@ switch (cmd) {
   case 'stack':     out = find(arg).stack ?? ''; break;
   default:          out = cmd ? (get(cmd) ?? '') : '';
 }
-process.stdout.write(String(out));
+process.stdout.write(out === '' ? '' : String(out) + '\n');

@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 # Best-practice skeleton for a FE or BE folder. Idempotent: never overwrites existing files.
-# Usage: bash tools/scaffold.sh <fe|be> <target-dir> [stack]
+# Usage: zsh tools/scaffold.sh <fe|be> <target-dir> [stack]
 set -euo pipefail
 
 SIDE="${1:?usage: scaffold.sh <fe|be> <dir> [stack]}"
@@ -55,9 +55,9 @@ write README.md <<EOF
 Scaffolded by the agent loop ($SIDE, stack: ${STACK:-unspecified}).
 
 ## Develop
-\`\`\`bash
-# install deps, then:
-make dev      # or the framework's dev command
+\`\`\`zsh
+# install deps, then run the framework's dev command, e.g.:
+npm run dev
 \`\`\`
 EOF
 
