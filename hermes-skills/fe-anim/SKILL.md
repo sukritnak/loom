@@ -11,6 +11,17 @@ Skip if **loop-orch** delegated you (it asks first). When invoked **directly** (
 - **Yes** / blank / ใช่ → `( zsh "$(cat ~/.loop-base)/tools/dash.sh" serve >/dev/null 2>&1 & )` and share `http://localhost:19000`
 - **No** → skip; wait for an answer unless the user pre-answered (e.g. "dashboard ไม่ต้อง")
 
+## Live dashboard (required under loop-orch)
+Update the central board **while you work**, not only when finished. Run from the **project root**; `$B` = blueprint path from the orchestrator:
+
+```bash
+zsh "$B/tools/dash.sh" set feanim work "hero motion" speech="กำลังทำ animation ฉาก hero"
+zsh "$B/tools/dash.sh" progress feanim "rAF loop stable" speech="loop animation ลื่นแล้ว กำลังจูน easing"
+zsh "$B/tools/dash.sh" set feanim done "motion shipped" speech="ส่ง motion ให้ QA แล้ว"
+```
+
+Ping at **start**, **after every file create/edit/delete** (`file`), **each major milestone** (`progress`), and **before return**. If one step runs longer than ~2 minutes, add `progress`. Use **`speech=`** for bubbles. **`detail=`** = สรุปสั้นๆ ว่าเพิ่ม/แก้อะไร; **`lines=`** = optional diff stat.
+
 Steps:
 1. **Explore first** — read the project: framework, render loop, existing animation/3D setup, asset pipeline, and styling conventions. Follow what exists.
 2. **Design the motion** — define what moves, why, timing/easing, and how it degrades. Respect `prefers-reduced-motion` and provide a static fallback.

@@ -1153,6 +1153,19 @@ def get_status():
     return jsonify(state)
 
 
+@app.route("/activity", methods=["GET"])
+def get_activity():
+    """Loop activity feed mirrored from status.json by star-office-bridge.js."""
+    path = os.path.join(ROOT_DIR, "activity.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return jsonify(json.load(f))
+    except FileNotFoundError:
+        return jsonify({"log": [], "project": "", "task": "", "loop": 1, "updatedAt": None})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e), "log": []}), 500
+
+
 @app.route("/agent-push", methods=["POST"])
 def agent_push():
     """Remote openclaw actively pushes status to office.

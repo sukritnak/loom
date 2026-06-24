@@ -11,6 +11,17 @@ Skip if **loop-orch** delegated you (it asks first). When invoked **directly** (
 - **Yes** / blank / ใช่ → `( zsh "$(cat ~/.loop-base)/tools/dash.sh" serve >/dev/null 2>&1 & )` and share `http://localhost:19000`
 - **No** → skip; wait for an answer unless the user pre-answered (e.g. "dashboard ไม่ต้อง")
 
+## Live dashboard (required under loop-orch)
+Update the central board **while you work**, not only when finished. Run from the **project root**; `$B` = blueprint path from the orchestrator:
+
+```bash
+zsh "$B/tools/dash.sh" set design work "checkout flows" speech="กำลังออก flow checkout"
+zsh "$B/tools/dash.sh" progress design "wireframe v1" speech="ร่าง wireframe เสร็จแล้ว กำลังไล่ edge case"
+zsh "$B/tools/dash.sh" set design done "spec ready" speech="ส่ง design spec ให้ FE แล้ว"
+```
+
+Ping at **start**, **after every file create/edit/delete** (`file`), **each major milestone** (`progress`), and **before return**. If one step runs longer than ~2 minutes, add `progress`. Use **`speech=`** for bubbles. **`detail=`** = สรุปสั้นๆ ว่าเพิ่ม/แก้อะไร; **`lines=`** = optional diff stat.
+
 For any UI/UX work, output:
 1. **User flow** — the steps a user moves through, from entry to completion.
 2. **Screens/components** — what each screen/component contains and its visual hierarchy.

@@ -1,6 +1,6 @@
 # Loom
 
-**AI Agent Office** — central blueprint (control-repo) for software agent loops.
+**AI Agent Software Team** — central blueprint (control-repo) for software agent loops.
 
 > **Language:** English (this document) · [ไทย](README-TH.md)
 >
@@ -55,14 +55,30 @@ Must be an absolute path outside Base.
 | **services** | N/A | One control can hold **many services** in one config |
 
 ```
-loop-start step 1 → pick shelf (base)
-~/Documents/coding/agent-build/
+Use loop-start / /loop-start
 
-loop-start step 2 → pick job (control) or create new
-    ├── shop/          ← control job A (loop.config.json + STATE.md)
+Step 1 — base folder (job shelf)
+  Ask path → mkdir -p if it doesn't exist yet
+  ~/Documents/coding/agent-build/          ← ★ creates base folder here (if missing)
+
+Step 2 — control folder (one job)
+  2a open existing → no new folder (pick from list under base)
+  2b create new    → ★ creates control folder + loop.config.json + STATE.md
+    ├── shop/          ← control job A
     ├── portal/        ← control job B
     └── my-app/        ← control job C
+
+Step 3 — lock target (.active-project in Loom) — no new folder
 ```
+
+| `loop-start` step | What gets created? | Example |
+| ----------------- | ------------------ | ------- |
+| **Step 1** | **base folder** (if missing) | `mkdir -p ~/Documents/coding/agent-build` |
+| **Step 2a** open existing | Nothing — pick a control that already has config | select `shop/` from the list |
+| **Step 2b** create new | **control folder** + `loop.config.json` + `STATE.md` | `mkdir -p …/agent-build/shop` then write config |
+| **Step 3** | `.active-project` in Loom (Blueprint) only | no job folder created |
+
+> **Blueprint (Base = this Loom repo)** is NOT created by `loop-start` — clone the repo and run `deploy.sh` once.
 
 **How base affects control**
 
@@ -186,12 +202,21 @@ Use loop-start      ← Claude Code / Cursor
 /loop-start         ← Hermes
 ```
 
-`loop-start` walks you through (see [base vs control](#base-folder-vs-control-folder)):
+`loop-start` / `/loop-start` walks you through (see [base vs control](#base-folder-vs-control-folder)):
 
-1. **base folder** — where all jobs live (default `~/Documents/coding/agent-build` or your path)
-2. **control folder** — **open existing** (pick from list under base) or create `<job-name>` → `<base>/<job-name>/`
-3. (new jobs only) mode (`new` / `existing`), autonomy (L1/L2/L3), services (id / side / path / stack)
-4. Write/confirm `loop.config.json` + `STATE.md` at control folder, then hand off to `loop-orch`
+| Step | Command | What gets created |
+| ---- | ------- | ----------------- |
+| **1** | `Use loop-start` / `/loop-start` → ask path | **base folder** — `mkdir -p` if missing (default `~/Documents/coding/agent-build`) |
+| **2a** | pick **(1) open existing** | **Nothing** — select a control folder that already has `loop.config.json` |
+| **2b** | pick **(2) create new** → job name, mode, services | **control folder** at `<base>/<job-name>/` + `loop.config.json` + `STATE.md` |
+| **3** | lock target | write `.active-project` in Loom — no folder created |
+| **4** | hand off | pass to `loop-orch` |
+
+Summary:
+1. **Step 1** — base folder (shelf) — creates the shelf folder **if missing**
+2. **Step 2** — control folder — **2a** reopen existing (no create) · **2b** create new → `<base>/<job-name>/`
+3. **(2b only)** mode (`new` / `existing`), autonomy (L1/L2/L3), services (id / side / path / stack)
+4. Write/confirm `loop.config.json` + `STATE.md` at the control folder, then hand off to `loop-orch`
 
 > `loop-start` always picks the right project before work begins.
 > `loop-orch` checks `loop.config.json` in cwd first; if missing, reads `.active-project` (wrong-project guard).
@@ -212,7 +237,8 @@ Hermes: `/loop-orch run at L1: <task>`
 
 ```zsh
 zsh tools/deploy.sh                  # install team (once per machine)
-zsh tools/new-project.sh my-app      # create control folder + config wizard
+zsh tools/loop-start.sh              # wizard Steps 1–4 (base → control → lock → hand off)
+zsh tools/new-project.sh my-app      # shortcut: Step 1 + 2b (--new)
 zsh tools/dash.sh serve              # open central board (Star-Office)
 ```
 
@@ -367,6 +393,35 @@ node "$B/tools/cfg.js" abspath api
 node "$B/tools/cfg.js" ids fe
 ```
 
+### Adding services later
+
+Create the control folder once — **`services[]` can grow anytime**. No need to run `loop-start` again.
+
+**How to add**
+
+1. **Edit `loop.config.json`** — append an object to `services[]` (same shape as above)
+2. **Via chat** — `Use loop-orch at L1: add service … to loop.config.json` (from control folder or Loom with `.active-project` set)
+
+**Don't re-run `init-config.sh` casually** — the wizard overwrites the whole file; it does not merge existing services.
+
+**After adding** (from control folder):
+
+```zsh
+B="$(cat ~/.loop-base)"
+node "$B/tools/cfg.js" resolved
+zsh "$B/tools/verify-paths.sh"
+# mode: new + new relative path → scaffold only the new service
+zsh "$B/tools/scaffold-all.sh" admin
+```
+
+| Topic | Notes |
+| ----- | ----- |
+| `id` | Must be unique within one config |
+| relative `path` | Resolved from the **control folder** |
+| absolute/`~` `path` | Can point at any existing repo — no code move |
+| `mode: existing` | Works immediately — `stack: ""` is fine |
+| `STATE.md` | No change needed — the loop re-reads config each run |
+
 Full example → [loop.config.example.json](loop.config.example.json)
 
 ### Wizard prompts — how to type `path`
@@ -495,13 +550,13 @@ zsh "$B/tools/verify-paths.sh"
 No `zsh tools` required — chat step by step; skill writes `loop.config.json` (existing + absolute paths) at the control folder.
 
 ```text
-You: Use loop-start
+You: Use loop-start                                    ← Step 1 start
 loop-start: Where should projects live? [~/Documents/coding/agent-build]
-You: (Enter)
+You: (Enter)                                           ← Step 1: confirm base (mkdir if missing)
 loop-start: Existing projects: (none) — (1) open existing  (2) create new
-You: 2
+You: 2                                                 ← Step 2b: create new control
 loop-start: Project name?
-You: shop
+You: shop                                              ← control folder name → …/agent-build/shop/
 loop-start: mode? new = scaffold / existing = use code you already have
 You: existing
 loop-start: autonomy? [L1]
@@ -509,8 +564,8 @@ You: (Enter)
 loop-start: service — id / side / path / stack (blank = done)
 You: frontend · fe · ~/Documents/coding/legacy/shop-frontend · (blank)
 You: core · be · ~/Documents/coding/legacy/shop-core · (blank)
-You: (blank Enter = done)
-loop-start: ✓ Active project → ~/Documents/coding/agent-build/shop
+You: (blank Enter = done)                              ← Step 2b: write loop.config.json + STATE.md
+loop-start: ✓ Active project → ~/Documents/coding/agent-build/shop   ← Step 3: .active-project
             wrote loop.config.json — next: Use loop-orch at L1: <task>
 ```
 
@@ -535,24 +590,25 @@ Use loop-start
 Example conversation:
 
 ```
-You:        Use loop-start
+You:        Use loop-start                            ← Step 1 start
 loop-start: Where should projects live?
-You:        ~/Documents/coding/agent-build          ← same base (or Enter if default matches)
+You:        ~/Documents/coding/agent-build          ← Step 1: confirm base (mkdir if missing)
 loop-start: Found existing projects:
               1) shop   → .../agent-build/shop
               2) portal → .../agent-build/portal
             Open existing or create new?
-You:        1                                          ← pick shop
-loop-start: ✓ Active project → .../agent-build/shop
+You:        1                                          ← Step 2a: reopen existing control (no create)
+loop-start: ✓ Active project → .../agent-build/shop   ← Step 3: .active-project
             read STATE.md — continue with:
             Use loop-orch at L1: <work to resume>
 You:        Use loop-orch at L1: continue from STATE — fix checkout bug
 ```
 
-`loop-start` will:
-- list folders under base that have `loop.config.json`
-- **skip the wizard** when reopening existing (no mode/services questions)
-- write `.active-project` in Loom so `loop-orch` knows the active job
+`loop-start` / `/loop-start` will:
+- **Step 1** — create **base folder** if missing (`mkdir -p`)
+- **Step 2a** — list controls under base that have `loop.config.json` — **no new folder**
+- **Step 2b** — create **control folder** + config (wizard cannot be skipped)
+- **Step 3** — write `.active-project` in Loom so `loop-orch` knows the active job
 
 Continue immediately — **stay in Loom chat** because `loop-orch` reads `.active-project` when cwd has no config:
 
@@ -625,11 +681,27 @@ zsh "$B/tools/dash.sh" loop 2                     # QA sent work back, round 2
 zsh "$B/tools/dash.sh" set qa   done "PASS all criteria"
 ```
 
+**Rich activity feed** — who talks to whom · which skill · which command · what they're doing:
+
+```zsh
+zsh "$B/tools/dash.sh" delegate orch pm "→ PM: write AC" activity="planning loop" skill=loop-orch
+zsh "$B/tools/dash.sh" skill be ponytail activity="trimming auth handler"
+zsh "$B/tools/dash.sh" cmd qa "npx playwright test" activity="regression" skill=qa-browser
+zsh "$B/tools/dash.sh" event orch "route fixes" kind=delegate to=be cmd="Task be" activity="triage"
+zsh "$B/tools/dash.sh" say besr title="core audit" kind=report --stdin <<'EOF'
+TL;DR + PASS/FAIL + decisions here
+EOF
+```
+
+Commands: `say` (long multiline speech) · `delegate` · `skill` · `cmd` · `event` · `log` · `set`
+Feed keeps 800 lines · simple board shows 250 · Star-Office **Loop Activity** panel (Yesterday memo removed for space)
+
 Opens on `deploy.sh` · at `loop-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
 
 **Star-Office dashboard** (`agent-dashboard/star-office/`) — pixel office from
 [Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI) (MIT code; art non-commercial use)
-- `star-office-bridge.js` mirrors loop `status.json` into the office
+- `star-office-bridge.js` mirrors loop `status.json` → office + `activity.json` (`GET /activity`)
+- **Loop Activity** panel shows full **say/report/test** text · readable system font · wrapped bubbles
 - 8 role characters in zones (orch = main, others as guests)
 - Office plaque = project name
 - First run creates a small venv + installs flask
@@ -661,7 +733,8 @@ Run from Base directly (no config in cwd):
 
 ```zsh
 zsh tools/deploy.sh                 # install team + register ~/.loop-base
-zsh tools/new-project.sh my-app       # create control folder + wizard
+zsh tools/loop-start.sh                 # wizard Steps 1–4
+zsh tools/new-project.sh my-app       # shortcut: Step 1 + 2b
 zsh tools/sync-agents.sh              # sync agent defs to all platforms
 zsh tools/dash.sh serve               # open board
 ```
@@ -679,7 +752,8 @@ agent-dashboard/           **central** live status board (Star-Office — all pr
 tools/                     only in Base — every control folder shares via ~/.loop-base
   deploy.sh                install team to Claude Code + Hermes + register Base at ~/.loop-base
   sync-agents.sh           sync agent defs to all platforms (source = .claude/agents/)
-  new-project.sh           create control folder at base + config wizard (run from Base)
+  loop-start.sh              wizard Steps 1–4: base folder → control folder → .active-project → hand off
+  new-project.sh             shortcut: loop-start --new NAME (Step 1 + 2b)
   base-dir.sh              resolve destination folder (arg > BASE_DIR > .base-dir > default)
   init-config.sh           wizard writes loop.config.json (run in control folder)
   dash.sh                  talk to central board (serve / set / log) — auto-tags project name

@@ -21,7 +21,7 @@ if [ "${1:-}" = "simple" ]; then
   PORT="${2:-8787}"; URL="http://localhost:$PORT"
   if up "$PORT"; then echo "dashboard already running → $URL"; open_browser "$URL"; exit 0; fi
   [ -f status.json ] || node agent-status.js reset "" >/dev/null 2>&1 || true
-  echo "AI Agent Office (simple) → $URL  — Ctrl+C to stop."
+  echo "AI Agent Software Team (simple) → $URL  — Ctrl+C to stop."
   open_browser "$URL"
   exec python3 -m http.server "$PORT"
 fi

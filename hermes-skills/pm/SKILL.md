@@ -11,6 +11,17 @@ Skip if **loop-orch** delegated you (it asks first). When invoked **directly** (
 - **Yes** / blank / ใช่ → `( zsh "$(cat ~/.loop-base)/tools/dash.sh" serve >/dev/null 2>&1 & )` and share `http://localhost:19000`
 - **No** → skip; wait for an answer unless the user pre-answered (e.g. "dashboard ไม่ต้อง")
 
+## Live dashboard (required under loop-orch)
+Update the central board **while you work**, not only when finished. Run from the **project root** (where `loop.config.json` lives); `$B` = blueprint path from the orchestrator:
+
+```bash
+zsh "$B/tools/dash.sh" set pm work "drafting AC" speech="กำลังร่าง acceptance criteria"
+zsh "$B/tools/dash.sh" progress pm "AC 2/4 drafted" speech="เขียน AC ไปแล้ว 2 จาก 4 ข้อ"
+zsh "$B/tools/dash.sh" set pm done "AC ready (4)" speech="ส่ง AC ให้ทีมแล้ว"
+```
+
+Ping at **start**, **after every file create/edit/delete** (`file`), **each major milestone** (`progress`), and **before return**. If one step runs longer than ~2 minutes, add `progress` so the office doesn't look frozen. Use **`speech=`** (conversational Thai) for bubbles. **`detail=`** = สรุปสั้นๆ ว่าเพิ่ม/แก้อะไร.
+
 When given a task, output:
 1. **Problem statement** — what the problem is, who is affected, why now.
 2. **User stories** — "As a <user>, I want <capability> so that <value>."

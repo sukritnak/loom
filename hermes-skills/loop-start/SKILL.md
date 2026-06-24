@@ -9,7 +9,19 @@ chat, one step at a time, confirming each answer. Do NOT write code or features 
 
 This works on any platform (Claude Code, Cursor, Hermes). Prefer your file/shell (zsh) tools to create
 folders and files directly — never rely on `make` or interactive shell wizards (they don't work
-when an agent runs them).
+when an agent runs them). **Terminal humans:** `zsh "$B/tools/loop-start.sh"` prints the same Step 1–4 banners.
+
+## Step labels (chat AND script — use these exact headers)
+Before each question in chat, print the matching banner so the user sees which folder is being created:
+- `== Step 1 — base folder (job shelf — mkdir if missing) ==`
+- `== Step 2 — control folder (open existing or create new) ==` then `Step 2a` or `Step 2b` on the next line
+- `== Step 3 — lock target (.active-project — no new folder) ==`
+- `== Step 4 — hand off to loop-orch ==`
+
+Or run the script non-interactively when you already have answers:
+- `zsh "$B/tools/loop-start.sh"` — full wizard
+- `zsh "$B/tools/loop-start.sh" --new shop --base ~/Documents/coding/agent-build` — Step 1 + 2b + 3 + 4
+- `zsh "$B/tools/loop-start.sh" --open ~/Documents/coding/agent-build/shop` — Step 3 + 4 only
 
 ## Rule 0 — never touch the blueprint / current dir
 The control-repo (the folder containing `.claude/agents/`, `hermes-skills/`, `tools/`) is a TEMPLATE.
@@ -17,14 +29,17 @@ NEVER create a project or write `loop.config.json` there, and never use the curr
 as a project. Projects always live under a separate base folder.
 
 ## Step 1 — base folder
-Ask: "โปรเจกต์จะเก็บไว้ที่ไหน?" — offer the default `~/Documents/coding/agent-build`, or let the user
+Ask under banner `== Step 1 — base folder (job shelf — mkdir if missing) ==`:
+"โปรเจกต์จะเก็บไว้ที่ไหน?" — offer the default `~/Documents/coding/agent-build`, or let the user
 type their own path. Validate:
 - must be an **absolute** path (starts with `/` or `~`),
 - must be **outside** the blueprint repo and not the current dir.
 If it doesn't exist, ask permission, then create it: `mkdir -p "<base>"`.
+Persist the choice: `printf '%s\n' "<base>" > "<blueprint>/.base-dir"`.
 (You may validate + expand `~` with `zsh "$(cat ~/.loop-base)/tools/base-dir.sh" "<path>"`.)
 
 ## Step 2 — existing or new
+Print banner `== Step 2 — control folder (open existing or create new) ==`, then:
 List existing projects first: any subfolder of `<base>` that contains a `loop.config.json`
 (`for d in <base>/*/; do [ -f "$d/loop.config.json" ] && echo "$d"; done`). Show them, then ask:
 **(1) open an existing project**  or  **(2) create a new one**.
@@ -36,11 +51,13 @@ Note the two senses of "existing":
   folder. The loop then works on that code in place — nothing is moved or copied.
 
 ### 2a. Existing
+Print `Step 2a — open existing (no new folder)`.
 - Let the user pick from the list or give a full absolute path (not the current/blueprint dir).
 - Read `<path>/loop.config.json` to confirm it's valid; restate project name + services to the user.
 - If there's no `loop.config.json` there, treat it as "new" below (offer to create one).
 
 ### 2b. New — ask in order, then write files
+Print `Step 2b — create new control folder + loop.config.json + STATE.md`.
 1. Project name.
 2. Mode: `new` (the loop scaffolds fresh folders under the project) or `existing` (drive code that
    already lives somewhere — give absolute paths in step 4, nothing gets moved/copied).
@@ -63,11 +80,13 @@ Then create the destination `DEST = <base>/<name>`:
   (Base) and are shared by every project. The project reaches them by their Base path (see below).
 
 ## Step 3 — lock the target
+Print banner `== Step 3 — lock target (.active-project — no new folder) ==`.
 - If you know the blueprint path, record the choice: write the absolute `DEST` into
   `<blueprint>/.active-project` (so later runs resume the right project).
 - Announce clearly: **"Active project → <DEST>"**.
 
 ## Step 4 — hand off
+Print banner `== Step 4 — hand off to loop-orch ==`.
 Tell the user to run the loop FROM that folder, and hand off to loop-orch:
 ```
 cd "<DEST>"
@@ -75,6 +94,14 @@ Use loop-orch at <autonomy>: <describe the feature or bug>
 ```
 On Hermes: `/loop-orch run at <autonomy>: <task>` from inside the folder.
 loop-orch will read `<DEST>/loop.config.json`, ask whether to open the dashboard (default **Y**), then run the loop.
+
+**If autonomy is L3:** tell the user to run once (then restart Claude Code):
+```bash
+B="$(cat ~/.loop-base)"
+zsh "$B/tools/install-l3-hooks.sh"
+cd "<DEST>" && zsh "$B/tools/apply-l3-claude-settings.sh"
+```
+Without this, Claude Code still shows Yes/No on every `cd && git …` command even though `autonomy` is L3.
 
 The loop tools live in the blueprint (Base), not in the project. Resolve the Base path once with
 `B="$(cat ~/.loop-base)"` (written by `deploy.sh`), then call them from the project folder, e.g.

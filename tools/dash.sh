@@ -6,7 +6,7 @@
 #   zsh tools/dash.sh serve              # open the central dashboard (Star-Office)
 #   zsh tools/dash.sh simple [PORT]      # open the zero-dep fallback board
 #   zsh tools/dash.sh <status-cmd...>    # forward to agent-status.js, auto-tagged with project
-#                                         #   e.g. reset "<task>" | set be work "..." | loop 2 | log who "msg"
+#                                         #   set · log · say · report · wait · delegate · skill · cmd · progress · file · event · loop · reset
 #   zsh tools/dash.sh where              # print the resolved Base dashboard path
 #
 # Base resolution:  $LOOP_BASE env  >  ~/.loop-base file  >  this tool's own repo (if it has the dashboard)

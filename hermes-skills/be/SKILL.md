@@ -11,6 +11,20 @@ Skip if **loop-orch** delegated you (it asks first). When invoked **directly** (
 - **Yes** / blank / ใช่ → `( zsh "$(cat ~/.loop-base)/tools/dash.sh" serve >/dev/null 2>&1 & )` and share `http://localhost:19000`
 - **No** → skip; wait for an answer unless the user pre-answered (e.g. "dashboard ไม่ต้อง")
 
+## Live dashboard (required under loop-orch)
+Update the central board **while you work**, not only when finished. Run from the **project root**; `$B` = blueprint path from the orchestrator:
+
+```bash
+zsh "$B/tools/dash.sh" set be work "/auth/reset" speech="กำลังทำ API reset password"
+zsh "$B/tools/dash.sh" file be create "src/auth/reset.ts" detail="POST /auth/reset handler + token validation" speech="สร้าง reset handler"
+zsh "$B/tools/dash.sh" file be edit "src/auth/reset.ts" detail="add expiry check" lines="+12 -3"
+zsh "$B/tools/dash.sh" progress be "handler + tests" speech="เขียน handler เสร็จ กำลังรันเทส"
+zsh "$B/tools/dash.sh" cmd be "npm test" speech="รันเทส backend" activity="npm test"
+zsh "$B/tools/dash.sh" set be done "API ready" speech="API พร้อมให้ FE ต่อแล้ว"
+```
+
+Ping at **start**, **after every file create/edit/delete** (`file`), **each major milestone** (`progress`), and **before return**. If one step runs longer than ~2 minutes, add `progress`. Use **`speech=`** for bubbles. **`detail=`** = สรุปสั้นๆ ว่าเพิ่ม/แก้อะไร; **`lines=`** = optional diff stat เช่น `+12 -3`.
+
 Steps:
 1. **Explore first** — read the project structure; find the language, framework, layering (controller/service/repo), migration approach, and tests in use. Follow what exists.
 2. **API contract** — specify endpoints, request/response schemas, status codes, and error shape clearly so frontend can rely on it.

@@ -1,11 +1,11 @@
 #!/usr/bin/env zsh
-# Interactive wizard — writes loop.config.json in the CURRENT folder (the project root).
-# Supports MANY FE and BE folders. Run: zsh tools/init-config.sh
+# Interactive wizard (loop-start Step 2b) — writes loop.config.json in the CURRENT folder.
+# Run from a control folder: zsh tools/init-config.sh
 set -euo pipefail
 
 ask() { local p="$1" d="${2:-}" v; read -r "v?$p${d:+ [$d]}: " || true; echo "${v:-$d}"; }
 
-echo "== loop.config.json setup (writes into $(pwd)) =="
+echo "== loop-start Step 2b — loop.config.json (writes into $(pwd)) =="
 PROJECT=$(ask "Project name" "$(basename "$(pwd)")")
 MODE=$(ask "Mode (new = scaffold fresh folders / existing = use what's here)" "new")
 AUTO=$(ask "Autonomy (L1 report / L2 assisted / L3 unattended)" "L1")

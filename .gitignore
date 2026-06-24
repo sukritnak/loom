@@ -5,6 +5,7 @@
 loop.config.json
 STATE.md
 status.json
+agent-dashboard/star-office/activity.json
 .env
 .env.*
 !.env.example

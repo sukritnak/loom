@@ -12,6 +12,18 @@ printf '%s\n' "$ROOT" > "$HOME/.loop-base"
 
 zsh tools/sync-agents.sh
 
+if [ "${DEPLOY_SKIP_CC_HOOKS:-}" != 1 ]; then
+  zsh tools/install-cc-hooks.sh
+else
+  echo "  (skipped Claude Code hooks — DEPLOY_SKIP_CC_HOOKS=1)"
+fi
+
+if [ "${DEPLOY_SKIP_L3_HOOKS:-}" != 1 ]; then
+  zsh tools/install-l3-hooks.sh
+else
+  echo "  (skipped L3 hooks — DEPLOY_SKIP_L3_HOOKS=1)"
+fi
+
 if [ "${DEPLOY_SKIP_EXTERNAL_SKILLS:-}" != 1 ]; then
   echo "== recommended external skills =="
   zsh tools/install-external-skills.sh
@@ -26,7 +38,7 @@ cat <<'TXT'
 For Cursor personas (optional): Settings → Custom Modes → add one per agent,
 pasting the body of each .claude/agents/*.md as the instructions.
 
-Next: start a project →  Use loop-start  (or  zsh tools/new-project.sh)
+Next: start a project →  Use loop-start  (or  zsh tools/loop-start.sh)
 TXT
 
 echo "== opening central dashboard =="

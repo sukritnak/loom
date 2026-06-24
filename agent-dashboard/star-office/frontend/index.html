@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Agent Office</title>
+    <title>AI Agent Software Team</title>
     <style>
         @font-face {
             font-family: 'ArkPixel';
@@ -12,58 +12,70 @@
             font-style: normal;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; min-height: 100%; }
         body {
             background: #1a1a2e;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
-            align-items: center;
+            align-items: stretch;
             min-height: 100vh;
             font-family: 'ArkPixel', 'Courier New', monospace;
-            padding: 20px 0;
+            padding: 8px 12px;
             gap: 10px;
             overflow-x: hidden;
         }
-        /* 底部面板容器 */
+        /* Main layout: office (left) + Loop Activity (right) — full viewport width */
         #main-stage {
             position: relative;
-            width: 1280px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+            gap: 8px;
+            width: 100%;
+            max-width: none;
+            min-height: calc(100vh - 16px);
             transition: transform .25s ease;
             will-change: transform;
+            align-items: stretch;
         }
         body.drawer-open #main-stage {
-            /* 与右侧抽屉并列：按视口动态左移，确保与抽屉至少保留 20px 间隔 */
-            transform: translateX(calc(-1 * max(0px, (min(320px, 92vw) + 20px) - ((100vw - 1280px) / 2))));
+            transform: translateX(calc(-1 * min(300px, 26vw)));
+        }
+        #office-column {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-width: 0;
         }
         #bottom-panels {
             display: flex;
-            gap: 20px;
-            width: 1280px;
-            max-width: none;
-            justify-content: flex-start;
-            margin-top: 20px;
+            flex-direction: row;
+            gap: 12px;
+            width: 100%;
+            margin-top: 0;
         }
         #game-container {
             position: relative;
             border: 0;
             image-rendering: pixelated;
-            width: 1280px;
-            height: 720px;
-            max-width: none;
-            max-height: none;
-            aspect-ratio: auto;
+            width: 100%;
+            height: 439px;
             overflow: hidden;
+            flex-shrink: 0;
         }
         #game-container canvas {
-            width: 100% !important;
-            height: 100% !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1280px !important;
+            height: 720px !important;
+            max-width: none !important;
+            max-height: none !important;
+            object-fit: none !important;
+            transform: scale(var(--game-scale, 0.609375)) translateX(var(--game-pan, 0%));
+            transform-origin: top left;
             image-rendering: pixelated;
-            /* 再兜底一次：即使外层高度变化，也不要拉伸变形 */
-            object-fit: contain;
-            /* 边框改为直接贴合画布内部，避免“框比地图大” */
             box-shadow: inset 0 0 0 4px #64477d;
-            position: relative;
-            z-index: 10;
         }
         /* 首屏骨架：避免 Phaser 未就绪时纯黑屏 */
         #game-skeleton {
@@ -132,20 +144,22 @@
             bottom: 12px;
             left: 12px;
             transform: none;
-            color: #eee;
-            font-size: 14px;
-            background: rgba(0,0,0,0.7);
-            padding: 8px 12px;
-            border-radius: 4px;
-            max-width: calc(100% - 24px);
+            color: #f1f5f9;
+            font-size: 13px;
+            background: rgba(0,0,0,0.78);
+            padding: 10px 14px;
+            border-radius: 6px;
+            max-width: min(520px, calc(100% - 24px));
             text-align: left;
-            font-family: 'ArkPixel', 'Courier New', monospace;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
             z-index: 30;
             pointer-events: none;
-            white-space: nowrap;
+            white-space: pre-wrap;
             overflow: hidden;
-            text-overflow: ellipsis;
-            line-height: 1.2;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            line-height: 1.45;
         }
         /* 状态控制栏 */
         #control-bar {
@@ -155,8 +169,9 @@
             border-radius: 0;
             border: 4px solid #0e1119;
             box-shadow: none;
-            width: 390px;
-            height: 300px;
+            width: 240px;
+            height: 260px;
+            flex-shrink: 0;
             display: flex;
             flex-direction: column;
             gap: 10px;
@@ -714,8 +729,10 @@
         /* Guest Agent 名单面板（右下角） */
         #guest-agent-panel {
             position: relative;
-            width: 390px;
-            height: 300px;
+            flex: 1 1 auto;
+            min-width: 0;
+            width: auto;
+            height: 260px;
             background: #141722;
             padding: 10px 10px 12px;
             border-radius: 0;
@@ -833,7 +850,97 @@
         .guest-agent-buttons button.leave-btn:hover {
             background: #6a2828;
         }
-        /* Memo 区域 - 4:3 小正方形 */
+        /* Loop activity — right column, full height beside office */
+        #activity-panel {
+            position: relative;
+            grid-column: 2;
+            grid-row: 1;
+            align-self: stretch;
+            width: 100%;
+            min-width: 0;
+            max-width: 300px;
+            min-height: calc(100vh - 16px);
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, #141824 0%, #10131c 100%);
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 14px 16px 12px;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        }
+        #activity-panel-title {
+            color: #e2e8f0;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            margin-bottom: 8px;
+        }
+        #activity-meta {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-bottom: 10px;
+            min-height: 16px;
+            line-height: 1.4;
+        }
+        #activity-feed {
+            flex: 1 1 auto;
+            min-height: 0;
+            max-height: none;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 6px;
+        }
+        #activity-feed::-webkit-scrollbar { width: 8px; }
+        #activity-feed::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .activity-line {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(71, 85, 105, 0.55);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: #e2e8f0;
+        }
+        .activity-line.say-kind {
+            border-left: 3px solid #34d399;
+        }
+        .activity-line.report-kind {
+            border-left: 3px solid #a78bfa;
+        }
+        .activity-line .act-msg code.ic { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #0f172a; padding: 1px 5px; border-radius: 4px; color: #c4b5fd; }
+        .activity-line .act-msg .warn { color: #fbbf24; margin: 4px 0; }
+        .activity-line .act-msg .gate { color: #f472b6; font-weight: 600; margin: 4px 0; }
+        .activity-line .act-pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 1.45; background: #0a0c12; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin: 6px 0; overflow-x: auto; white-space: pre-wrap; color: #e2e8f0; }
+        .activity-line .act-msg hr.sep { border: none; border-top: 1px solid #334155; margin: 8px 0; }
+        .act-tag.report { color: #c4b5fd; border-color: #7c3aed; }
+        .act-tag.wait { color: #fcd34d; border-color: #d97706; }
+        .activity-line .act-head { color: #cbd5e1; margin-bottom: 6px; font-size: 12px; }
+        .activity-line .act-title { color: #f8fafc; font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+        .activity-line .act-msg {
+            color: #f1f5f9;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        .activity-line .act-meta { color: #94a3b8; font-size: 11px; margin-top: 6px; }
+        .act-tag { display: inline-block; padding: 2px 7px; border-radius: 999px; border: 1px solid #475569; margin-right: 5px; font-size: 10px; font-weight: 600; }
+        .act-tag.delegate { color: #c4b5fd; border-color: #7c3aed; }
+        .act-tag.skill { color: #6ee7b7; border-color: #059669; }
+        .act-tag.cmd { color: #93c5fd; border-color: #2563eb; }
+        .act-tag.say, .act-tag.report, .act-tag.test { color: #6ee7b7; border-color: #059669; }
+        .act-tag.file { color: #f9a8d4; border-color: #db2777; }
+        .act-tag.create { color: #6ee7b7; border-color: #059669; }
+        .act-tag.edit { color: #93c5fd; border-color: #2563eb; }
+        .act-tag.delete { color: #fca5a5; border-color: #dc2626; }
+        .act-tag.rename { color: #fcd34d; border-color: #d97706; }
+        .activity-line.file-kind { border-left: 3px solid #f472b6; }
+        .activity-line .act-file { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: #c4b5fd; word-break: break-all; margin-bottom: 4px; }
+        .activity-line .act-detail { color: #94a3b8; font-size: 12px; margin-bottom: 4px; }
+        .activity-line .act-lines { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: #6ee7b7; }
         #memo-panel {
             position: relative;
             width: 460px;
@@ -970,49 +1077,62 @@
                 align-items: stretch;
             }
 
-            #game-container {
-                width: 100vw;
-                height: 66.666vh; /* 办公室占 2/3 屏幕高度 */
-                max-width: 100vw;
-                max-height: 66.666vh;
-                border-width: 0;
-                border-radius: 0;
-                aspect-ratio: auto;
-                flex: 0 0 auto;
-                touch-action: auto;
-                overflow: hidden;
-            }
-
             #main-stage {
                 width: 100vw;
                 min-width: 0;
+                max-width: 100vw;
                 margin-left: 0 !important;
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+
+            #office-column {
+                grid-row: 1;
+            }
+
+            #activity-panel {
+                grid-column: 1;
+                grid-row: 2;
+                min-width: 0;
+                max-width: none;
+                min-height: 320px;
+            }
+
+            #activity-feed {
+                min-height: 260px;
             }
 
             #bottom-panels {
-                width: 100vw;
-                max-width: 100vw;
-                min-height: 33.334vh; /* 余下约 1/3 可见区 */
-                padding: 10px 10px 16px;
-                display: flex;
+                grid-row: 3;
+                width: 100%;
                 flex-direction: column;
-                gap: 10px;
-                flex: 0 0 auto;
+            }
+
+            #game-container {
+                width: 100vw;
+                height: 56vw;
+                max-height: 66vh;
+            }
+
+            #game-container canvas {
+                transform: scale(calc(100vw / 1280)) translateX(-18%);
             }
 
             body.drawer-open #main-stage {
                 margin-left: 0 !important;
             }
 
-            #memo-panel,
+            #activity-panel,
             #control-bar,
             #guest-agent-panel {
                 width: 100%;
                 height: auto;
                 min-height: 180px;
+                max-width: none;
+                flex: 1 1 auto;
             }
 
-            #memo-panel { min-height: 220px; }
+            #activity-panel { min-height: 280px; }
             #control-bar { min-height: 210px; }
             #guest-agent-panel { min-height: 220px; }
 
@@ -1140,42 +1260,38 @@
     </div>
     
     <div id="main-stage">
-        <div id="game-container">
-            <div id="game-skeleton"><div class="hint">Entering the pixel office…</div></div>
-            <div id="status-text">Loading...</div>
-        </div>
-    
-    <!-- 底部面板容器 -->
-    <div id="bottom-panels">
-        <!-- Memo 面板 -->
-        <div id="memo-panel">
-            <div id="memo-title">昨 日 小 记</div>
-            <div id="memo-date"></div>
-            <div class="memo-decoration">─ ─ ─ ─ ─</div>
-            <div id="memo-content">
-                <div id="memo-placeholder">Loading...</div>
+        <div id="office-column">
+            <div id="game-container">
+                <div id="game-skeleton"><div class="hint">Entering the pixel office…</div></div>
+                <div id="status-text">Loading...</div>
             </div>
-            <div class="memo-decoration">─ ─ ─ ─ ─</div>
-        </div>
-        
-        <!-- 状态控制栏 -->
-        <div id="control-bar">
-            <div id="control-bar-title">Star Status</div>
-            <div id="control-buttons">
-                <button id="btn-state-idle" onclick="setState('idle','Idle')">Idle</button>
-                <button id="btn-state-writing" onclick="setState('writing','Working')">Work</button>
-                <button id="btn-state-syncing" onclick="setState('syncing','Syncing')">Sync</button>
-                <button id="btn-state-error" onclick="setState('error','Alert')">Alert</button>
-                <button id="btn-open-drawer" onclick="toggleAssetDrawer()">Decorate Room</button>
+
+            <div id="bottom-panels">
+                <div id="control-bar">
+                    <div id="control-bar-title">Star Status</div>
+                    <div id="control-buttons">
+                        <button id="btn-state-idle" onclick="setState('idle','Idle')">Idle</button>
+                        <button id="btn-state-writing" onclick="setState('writing','Working')">Work</button>
+                        <button id="btn-state-syncing" onclick="setState('syncing','Syncing')">Sync</button>
+                        <button id="btn-state-error" onclick="setState('error','Alert')">Alert</button>
+                        <button id="btn-open-drawer" onclick="toggleAssetDrawer()">Decorate Room</button>
+                    </div>
+                </div>
+
+                <div id="guest-agent-panel">
+                    <div id="guest-agent-panel-title">访 客 列 表</div>
+                    <div id="guest-agent-list">
+                        <div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">正在加载访客...</div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Guest Agent 名单面板（右下角） -->
-        <div id="guest-agent-panel">
-            <div id="guest-agent-panel-title">访 客 列 表</div>
-            <div id="guest-agent-list">
-                <div style="color:#9ca3af;font-size:12px;text-align:center;padding:20px 0;">正在加载访客...</div>
-            </div>
+        <div id="activity-panel">
+            <div id="activity-panel-title">⚡ Loop Activity</div>
+            <div id="activity-meta">Waiting for loop logs…</div>
+            <div id="activity-feed">
+                <div style="color:#64748b;font-size:12px;">No activity yet — loop-orch should call dash.sh say/delegate/skill/cmd</div>
             </div>
         </div>
     </div>
@@ -1316,7 +1432,7 @@
                 assetHintNotInScene: '当前场景未检测到此对象，仍可替换文件（刷新后生效）',
                 assetHintDefault: '通用素材：建议保持原图尺寸、透明通道与视觉重心一致，避免错位或失真',
                 showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
-                memoTitle: '昨 日 小 记', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
+                memoTitle: '昨 日 小 记', activityTitle: '⚡ Loop Activity', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
                 loadingOffice: '正在加载 Star 的像素办公室...'
             },
             en: {
@@ -1344,7 +1460,7 @@
                 assetHintNotInScene: 'This object is not detected in current scene; you can still replace file (effective after refresh)',
                 assetHintDefault: 'Generic asset: keep source size, alpha channel, and visual anchor to avoid drift/distortion',
                 showCoords: 'Show Coords', hideCoords: 'Hide Coords', moveView: 'Pan View', lockView: 'Lock View',
-                memoTitle: 'YESTERDAY NOTES', guestTitle: 'VISITOR LIST', officeTitle: 'Zenji Monmin Office',
+                memoTitle: 'YESTERDAY NOTES', activityTitle: '⚡ Loop Activity', guestTitle: 'VISITOR LIST', officeTitle: 'Zenji Monmin Office',
                 loadingOffice: 'Loading Star’s pixel office...'
             },
             ja: {
@@ -1388,6 +1504,7 @@
 
         function ensureMemoBgVisible() {
             const panel = document.getElementById('memo-panel');
+            if (!panel) return;
             if (!panel) return;
             panel.style.backgroundImage = "url('/static/memo-bg.webp?v={{VERSION_TIMESTAMP}}')";
             panel.classList.remove('no-bg');
@@ -1456,6 +1573,8 @@
 
             const memoTitle = document.getElementById('memo-title');
             if (memoTitle) memoTitle.textContent = t('memoTitle');
+            const activityTitle = document.getElementById('activity-panel-title');
+            if (activityTitle) activityTitle.textContent = t('activityTitle') || '⚡ Loop Activity';
             const guestTitle = document.getElementById('guest-agent-panel-title');
             if (guestTitle) guestTitle.textContent = t('guestTitle');
             const plaqueTitle = (typeof window.officeNameFromServer !== 'undefined' && window.officeNameFromServer) || t('officeTitle');
@@ -1566,6 +1685,82 @@
             }
         }
 
+        const LOOP_AGENT_NAMES = {
+            orch: 'Orchestrator', pm: 'PM', design: 'Designer', be: 'Backend',
+            besr: 'Backend Sr.', fe: 'Frontend', feanim: 'FE Anim', qa: 'QA'
+        };
+
+        function escapeActivityText(x) {
+            return String(x || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+        }
+
+        function formatActivityMsg(text) {
+            const raw = String(text || '');
+            if (/[│┌├└┼─┬┴]/.test(raw)) {
+                return '<pre class="act-pre">' + escapeActivityText(raw) + '</pre>';
+            }
+            let s = escapeActivityText(raw);
+            s = s.replace(/`([^`\n]+)`/g, '<code class="ic">$1</code>');
+            s = s.replace(/^⚠️ (.+)$/gm, '<div class="warn">⚠️ $1</div>');
+            s = s.replace(/^▎ (.+)$/gm, '<div class="gate">▎ $1</div>');
+            s = s.replace(/^---$/gm, '<hr class="sep">');
+            return s.replace(/\n/g, '<br>');
+        }
+
+        const FILE_VERB = { create: 'สร้าง', edit: 'แก้', delete: 'ลบ', rename: 'ย้าย' };
+
+        function renderActivityLine(entry) {
+            const who = LOOP_AGENT_NAMES[entry.who] || entry.who || '?';
+            const tags = [];
+            if (entry.kind) tags.push(`<span class="act-tag ${escapeActivityText(entry.kind)}">${escapeActivityText(entry.kind)}</span>`);
+            if (entry.action) tags.push(`<span class="act-tag ${escapeActivityText(entry.action)}">${escapeActivityText(FILE_VERB[entry.action] || entry.action)}</span>`);
+            if (entry.to) tags.push(`<span class="act-tag delegate">→ ${escapeActivityText(LOOP_AGENT_NAMES[entry.to] || entry.to)}</span>`);
+            if (entry.skill) tags.push(`<span class="act-tag skill">${escapeActivityText(entry.skill)}</span>`);
+            const meta = [];
+            if (entry.cmd) meta.push('cmd: ' + escapeActivityText(entry.cmd));
+            if (entry.activity && entry.activity !== entry.title && entry.kind !== 'file') meta.push(escapeActivityText(entry.activity));
+            if (entry.project) meta.push('[' + escapeActivityText(entry.project) + ']');
+            const head = `<span class="act-head">${escapeActivityText(entry.t || '')} · ${escapeActivityText(who)} ${tags.join(' ')}</span>`;
+            const sayKind = (entry.kind === 'say' || entry.kind === 'report' || entry.kind === 'test');
+            const fileKind = entry.kind === 'file';
+            const reportKind = entry.kind === 'report';
+            const title = entry.title ? `<div class="act-title">${escapeActivityText(entry.title)}</div>` : '';
+            let msg = '';
+            if (fileKind && entry.file) {
+                msg = `<div class="act-file">${escapeActivityText(entry.file)}</div>`;
+                if (entry.detail) msg += `<div class="act-detail">${formatActivityMsg(entry.detail)}</div>`;
+                if (entry.lines) msg += `<div class="act-lines">${escapeActivityText(entry.lines)}</div>`;
+            } else {
+                msg = `<div class="act-msg">${formatActivityMsg(entry.msg)}</div>`;
+            }
+            const foot = meta.length ? `<div class="act-meta">${meta.join(' · ')}</div>` : '';
+            return `<div class="activity-line${sayKind ? ' say-kind' : ''}${reportKind ? ' report-kind' : ''}${fileKind ? ' file-kind' : ''}">${head}${title}${msg}${foot}</div>`;
+        }
+
+        async function loadLoopActivity() {
+            const feed = document.getElementById('activity-feed');
+            const meta = document.getElementById('activity-meta');
+            if (!feed) return;
+            try {
+                const response = await fetch('/activity?t=' + Date.now(), { cache: 'no-store' });
+                const data = await response.json();
+                const lines = Array.isArray(data.log) ? data.log : [];
+                const head = [];
+                if (data.project) head.push('📁 ' + data.project);
+                if (data.task) head.push(data.task);
+                if (data.loop) head.push('round ' + data.loop);
+                if (meta) meta.textContent = head.join(' · ') || 'Loop activity';
+                if (!lines.length) {
+                    feed.innerHTML = '<div style="color:#64748b;font-size:11px;">No activity yet — loop-orch should call dash.sh delegate/skill/cmd</div>';
+                    return;
+                }
+                feed.innerHTML = lines.slice(-250).reverse().map(renderActivityLine).join('');
+                feed.scrollTop = 0;
+            } catch (e) {
+                if (meta) meta.textContent = 'Activity feed unavailable';
+            }
+        }
+
         // 更新加载进度
         function updateLoadingProgress() {
             loadedAssets++;
@@ -1650,7 +1845,7 @@
             }
         };
 
-        let game, star, sofa, serverroom, officeBgSprite, areas = {}, currentState = 'idle', pendingDesiredState = null, statusText, lastFetch = 0, lastBlink = 0, lastBubble = 0, targetX = 660, targetY = 170, bubble = null, typewriterText = '', typewriterTarget = '', typewriterIndex = 0, lastTypewriter = 0, syncAnimSprite = null, syncAnimPlayable = false, catBubble = null, selectionBoxGraphics = null;
+        let game, star, sofa, serverroom, officeBgSprite, areas = {}, currentState = 'idle', pendingDesiredState = null, statusText, lastFetch = 0, lastActivityFetch = 0, lastBlink = 0, lastBubble = 0, targetX = 660, targetY = 170, bubble = null, typewriterText = '', typewriterTarget = '', typewriterIndex = 0, lastTypewriter = 0, syncAnimSprite = null, syncAnimPlayable = false, catBubble = null, selectionBoxGraphics = null;
         const IDLE_SOFA_ANCHOR = { x: 798, y: 272 }; // 统一中心锚点（原 sofa 左上 670,144 的中心）
         const IDLE_STAR_SCALE = 1.0; // star idle 改为256帧原生显示，不再放大
         // flowers 精灵表规格：固定单帧 128x128，4x4
@@ -1705,12 +1900,14 @@
         let showCoords = false;
         let guestAgents = [];
         let guestSprites = {}; // agentId -> {sprite, nameText}
+        let guestAreaCache = {}; // agentId -> last area (for walk tween)
         let guestBubbles = {}; // agentId -> bubble container
         const GUEST_AVATARS = ['guest_role_1','guest_role_2','guest_role_3','guest_role_4','guest_role_5','guest_role_6'];
         let guestTweens = {};  // agentId -> {move, name}
         let hiddenDemoNames = new Set();
         const DEMO_MODE = new URLSearchParams(window.location.search).get('demo') === '1';
         const FETCH_INTERVAL = 1000;
+        const ACTIVITY_FETCH_INTERVAL = 1500;
         const GUEST_AGENTS_FETCH_INTERVAL = 3500;
         const BLINK_INTERVAL = 2500;
         const BUBBLE_INTERVAL = 8000;
@@ -3448,7 +3645,9 @@ function toggleBrokerPanel() {
 
                 const statusText = statusMap[authStatus] || authStatus;
                 const stateText = stateMap[state] || state;
-                const subtitle = `${statusText} · ${stateText}`;
+                const speech = (agent.bubbleText || agent.lastSpeech || agent.detail || '').trim().split('\n')[0];
+                const lounge = guestArea(agent) === 'breakroom';
+                const subtitle = [statusText + ' · ' + stateText, lounge ? 'ห้องพัก' : '', speech].filter(Boolean).join(' · ');
 
                 const pendingActions = `<button class="leave-btn" onclick="leaveGuestAgent('${agent.agentId}','${name}')">Hide</button>`;
 
@@ -3456,7 +3655,7 @@ function toggleBrokerPanel() {
                   <div class="guest-agent-item" data-name="${name}">
                     <div>
                       <div class="guest-agent-name">${name}</div>
-                      <div style="font-size:11px;color:#cbd5e1;">${subtitle}</div>
+                      <div style="font-size:11px;color:#cbd5e1;line-height:1.35;">${escapeActivityText(subtitle)}</div>
                     </div>
                     <div class="guest-agent-buttons">
                       ${pendingActions}
@@ -3464,6 +3663,32 @@ function toggleBrokerPanel() {
                   </div>
                 `;
             }).join('');
+        }
+
+        const GUEST_AREA_SLOT = { pm: 0, design: 1, be: 2, besr: 3, fe: 4, feanim: 5, qa: 6 };
+
+        function fitGameCanvas() {
+            const box = document.getElementById('game-container');
+            if (!box) return;
+            if (window.matchMedia('(max-width: 900px), (pointer: coarse)').matches) return;
+            const w = box.clientWidth;
+            if (w <= 0) return;
+            const s = w / 1280;
+            box.style.height = Math.round(720 * s) + 'px';
+            box.style.setProperty('--game-scale', String(s));
+            box.style.setProperty('--game-pan', '0%');
+        }
+        window.addEventListener('resize', fitGameCanvas);
+
+        function guestArea(agent) {
+            const a = agent.area;
+            if (a === 'writing' || a === 'error' || a === 'breakroom') return a;
+            if (agent.involved === false) return 'breakroom';
+            const st = agent.state || 'idle';
+            if (st === 'error') return 'error';
+            if (st === 'idle') return 'breakroom';
+            if (st === 'writing' || st === 'researching' || st === 'executing' || st === 'syncing') return 'writing';
+            return 'breakroom';
         }
 
         function getAreaRect(area) {
@@ -3522,26 +3747,30 @@ function toggleBrokerPanel() {
                 ]
             };
             const arr = map[area] || map.breakroom;
-            return arr[idx % arr.length];
+            const slot = typeof idx === 'string'
+                ? (GUEST_AREA_SLOT[idx] ?? (() => { let h = 0; for (let i = 0; i < idx.length; i++) h = (h * 31 + idx.charCodeAt(i)) >>> 0; return h; })())
+                : idx;
+            return arr[slot % arr.length];
         }
 
         function renderGuestAgentsInScene() {
             if (!game) return;
             const visitors = getMergedVisitors();
             const seenIds = new Set();
-            let idxBreak = 0, idxWrite = 0, idxError = 0;
 
             visitors.forEach(agent => {
                 const id = agent.agentId;
                 seenIds.add(id);
 
                 const isDemo = !!agent.isDemo || (DEMO_MODE && (id === 'demo_nika' || id === 'demo_mercury' || agent.name === '尼卡' || agent.name === '水星'));
-                const area = agent.area || (agent.state === 'error' ? 'error' : (agent.state === 'idle' ? 'breakroom' : 'writing'));
+                const area = guestArea(agent);
+                const prevArea = guestAreaCache[id];
+                const areaChanged = prevArea && prevArea !== area;
+                guestAreaCache[id] = area;
 
-                const idx = area === 'breakroom' ? idxBreak++ : area === 'error' ? idxError++ : idxWrite++;
                 const p = isDemo
                     ? randomPointInRect(getAreaRect(area))
-                    : getAreaPoint(area, idx);
+                    : getAreaPoint(area, id);
 
                 if (!guestSprites[id]) {
                     // 优先用图标：demo visitor 有专门映射
@@ -3613,34 +3842,16 @@ function toggleBrokerPanel() {
                     const g = guestSprites[id];
                     const yOffset = (DEMO_MODE && (agent.agentId === 'demo_mercury' || agent.name === '水星')) ? 10 : 0;
 
-                    // demo：平滑移动（避免闪现）；非 demo：保持稳定位置（避免轮询抖动）
-                    if (isDemo) {
-                        // kill previous tweens for this id
-                        if (guestTweens[id] && guestTweens[id].move) {
-                            guestTweens[id].move.stop();
-                        }
-                        if (guestTweens[id] && guestTweens[id].name) {
-                            guestTweens[id].name.stop();
-                        }
-
-                        const duration = 2000 + Math.floor(Math.random() * 1000); // 2~3s 走路感
+                    const shouldTween = isDemo || areaChanged;
+                    if (shouldTween) {
+                        if (guestTweens[id] && guestTweens[id].move) guestTweens[id].move.stop();
+                        if (guestTweens[id] && guestTweens[id].name) guestTweens[id].name.stop();
+                        const duration = isDemo ? (2000 + Math.floor(Math.random() * 1000)) : 1600;
                         const ease = 'Sine.easeInOut';
-
-                        const moveTween = game.tweens.add({
-                            targets: g.sprite,
-                            x: p.x,
-                            y: p.y + yOffset,
-                            duration,
-                            ease
-                        });
-                        const nameTween = game.tweens.add({
-                            targets: g.nameText,
-                            x: p.x,
-                            y: (p.y + yOffset) - 80,
-                            duration,
-                            ease
-                        });
-                        guestTweens[id] = { move: moveTween, name: nameTween };
+                        guestTweens[id] = {
+                            move: game.tweens.add({ targets: g.sprite, x: p.x, y: p.y + yOffset, duration, ease }),
+                            name: game.tweens.add({ targets: g.nameText, x: p.x, y: (p.y + yOffset) - (isDemo ? 80 : 120), duration, ease })
+                        };
                     } else {
                         g.sprite.x = p.x;
                         g.sprite.y = p.y + yOffset;
@@ -3658,6 +3869,7 @@ function toggleBrokerPanel() {
                     guestSprites[id].sprite.destroy();
                     guestSprites[id].nameText.destroy();
                     delete guestSprites[id];
+                    delete guestAreaCache[id];
                     if (guestBubbles[id]) {
                         guestBubbles[id].destroy();
                         delete guestBubbles[id];
@@ -3671,12 +3883,35 @@ function toggleBrokerPanel() {
             });
         }
 
+        function makeSpeechBubble(x, y, text) {
+            const font = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            const fontSize = IS_TOUCH_DEVICE ? 13 : 12;
+            const wrap = 260;
+            const display = String(text || '').trim() || '…';
+            const txt = game.add.text(0, 0, display, {
+                fontFamily: font,
+                fontSize: fontSize + 'px',
+                fill: '#0f172a',
+                wordWrap: { width: wrap, useAdvancedWrap: true },
+                align: 'left'
+            }).setOrigin(0.5);
+            const padX = 14, padY = 10;
+            const bg = game.add.rectangle(0, 0, txt.width + padX * 2, txt.height + padY * 2, 0xffffff, 0.97);
+            bg.setStrokeStyle(2, 0x1e293b);
+            return game.add.container(x, y, [bg, txt]);
+        }
+
         function maybeShowGuestBubble(time) {
-            if (time - lastGuestBubbleAt < 5200) return;
+            if (time - lastGuestBubbleAt < 4800) return;
             lastGuestBubbleAt = time;
             const ids = Object.keys(guestSprites);
             if (ids.length === 0) return;
-            const id = ids[Math.floor(Math.random() * ids.length)];
+            const rich = ids.filter(id => {
+                const a = guestAgents.find(x => x.agentId === id);
+                return a && guestArea(a) !== 'breakroom' && (a.bubbleText || a.lastKind === 'say' || a.lastKind === 'report' || a.lastKind === 'test');
+            });
+            const pool = rich.length ? rich : ids;
+            const id = pool[Math.floor(Math.random() * pool.length)];
             const g = guestSprites[id];
 
             // demo 气泡：优先展示与状态对应的内容，便于验证“状态→区域→气泡”链路
@@ -3693,8 +3928,10 @@ function toggleBrokerPanel() {
                 error: ['Triaging in the bug zone', 'Anomaly detected, fixing it', 'Alert: locating root cause first']
             };
             const agentState = (guestAgents.find(a => a.agentId === id) || {}).state || 'idle';
+            const realAgent = guestAgents.find(a => a.agentId === id) || {};
             const thoughts = statusThoughtsMap[agentState] || statusThoughtsMap.idle;
-            const text = (demoVisitor && demoVisitor.bubbleText) ? demoVisitor.bubbleText : thoughts[Math.floor(Math.random() * thoughts.length)];
+            let text = (realAgent.bubbleText || realAgent.lastSpeech || realAgent.detail || '').trim();
+            if (!text) text = (demoVisitor && demoVisitor.bubbleText) ? demoVisitor.bubbleText : thoughts[Math.floor(Math.random() * thoughts.length)];
 
             if (guestBubbles[id]) {
                 guestBubbles[id].destroy();
@@ -3702,15 +3939,10 @@ function toggleBrokerPanel() {
             }
 
             const bx = g.sprite.x;
-            // 气泡位置：demo 维持原逻辑；真实访客放在“名字上方”，避免压角色也避免压名字
             const isDemoGuest = (demoVisitor && demoVisitor.isDemo) || (id === 'demo_nika' || id === 'demo_mercury');
             const nameH = (g.nameText && g.nameText.height) ? g.nameText.height : 16;
             const by = isDemoGuest ? (g.sprite.y - 90) : ((g.nameText ? g.nameText.y : (g.sprite.y - 150)) - (nameH / 2) - 22);
-            const fontSize = IS_TOUCH_DEVICE ? 14 : 12;
-            const bg = game.add.rectangle(bx, by, text.length * 10 + 24, 28, 0xffffff, 0.95);
-            bg.setStrokeStyle(2, 0x000000);
-            const txt = game.add.text(bx, by, text, { fontFamily: 'ArkPixel, monospace', fontSize: fontSize + 'px', fill: '#000' }).setOrigin(0.5);
-            const bubble = game.add.container(0, 0, [bg, txt]);
+            const bubble = makeSpeechBubble(bx, by, text);
             bubble.setDepth(2700);
             guestBubbles[id] = bubble;
 
@@ -3920,6 +4152,7 @@ function toggleBrokerPanel() {
             // 直接启动 Phaser，避免首屏被额外接口阻塞
 
             new Phaser.Game(config);
+            requestAnimationFrame(fitGameCanvas);
 
             // 非关键初始化延后到首屏之后，提升首开速度
             setTimeout(async () => {
@@ -4472,15 +4705,17 @@ function toggleBrokerPanel() {
                 coordsOverlay.style.top = (pointer.y + 18) + 'px';
             });
 
-            // 加载昨日 memo
-            loadMemo();
+            // loop activity feed
+            loadLoopActivity();
 
             fetchStatus();
             fetchGuestAgents();
+            fitGameCanvas();
         }
 
         function update(time) {
             if (time - lastFetch > FETCH_INTERVAL) { fetchStatus(); lastFetch = time; }
+            if (time - lastActivityFetch > ACTIVITY_FETCH_INTERVAL) { loadLoopActivity(); lastActivityFetch = time; }
             if (time - lastGuestAgentsFetch > GUEST_AGENTS_FETCH_INTERVAL) { fetchGuestAgents(); lastGuestAgentsFetch = time; }
 
             // 兜底：非 idle 时确保机房动画在播，idle 时静止

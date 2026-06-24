@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI Agent Office — Live</title>
+<title>AI Agent Software Team — Live</title>
 <style>
   :root{
     --card:#1c2030; --line:#2a2f40; --panel:#191c26;
@@ -51,11 +51,41 @@
 
   .feedwrap{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); padding:16px 18px;}
   .feedhead{font-size:13px; color:var(--muted); margin-bottom:10px; display:flex; align-items:center; gap:7px; font-weight:600;}
-  .feed{max-height:230px; overflow:auto; display:flex; flex-direction:column; gap:7px;}
-  .ln{font-size:13.5px; display:flex; gap:9px; align-items:baseline;}
-  .ln .t{color:var(--dim); font-variant-numeric:tabular-nums; font-size:11px; min-width:42px;}
-  .ln .who{font-weight:700;} .ln .ms{color:var(--muted);}
-  .ln .proj{font-size:10.5px; font-weight:700; color:#0b0d12; background:var(--work); padding:1px 6px; border-radius:999px; white-space:nowrap;}
+  .feed{max-height:560px; overflow:auto; display:flex; flex-direction:column; gap:10px;}
+  .ln{font-size:14px; display:flex; flex-direction:column; gap:5px; padding:10px 12px; border-radius:10px; background:#12151f; border:1px solid var(--line);}
+  .ln.say{border-left:3px solid var(--done);}
+  .ln.report-kind{border-left:3px solid #a78bfa;}
+  .ln .ms code.ic{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:#0f121b;padding:1px 5px;border-radius:4px;color:#c4b5fd;}
+  .ln .ms .warn{color:#fbbf24;margin:4px 0;}
+  .ln .ms .gate{color:#f472b6;font-weight:600;margin:4px 0;}
+  .ln .ms .preblock{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.45;background:#0a0c12;border:1px solid var(--line);border-radius:8px;padding:10px;margin:6px 0;overflow-x:auto;white-space:pre-wrap;color:#e2e8f0;}
+  .ln .ms hr.sep{border:none;border-top:1px solid var(--line);margin:8px 0;}
+  .tag.report{color:#c4b5fd;border-color:#7c3aed;}
+  .tag.wait{color:#fcd34d;border-color:#d97706;}
+  .ln .act-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;}
+  .ln .ms{color:var(--text); line-height:1.55; white-space:pre-wrap; word-break:break-word; font-size:13.5px;}
+  .ln .proj{font-size:10px; font-weight:700; color:#0b0d12; background:var(--work); padding:1px 6px; border-radius:999px;}
+  .tag{font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted);}
+  .tag.delegate{color:#c4b5fd; border-color:#6d28d9;}
+  .tag.skill{color:#6ee7b7; border-color:#059669;}
+  .tag.cmd{color:#93c5fd; border-color:#2563eb;}
+  .tag.system{color:#fcd34d; border-color:#d97706;}
+  .tag.state{color:#fdba74; border-color:#ea580c;}
+  .tag.say,.tag.report,.tag.test{color:#6ee7b7; border-color:#059669;}
+  .tag.file{color:#f9a8d4; border-color:#db2777;}
+  .tag.create{color:#6ee7b7; border-color:#059669;}
+  .tag.edit{color:#93c5fd; border-color:#2563eb;}
+  .tag.delete{color:#fca5a5; border-color:#dc2626;}
+  .tag.rename{color:#fcd34d; border-color:#d97706;}
+  .ln.file-kind{border-left:3px solid #f472b6;}
+  .ln .file-path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#c4b5fd;word-break:break-all;}
+  .ln .file-detail{font-size:12px;color:var(--muted);margin-top:2px;}
+  .ln .file-lines{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:#6ee7b7;}
+  .desk .curfile{text-align:center;font-size:11px;color:#c4b5fd;margin-top:4px;min-height:14px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;}
+  .ln .row1{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .ln .t{color:var(--dim); font-variant-numeric:tabular-nums; font-size:11px;}
+  .ln .who{font-weight:700;}
+  .ln .meta{font-size:12px; color:var(--muted); line-height:1.4;}
   .empty{color:var(--dim); font-size:13px;}
   @media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}.metrics{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -64,7 +94,7 @@
 <div class="wrap">
   <div class="top">
     <div>
-      <div class="title"><span class="logo">🏢</span> AI Agent Office <span style="font-size:12px;font-weight:600;color:var(--done);border:1px solid var(--done);padding:2px 8px;border-radius:999px;">LIVE</span></div>
+      <div class="title"><span class="logo">🏢</span> AI Agent Software Team <span style="font-size:12px;font-weight:600;color:var(--done);border:1px solid var(--done);padding:2px 8px;border-radius:999px;">LIVE</span></div>
       <div class="sub" id="task">— กำลังเชื่อมต่อ status.json —</div>
     </div>
     <div class="conn" id="conn"><span class="dot"></span><span id="conn-txt">connecting…</span></div>
@@ -80,8 +110,8 @@
   <div class="grid" id="grid"></div>
 
   <div class="feedwrap">
-    <div class="feedhead">⚡ Activity feed</div>
-    <div class="feed" id="feed"><div class="empty">ยังไม่มีกิจกรรม — รัน agent ใน Claude Code แล้วให้มันอัปเดต status.json</div></div>
+    <div class="feedhead">⚡ Activity feed <span style="font-weight:500;color:var(--dim)">· file · delegate · skill · cmd</span></div>
+    <div class="feed" id="feed"><div class="empty">ยังไม่มีกิจกรรม — รัน agent แล้วให้ loop-orch เรียก dash.sh delegate/skill/cmd</div></div>
   </div>
 </div>
 
@@ -158,14 +188,63 @@ team.forEach(m=>{
   d.innerHTML = `<span class="zzz">💤</span>${avatar(m.id)}
     <div class="nm">${m.name}</div><div class="rl">${m.role}</div>
     <div class="badge"><span class="pulse"></span><span data-st>ว่าง</span></div>
-    <div class="task" data-task>— รออยู่ที่โต๊ะ —</div>`;
+    <div class="task" data-task>— รออยู่ที่โต๊ะ —</div>
+    <div class="curfile" data-file></div>`;
   grid.appendChild(d);
-  cards[m.id]={el:d, st:d.querySelector('[data-st]'), task:d.querySelector('[data-task]')};
+  cards[m.id]={el:d, st:d.querySelector('[data-st]'), task:d.querySelector('[data-task]'), file:d.querySelector('[data-file]')};
 });
 
 const COL={work:'var(--work)',done:'var(--done)',fix:'var(--fix)',idle:'var(--idle)'};
 const LABEL={work:'กำลังทำงาน',done:'เสร็จ',fix:'แก้บั๊ก',idle:'ว่าง'};
 const $ = id => document.getElementById(id);
+
+const NAME = Object.fromEntries(team.map(m => [m.id, m.name]));
+const TO_NAME = id => NAME[id] || id;
+
+function formatMsg(text){
+  const raw = String(text || '');
+  if (/[│┌├└┼─┬┴]/.test(raw)) {
+    return '<pre class="preblock">' + escapeHtml(raw) + '</pre>';
+  }
+  let s = escapeHtml(raw);
+  s = s.replace(/`([^`\n]+)`/g, '<code class="ic">$1</code>');
+  s = s.replace(/^⚠️ (.+)$/gm, '<div class="warn">⚠️ $1</div>');
+  s = s.replace(/^▎ (.+)$/gm, '<div class="gate">▎ $1</div>');
+  s = s.replace(/^---$/gm, '<hr class="sep">');
+  return s.replace(/\n/g, '<br>');
+}
+
+const FILE_VERB = { create: 'สร้าง', edit: 'แก้', delete: 'ลบ', rename: 'ย้าย' };
+
+function renderLogLine(l){
+  const name = NAME[l.who] || l.who;
+  const tags = [];
+  if (l.kind) tags.push(`<span class="tag ${escapeHtml(l.kind)}">${escapeHtml(l.kind)}</span>`);
+  if (l.action) tags.push(`<span class="tag ${escapeHtml(l.action)}">${escapeHtml(FILE_VERB[l.action] || l.action)}</span>`);
+  if (l.to) tags.push(`<span class="tag delegate">→ ${escapeHtml(TO_NAME(l.to))}</span>`);
+  if (l.skill) tags.push(`<span class="tag skill">${escapeHtml(l.skill)}</span>`);
+  const meta = [];
+  if (l.cmd) meta.push('cmd: ' + escapeHtml(l.cmd));
+  if (l.activity && l.activity !== l.title && l.kind !== 'file') meta.push(escapeHtml(l.activity));
+  const proj = l.project ? `<span class="proj">${escapeHtml(l.project)}</span>` : '';
+  const sayCls = (l.kind === 'say' || l.kind === 'report' || l.kind === 'test') ? ' say' : '';
+  const reportCls = l.kind === 'report' ? ' report-kind' : '';
+  const fileCls = l.kind === 'file' ? ' file-kind' : '';
+  const title = l.title ? `<div class="act-title">${escapeHtml(l.title)}</div>` : '';
+  let body = '';
+  if (l.kind === 'file' && l.file) {
+    body = `<div class="file-path">${escapeHtml(l.file)}</div>`;
+    if (l.detail) body += `<div class="file-detail">${formatMsg(l.detail)}</div>`;
+    if (l.lines) body += `<div class="file-lines">${escapeHtml(l.lines)}</div>`;
+  } else {
+    body = `<div class="ms">${formatMsg(l.msg)}</div>`;
+  }
+  return `<div class="ln${sayCls}${reportCls}${fileCls}">
+    <div class="row1"><span class="t">${l.t||''}</span>${proj}<span class="who">${escapeHtml(name)}</span>${tags.join(' ')}</div>
+    ${title}${body}
+    ${meta.length ? `<div class="meta">${meta.join(' · ')}</div>` : ''}
+  </div>`;
+}
 
 function render(s){
   const proj = s.project ? '📁 ' + s.project + ' · ' : '';
@@ -181,20 +260,17 @@ function render(s){
     c.st.textContent = LABEL[st]; c.st.style.color = COL[st];
     c.task.textContent = a.task || (st==='idle' ? '— รออยู่ที่โต๊ะ —' : '');
     c.task.style.color = st==='idle' ? 'var(--muted)' : 'var(--text)';
+    if (c.file) c.file.textContent = (st==='work'||st==='fix') && a.file ? a.file : '';
     if(st==='work'||st==='fix') w++; else if(st==='done') d++; else i++;
   });
   $('m-work').textContent=w; $('m-idle').textContent=i; $('m-done').textContent=d; $('m-loop').textContent=s.loop||1;
 
   const feed = $('feed');
   if(s.log && s.log.length){
-    feed.innerHTML = s.log.slice(-80).map(l=>{
-      const name = (team.find(t=>t.id===l.who)||{}).name || l.who;
-      const proj = l.project ? `<span class="proj">${escapeHtml(l.project)}</span> ` : '';
-      return `<div class="ln"><span class="t">${l.t||''}</span><span>${proj}<span class="who">${name}</span> <span class="ms">${escapeHtml(l.msg)}</span></span></div>`;
-    }).join('');
-    feed.scrollTop = feed.scrollHeight;
+    feed.innerHTML = s.log.slice(-250).reverse().map(renderLogLine).join('');
+    feed.scrollTop = 0;
   } else {
-    feed.innerHTML = '<div class="empty">ยังไม่มีกิจกรรม — รัน agent ใน Claude Code แล้วให้มันอัปเดต status.json</div>';
+    feed.innerHTML = '<div class="empty">ยังไม่มีกิจกรรม — รัน agent แล้วให้ loop-orch เรียก dash.sh delegate/skill/cmd</div>';
   }
 }
 function escapeHtml(x){return String(x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
