@@ -24,12 +24,9 @@ if [ ! -d "$DASH" ]; then
   exit 1
 fi
 
-# Project name for this call: local loop.config.json (cwd) if present, else "(blueprint)".
-project=""
-if [ -f "loop.config.json" ]; then
-  project="$(node "$SELF_ROOT/tools/cfg.js" get project 2>/dev/null || true)"
-fi
-[ -n "$project" ] || project="(unknown)"
+# Project name: walk cwd for loop.config.json, then Base/.active-project — never "(unknown)".
+project="$(node "$SELF_ROOT/tools/resolve-project.js" 2>/dev/null || true)"
+project="${project//$'\n'/}"
 
 cmd="${1:-}"
 case "$cmd" in

@@ -13,9 +13,9 @@ printf '%s\n' "$ROOT" > "$HOME/.loop-base"
 zsh tools/sync-agents.sh
 
 if [ "${DEPLOY_SKIP_CC_HOOKS:-}" != 1 ]; then
-  zsh tools/install-cc-hooks.sh
+  zsh tools/install-dash-hooks.sh
 else
-  echo "  (skipped Claude Code hooks — DEPLOY_SKIP_CC_HOOKS=1)"
+  echo "  (skipped dashboard hooks — DEPLOY_SKIP_CC_HOOKS=1)"
 fi
 
 if [ "${DEPLOY_SKIP_L3_HOOKS:-}" != 1 ]; then

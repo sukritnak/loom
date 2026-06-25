@@ -4,9 +4,10 @@
 # Usage: zsh tools/install-cc-hooks.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BRIDGE="$ROOT/agent-dashboard/cc-dash-bridge.js"
+BRIDGE="$ROOT/agent-dashboard/dash-bridge.js"
+CC_BRIDGE="$ROOT/agent-dashboard/cc-dash-bridge.js"
 SETTINGS="$HOME/.claude/settings.json"
-chmod +x "$BRIDGE"
+chmod +x "$BRIDGE" "$CC_BRIDGE"
 
 node -e "
 const fs = require('fs');
@@ -26,7 +27,7 @@ const loomHooks = {
 let s = {};
 try { s = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch (e) {}
 s.hooks = s.hooks || {};
-const marker = 'cc-dash-bridge.js';
+const marker = 'dash-bridge.js';
 function hasBridge(arr) {
   return Array.isArray(arr) && arr.some(b =>
     (b.hooks || []).some(h => String(h.command || '').includes(marker))

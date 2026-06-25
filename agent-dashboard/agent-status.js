@@ -32,6 +32,7 @@
 const fs = require('fs');
 const path = require('path');
 const { skillLabel, cmdLabel } = require('./capability-labels');
+const { cleanProject, resolveProject, resolveControlDir } = require(path.join(__dirname, '../tools/resolve-project.js'));
 
 const FILE = path.join(__dirname, 'status.json');
 const ARCHIVE_DIR = path.join(__dirname, 'log-archive');
@@ -39,7 +40,7 @@ const IDS = ['orch', 'pm', 'design', 'be', 'besr', 'fe', 'feanim', 'qa'];
 const STATES = ['idle', 'work', 'fix', 'done'];
 const META_KEYS = ['kind', 'to', 'skill', 'cmd', 'activity', 'title', 'speech', 'file', 'action', 'detail', 'lines'];
 const FILE_ACTIONS = ['create', 'edit', 'delete', 'rename'];
-const PROJECT = process.env.LOOP_PROJECT || '';
+const PROJECT = cleanProject(process.env.LOOP_PROJECT || '');
 const LOG_CAP = 400; // ponytail: rolling in-memory feed; older lines → log-archive/
 const MSG_CAP = 12000; // max chars per say/report line
 
@@ -114,9 +115,10 @@ function pushLog(s, who, msg, meta = {}) {
   const entry = {
     t: hhmm(), at: new Date().toISOString(), who,
     msg: body.length > MSG_CAP ? body.slice(0, MSG_CAP) + '\n…(truncated)' : body,
-    project: s.project || PROJECT || '',
     ...pickMeta(meta),
   };
+  const proj = cleanProject(s.project || PROJECT);
+  if (proj) entry.project = proj;
   s.log.push(entry);
   if (s.log.length > LOG_CAP) s.log = s.log.slice(-LOG_CAP);
 }

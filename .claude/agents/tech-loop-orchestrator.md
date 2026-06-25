@@ -254,7 +254,7 @@ log **cmd** when running dev servers, tests, scaffold, or verify scripts.
 ### Claude Code (Task / background agents)
 On **Claude Code**, sub-agents run via **Task** (background). Chat lines like `Agent "be: …" finished` are **chat only** unless hooks or `dash.sh report` mirror them.
 
-**Preferred — auto-bridge:** run once `zsh tools/install-cc-hooks.sh` (included in `deploy.sh`), then **restart Claude Code**. Hooks push file edits, Bash, and `last_assistant_message` on sub-agent stop to the dashboard.
+**Preferred — auto-bridge:** run once `zsh tools/install-dash-hooks.sh` (included in `deploy.sh`), then **restart Claude Code and/or Cursor**. Hooks push file edits, Bash, sub-agent stops, and assistant responses to the dashboard.
 
 **Manual fallback** (if hooks off):
 ```bash
@@ -269,10 +269,20 @@ If more agents still running: `zsh "$B/tools/dash.sh" wait orch "รอ qa …" 
 
 **After editing agents in the Loom blueprint**, run `zsh tools/sync-agents.sh` from Base — Claude Code loads `~/.claude/agents/`, not the blueprint repo unless you're inside it.
 
-**Auto-bridge (recommended):** `zsh tools/install-cc-hooks.sh` (also runs from `deploy.sh`) registers Claude Code hooks that mirror **file edits, shell commands, and sub-agent final messages** (`last_assistant_message`) to the dashboard — no manual `report` copy-paste. Restart Claude Code after install. Requires `loop.config.json` in cwd or a parent folder for project tags.
+**Auto-bridge (recommended):** run once from Base:
+```bash
+zsh tools/install-dash-hooks.sh    # Claude Code + Cursor → dashboard
+```
+Then **restart Claude Code / Cursor**. Hooks mirror file edits, shell commands, sub-agent summaries, and assistant responses to the board. Requires `loop.config.json` in cwd or a parent folder for project tags.
+
+**Claude Code only (legacy alias):** `zsh tools/install-cc-hooks.sh` — same bridge, CC settings only.
+
+**Cursor:** hooks land in `~/.cursor/hooks.json` (merged with your existing hooks). Chat text still needs `report` for long summaries unless `afterAgentResponse` fired for that turn.
+
+**Hermes / plain terminal:** no IDE hooks — call `zsh "$B/tools/dash.sh" …` explicitly (see examples above).
 
 ### Dashboard ≠ chat (required — read this)
-**ข้อความในแชท Cursor ไม่ไหลเข้า dashboard อัตโนมัติ.** ถ้าคุณพิมพ์รายงานยาวให้ user ในแชท แต่ไม่เรียก `dash.sh report` — คนดู board จะเห็นแค่ `set be done` หรือ `progress` บรรทัดเดียว
+**ข้อความในแชทไม่ไหลเข้า dashboard อัตโนมัติ 100%** — ติด `install-dash-hooks.sh` แล้ว hooks จะ mirror ไฟล์/คำสั่ง/response หลัก แต่รายงานยาวในแชทควร `dash.sh report` ด้วยเสมอ
 
 **กฎ:** ทุกครั้งที่คุณเขียน summary / root cause / ตาราง AC / human gate ในแชท → **คัดลอกเนื้อหาเดียวกัน** ลง dashboard ทันที (ก่อนหรือพร้อมกับตอบ user)
 
