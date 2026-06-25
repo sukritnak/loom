@@ -2107,15 +2107,15 @@
     <div id="asset-drawer-backdrop" onclick="toggleAssetDrawer(false)"></div>
     <aside id="asset-drawer">
         <div id="asset-drawer-header">
-            <span>装修房间 · 资产侧边栏</span>
-            <button id="btn-close-drawer" onclick="toggleAssetDrawer(false)">关闭</button>
+            <span>Decorate Room · Asset Sidebar</span>
+            <button id="btn-close-drawer" onclick="toggleAssetDrawer(false)">Close</button>
         </div>
         <div id="asset-drawer-body">
             <div id="asset-auth-gate" class="asset-preview-box">
-                <div class="asset-preview-title">请输入装修验证码</div>
+                <div class="asset-preview-title">Enter Decor Passcode</div>
                 <div class="asset-toolbar">
-                    <input id="asset-pass-input" type="password" placeholder="输入验证码" />
-                    <button onclick="unlockAssetDrawer()">验证</button>
+                    <input id="asset-pass-input" type="password" placeholder="Enter passcode" />
+                    <button onclick="unlockAssetDrawer()">Verify</button>
                 </div>
                 <div id="asset-auth-msg" class="asset-sub"></div>
             </div>
@@ -2123,64 +2123,64 @@
             <div id="asset-main-content" style="display:none;">
                 <div id="asset-move-panel">
                     <div class="asset-toolbar" id="asset-move-row">
-                        <button id="btn-move-house" class="btn-move" onclick="generateRpgBackground()">📦 搬新家</button>
-                        <button id="btn-back-home" class="btn-home" onclick="restoreHomeBackground()">🐚 回老家</button>
+                        <button id="btn-move-house" class="btn-move" onclick="generateRpgBackground()">📦 New Home</button>
+                        <button id="btn-back-home" class="btn-home" onclick="restoreHomeBackground()">🐚 Go Home</button>
                     </div>
                     <div class="asset-toolbar" id="asset-broker-row">
-                        <button class="btn-broker" onclick="toggleBrokerPanel()">🤝 找中介</button>
-                        <button id="btn-diy" class="btn-diy" onclick="toggleManualPanel()">🪚 自己装</button>
+                        <button class="btn-broker" onclick="toggleBrokerPanel()">🎨 Custom Style</button>
+                        <button id="btn-diy" class="btn-diy" onclick="toggleManualPanel()">🪚 DIY</button>
                     </div>
                     <div id="asset-move-result" class="asset-sub" style="margin-top:4px; margin-bottom:6px;"></div>
                     <div id="asset-broker-panel">
-                        <div class="asset-sub" style="margin-bottom:6px;">写你的风格主题（严格保持原始房间结构，只改变视觉风格）</div>
-                        <textarea id="asset-broker-prompt" placeholder="例如：像素风赛博东京夜景，霓虹灯、雨夜地面反光、蓝紫主色"></textarea>
+                        <div class="asset-sub" style="margin-bottom:6px;">Describe your theme (colors, mood, materials). Room layout stays the same.</div>
+                        <textarea id="asset-broker-prompt" placeholder="e.g. cat office, ocean cabin, cyberpunk neon, cozy library…"></textarea>
                         <div class="asset-toolbar" style="margin-top:6px; gap:8px; align-items:center; justify-content:flex-start;">
-                            <span id="speed-mode-label" class="asset-sub" style="min-width:62px;">生成模式</span>
+                            <span id="speed-mode-label" class="asset-sub" style="min-width:62px;">Render Mode</span>
                             <button id="speed-fast-btn" type="button" onclick="setSpeedMode('fast')" style="background:#22c55e;color:#052e16;border-color:#16a34a;">🍌2</button>
                             <button id="speed-quality-btn" type="button" onclick="setSpeedMode('quality')" style="background:#334155;color:#e5e7eb;border-color:#475569;">🍌Pro</button>
                         </div>
                         <details id="asset-gemini-panel" style="margin-top:6px; border:0; border-top:1px solid rgba(148,163,184,.18); border-radius:0; padding:8px 0 0; background:transparent;">
-                            <summary id="gemini-panel-summary" style="cursor:pointer; color:#cbd5e1;">🔐 API 设置（可折叠）</summary>
+                            <summary id="gemini-panel-summary" style="cursor:pointer; color:#cbd5e1;">🔐 API Settings (collapsible)</summary>
                             <div id="asset-gemini-config" style="display:block; margin-top:6px;">
-                                <div id="gemini-config-hint" class="asset-sub" style="margin-bottom:4px;">可选：填写你的生图 API Key（留空不影响基础功能）</div>
-                                <div class="asset-sub" style="margin-bottom:6px;"><a id="gemini-api-doc-link" href="https://ai.google.dev/gemini-api/docs/api-key?hl=zh-cn" target="_blank" rel="noopener noreferrer">📘 如何申请 Google API Key</a></div>
+                                <div id="gemini-config-hint" class="asset-sub" style="margin-bottom:4px;">Optional: set your image API key (base features work without it)</div>
+                                <div class="asset-sub" style="margin-bottom:6px;"><a id="gemini-api-doc-link" href="https://ai.google.dev/gemini-api/docs/api-key" target="_blank" rel="noopener noreferrer">📘 How to get a Google API Key</a></div>
                                 <div id="gemini-mask-status" class="asset-sub" style="margin-bottom:6px; color:#a7f3d0;"></div>
                                 <div class="asset-toolbar" style="gap:6px; flex-wrap:wrap;">
-                                    <input id="gemini-api-key-input" type="password" placeholder="粘贴 GEMINI_API_KEY（不会回显）" style="min-width:220px; flex:1;" autocomplete="new-password" />
-                                    <button id="btn-save-gemini-key" onclick="saveGeminiConfigFromUI()">保存 Key</button>
+                                    <input id="gemini-api-key-input" type="password" placeholder="Paste GEMINI_API_KEY (input hidden)" style="min-width:220px; flex:1;" autocomplete="new-password" />
+                                    <button id="btn-save-gemini-key" onclick="saveGeminiConfigFromUI()">Save Key</button>
                                 </div>
                                 <div id="gemini-config-msg" class="asset-sub" style="margin-top:4px;"></div>
                             </div>
                         </details>
                         <div id="asset-broker-actions">
-                            <button onclick="generateCustomRpgBackground()">按中介方案搬家</button>
+                            <button onclick="generateCustomRpgBackground()">Generate Room</button>
                         </div>
                     </div>
                 </div>
 
                 <div id="asset-home-actions-panel" class="asset-preview-box" style="margin-bottom:10px;">
                     <div class="asset-toolbar" style="margin-bottom:6px; gap:8px;">
-                        <button id="btn-back-last-bg" class="btn-home" onclick="restoreLastGeneratedBackground()">↩️ 回上一个家</button>
-                        <button id="btn-favorite-home" class="btn-home" onclick="saveCurrentHomeFavorite()">⭐ 收藏这个家</button>
+                        <button id="btn-back-last-bg" class="btn-home" onclick="restoreLastGeneratedBackground()">↩️ Last One</button>
+                        <button id="btn-favorite-home" class="btn-home" onclick="saveCurrentHomeFavorite()">⭐ Save This Home</button>
                     </div>
                     <details id="asset-home-favorites" style="margin:0;">
-                        <summary id="asset-home-favorites-title" class="asset-preview-title">🏠 收藏的家</summary>
+                        <summary id="asset-home-favorites-title" class="asset-preview-title">🏠 Saved Homes</summary>
                         <div id="asset-home-favorites-list" class="home-fav-list"></div>
                     </details>
                 </div>
 
                 <div id="asset-manual-panel" style="display:flex; flex-direction:column; flex:1; min-height:0;">
                     <div class="asset-toolbar">
-                        <input id="asset-search" placeholder="搜索资产名（如 desk / sofa / star）" oninput="renderAssetDrawerList()" />
+                        <input id="asset-search" placeholder="Search assets (desk / sofa / star)" oninput="renderAssetDrawerList()" />
                     </div>
                     <div id="asset-list"></div>
                     <div id="asset-upload-panel">
                         <input id="asset-upload-file" type="file" accept="image/*" style="display:none;" />
                         <div class="asset-upload-grid" style="margin-top:0; margin-bottom:6px; gap:8px;">
-                            <button id="asset-choose-btn" onclick="openInlineAssetUploader()">上传素材</button>
-                            <button id="asset-commit-refresh-btn" onclick="commitAndRefresh()" disabled style="opacity:.55;">确认刷新</button>
-                            <button id="asset-reset-default-btn" onclick="resetSelectedAssetToDefault()" disabled style="opacity:.55;">重置默认</button>
-                            <button id="asset-restore-prev-btn" onclick="restoreSelectedAssetPrev()" disabled style="opacity:.55;">恢复上版</button>
+                            <button id="asset-choose-btn" onclick="openInlineAssetUploader()">Upload Asset</button>
+                            <button id="asset-commit-refresh-btn" onclick="commitAndRefresh()" disabled style="opacity:.55;">Apply Refresh</button>
+                            <button id="asset-reset-default-btn" onclick="resetSelectedAssetToDefault()" disabled style="opacity:.55;">Reset Default</button>
+                            <button id="asset-restore-prev-btn" onclick="restoreSelectedAssetPrev()" disabled style="opacity:.55;">Restore Prev</button>
                         </div>
                         <div id="asset-upload-result" class="asset-sub"></div>
                     </div>
@@ -2204,16 +2204,45 @@
                 hideDrawer: '👁 Hide Drawer', showDrawer: '👁 Show Drawer',
                 assetHide: 'Hide', assetShow: 'Show',
                 resetToDefault: 'Reset to Default', restorePrevAsset: 'Use Previous',
-                btnMove: '📦 New Home', btnHome: '🐚 Go Home', btnHomeLast: '↩️ Last One', btnHomeFavorite: '⭐ Save This Home', btnBroker: '🤝 Broker', btnDIY: '🪚 DIY', btnBrokerGo: 'Follow Broker',
+                btnMove: '📦 New Home', btnHome: '🐚 Go Home', btnHomeLast: '↩️ Last One', btnHomeFavorite: '⭐ Save This Home', btnBroker: '🎨 Custom Style', btnDIY: '🪚 DIY', btnBrokerGo: 'Generate Room',
                 homeFavTitle: '🏠 Saved Homes', homeFavEmpty: 'No saved homes yet. Tap “⭐ Save This Home” first.', homeFavApply: 'Apply to Current Map', homeFavDelete: 'Delete', homeFavSaved: '✅ Current map saved', homeFavApplied: '✅ Applied saved home', homeFavDeleted: '🗑️ Saved home deleted',
-                brokerHint: 'What kind of house would you recommend for Lobster?',
-                brokerPromptPh: 'e.g. Forbidden City theme, Monet style, dungeon theme, Terracotta Warriors theme...',
-                brokerNeedPrompt: 'Please enter broker style prompt first',
-                brokerGenerating: '🏘️ Generating room background from broker plan, please wait (20-90s)...',
-                brokerDone: '✅ Broker plan applied and background replaced, refreshing room...',
+                brokerHint: 'Describe your theme (colors, mood, materials). Room layout stays the same.',
+                brokerPromptPh: 'e.g. cat office, ocean cabin, cyberpunk neon, cozy library…',
+                brokerNeedPrompt: 'Please enter a style description first',
+                brokerGenerating: '🏘️ Generating room from your description (20–90s)…',
+                brokerDone: '✅ New background applied, refreshing room…',
                 moveSuccess: '✅ Move successful!',
                 brokerMissingKey: '❌ Generation failed: missing GEMINI API key. Fill it below and retry.',
                 geminiPanelTitle: '🔐 API Settings (collapsible)', geminiHint: 'Optional: set your image API key (base features work without it)', geminiApiDoc: '📘 How to get a Google API Key', geminiInputPh: 'Paste GEMINI_API_KEY (input hidden)', geminiSaveKey: 'Save Key', geminiMaskNoKey: 'Current: no key configured', geminiMaskHasKey: 'Configured key:',
+                geminiNeedKey: 'Please enter a valid API Key', geminiSaveFail: 'Save failed: {msg}', geminiSaved: '✅ Saved. You can click New Home or Custom Style again.',
+                authNeedPass: '❌ Please enter passcode', authOk: '✅ Verified', authWrong: '❌ Wrong passcode', authFail: '❌ Verification failed: {error}',
+                genPollWait: '{msg} (waited {elapsed}s){dots}', genTimeout: 'Generation timed out (>5 min). Please retry.',
+                genKeyRevoked: '❌ API Key revoked or leaked — rotate key and retry',
+                genModelUnavailable: '❌ Model unavailable on this channel — switch model and retry', genModelDetail: '\n\nDetail: {detail}',
+                genFail: '❌ Generation failed: {msg}', genPartialRefreshFail: '✅ Background replaced (partial refresh failed — reload page)', genDoneRefresh: '✅ Background replaced, refreshing room…',
+                brokerWorking: 'Generating from your style description…', brokerGenProgress: '🏘️ Generating room background…',
+                moveWorking: 'Moving to a new home…', movePacking: '🧳 Packing up, please wait (~30–120s)…', moveGenProgress: '🧳 Generating new room…',
+                homeRestoreConfirm: '⚠️ Go Home will overwrite your custom room background (restore from bg-history).\nContinue?',
+                homeRestoreCancelled: 'Cancelled', homeRestoreWorking: 'Returning home…', homeRestoreProgress: '🏡 Restoring original background…',
+                homeRestoreFail: '❌ Restore failed: {msg}', homeRestoreDone: '✅ Original background restored',
+                homeRestorePartial: '✅ Original background restored (partial refresh failed — reload page)',
+                lastBgConfirm: '⚠️ Revert to the last generated room background?', lastBgCancelled: 'Revert cancelled',
+                lastBgWorking: 'Reverting to previous background…', lastBgProgress: '↩️ Reverting to last generated background…',
+                lastBgFail: '❌ Revert failed: {msg}', lastBgDone: '✅ Reverted to previous background',
+                lastBgPartial: '✅ Reverted (partial refresh failed — reload page)', lastBgState: 'Reverted to previous background',
+                homeFavLoadFail: '❌ Failed to load saved homes: {msg}', homeFavSaveFail: '❌ Save failed: {msg}',
+                homeFavApplyWorking: 'Applying saved home…', homeFavApplyFail: '❌ Apply failed: {msg}',
+                homeFavApplyPartial: '{msg} (partial refresh failed — reload page)', homeFavApplyState: 'Applied saved home',
+                homeFavDeleteConfirm: 'Delete this saved home? This cannot be undone.', homeFavDeleteFail: '❌ Delete failed: {msg}',
+                assetShown: '✅ Shown: {path}', assetHidden: '🙈 Hidden: {path}', assetListEmpty: 'No assets yet (try Refresh)', assetHiddenTag: ' · hidden',
+                assetLoadedSummary: 'Loaded assets: {count} · Scene captured: {scene}', assetLoadFail: '❌ Asset load failed — try Refresh',
+                assetSelectFirst: 'Please select an asset first', assetSelectPathFirst: 'Please select an asset path first',
+                assetUploading: '⏳ Uploading and replacing, please wait...', assetUpdateFail: '❌ Update failed: {msg}',
+                assetUploadedAnim: '✅ Uploaded (anim→{type}): {path} · {frames} frames {w}x{h}', assetUploaded: '✅ Uploaded: {path}',
+                assetUploadedRefresh: ' · ✅ Uploaded and refreshed', assetConfirmedRefresh: '✅ Confirmed and refreshed',
+                assetResetConfirm: '⚠️ Reset {path} to default asset?', assetResetFail: '❌ Reset failed: {msg}', assetResetDone: '✅ Reset to default: {path}',
+                assetRestoreConfirm: '⚠️ Restore {path} to previous version?', assetRestoreFail: '❌ Restore failed: {msg}', assetRestoreDone: '✅ Restored previous version: {path}',
+                fetchNotJson: 'API did not return JSON ({status}): {brief}', statusWorking: 'Working',
                 speedModeLabel: 'Render Mode', speedFast: '🍌2', speedQuality: '🍌Pro',
                 searchPlaceholder: 'Search assets (desk / sofa / star)', loaded: 'Loaded', allAssets: 'All Assets',
                 chooseImage: 'Upload Asset', confirmUpload: 'Apply Refresh', resetToDefault: 'Reset Default', restorePrevAsset: 'Restore Prev', uploadPending: 'Pending Upload', uploadTarget: 'Target',
@@ -2222,10 +2251,20 @@
                 showCoords: 'Show Coords', hideCoords: 'Hide Coords', moveView: 'Pan View', lockView: 'Lock View',
                 themeDark: '🌙 Dark', themeLight: '☀️ Light',
                 memoTitle: 'YESTERDAY NOTES', activityTitle: '⚡ Loop Activity', activitySourceLive: 'Live', activityArchiveEmpty: '(no archives)', activityArchiveCount: 'entries', activityWidthHalf: '◧ Half', activityWidthDefault: '◨ Default', activityClearBtn: 'Clear log', activityClearConfirmTitle: 'Archive live log?', activityClearConfirmBody: 'Move {count} message(s) to Archived (log-archive/) and clear the live feed. You can view them again from the dropdown.', activityClearConfirmOk: 'Move to Archived', activityClearConfirmCancel: 'Cancel', activityViewBtn: 'View', activityModalClose: 'Close', activityModalPrev: '← Prev', activityModalNext: 'Next →', guestTitle: 'VISITOR LIST', officeTitle: 'Zenji Monmin Office',
+                activityClearFail: 'Clear log failed: {msg}',
+                guestLeft: '{name} left the room', guestLeftDemo: '{name} left the room (demo)',
+                guestLeaveFail: 'Leave failed: {msg}', guestRequestFail: 'Request failed: {error}',
+                guestApproved: 'Visitor approved', guestApproveFail: 'Approve failed: {msg}',
+                guestRejected: 'Visitor rejected', guestRejectFail: 'Reject failed: {msg}',
                 loadingOffice: 'Loading Star’s pixel office...'
         };
 
         function t(key) { return I18N[key] || key; }
+        function tf(key, vars) {
+            let s = t(key);
+            if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(new RegExp('\\{' + k + '\\}', 'g'), String(v ?? ''));
+            return s;
+        }
         function renderBootLoadingText(percent) {
             const loadingEl = document.getElementById('loading-text');
             if (!loadingEl) return;
@@ -2765,7 +2804,7 @@
                 await refreshArchivesAfterClear(data);
                 await loadLoopActivity();
             } catch (e) {
-                alert((t('activityClearBtn') || 'Clear log') + ': ' + (e.message || e));
+                alert(tf('activityClearFail', { msg: e.message || e }));
             } finally {
                 if (btn) btn.disabled = false;
                 if (okBtn) okBtn.disabled = false;
@@ -2946,7 +2985,7 @@
             const msg = document.getElementById('asset-auth-msg');
             const val = (input?.value || '').trim();
             if (!val) {
-                if (msg) msg.textContent = '❌ 请输入验证码';
+                if (msg) msg.textContent = t('authNeedPass');
                 return;
             }
             try {
@@ -2958,18 +2997,18 @@
                 const data = await res.json();
                 if (data && data.ok) {
                     assetDrawerAuthed = true;
-                    if (msg) msg.textContent = '✅ 验证通过';
+                    if (msg) msg.textContent = t('authOk');
                     updateAssetAuthUI();
                     await refreshAssetDrawerList();
                     await renderHomeFavorites(false);
                     bindDrawerFileMeta();
                 } else {
                     assetDrawerAuthed = false;
-                    if (msg) msg.textContent = '❌ 验证码错误';
+                    if (msg) msg.textContent = t('authWrong');
                 }
             } catch (e) {
                 assetDrawerAuthed = false;
-                if (msg) msg.textContent = `❌ 验证失败：${e}`;
+                if (msg) msg.textContent = tf('authFail', { error: e });
             }
         }
 
@@ -3058,7 +3097,7 @@
             if (!out) return;
             if (!path) { out.innerHTML = ''; return; }
             const displayName = getAssetDisplayName(path);
-            const line1 = `📌 ${displayName}（${path}）`;
+            const line1 = `📌 ${displayName} (${path})`;
             const line2 = `💡 ${getAssetHelpText(path)}`;
             const line3 = (inScene === false) ? `⚠️ ${t('assetHintNotInScene')}` : '';
             out.innerHTML = [line1, line2, line3]
@@ -3470,7 +3509,7 @@
             setAssetVisible(p, nextVisible);
             renderAssetDrawerList();
             const out = document.getElementById('asset-upload-result');
-            if (out) out.textContent = nextVisible ? `✅ 已显示：${p}` : `🙈 已隐藏：${p}`;
+            if (out) out.textContent = nextVisible ? tf('assetShown', { path: p }) : tf('assetHidden', { path: p });
             if (selectedAssetInfo && selectedAssetInfo.path === p) {
                 if (!nextVisible) clearAssetSelectionUI();
                 else applyScenePreview(p);
@@ -3513,7 +3552,7 @@
             clearAssetThumbTimers();
 
             if (rows.length === 0) {
-                list.innerHTML = '<div class="asset-sub" style="padding:8px">暂无资产（可点“刷新”重试）</div>';
+                list.innerHTML = '<div class="asset-sub" style="padding:8px">' + t('assetListEmpty') + '</div>';
                 return;
             }
 
@@ -3528,7 +3567,7 @@
                     <canvas id="${thumbId}" class="asset-thumb" width="56" height="56"></canvas>
                     <div class="asset-meta">
                         <div class="asset-path">${it.path}</div>
-                        <div class="asset-sub">${displayName} ｜ ${reso}${hidden ? ' ｜ 已隐藏' : ''}</div>
+                        <div class="asset-sub">${displayName} · ${reso}${hidden ? t('assetHiddenTag') : ''}</div>
                     </div>
                     <button class="asset-vis-btn" onclick="toggleAssetVisibility('${(it.path || '').replace(/'/g, "\\'")}', event)">${visEmoji}</button>
                 </div>`;
@@ -3569,15 +3608,15 @@
                 }
 
                 renderAssetDrawerList();
-                if (out) out.textContent = `已加载资产：${assetListData.length} ｜ 场景抓取：${sceneAssetItems.length}`;
+                if (out) out.textContent = tf('assetLoadedSummary', { count: assetListData.length, scene: sceneAssetItems.length });
 
                 if (selectedPath) {
                     updateActiveAssetItem(selectedPath);
                     applyScenePreview(selectedPath);
                 }
             } catch (e) {
-                console.error('加载资产列表失败', e);
-                if (out) out.textContent = '❌ 资产加载失败，请点“刷新”重试';
+                console.error('asset list load failed', e);
+                if (out) out.textContent = t('assetLoadFail');
             }
         }
 
@@ -3599,7 +3638,7 @@
                     return;
                 }
                 const targetLabel = targetPath || '-';
-                const pending = `${t('uploadPending')}：${f.name} ｜ ${formatSizeHuman(f.size)} ｜ ${t('uploadTarget')}：${targetLabel}`;
+                const pending = `${t('uploadPending')}: ${f.name} · ${formatSizeHuman(f.size)} · ${t('uploadTarget')}: ${targetLabel}`;
                 if (targetPath) {
                     const inScene = !!mapAssetPathToSprite(targetPath);
                     const displayName = getAssetDisplayName(targetPath);
@@ -3607,7 +3646,7 @@
                     const warn = inScene ? '' : `⚠️ ${t('assetHintNotInScene')}`;
                     out.innerHTML = [
                         `<p class="hint-p">${pending}</p>`,
-                        `<p class="hint-p">📌 ${displayName}（${targetPath}）</p>`,
+                        `<p class="hint-p">📌 ${displayName} (${targetPath})</p>`,
                         `<p class="hint-p">💡 ${hint}</p>`,
                         warn ? `<p class="hint-p">${warn}</p>` : ''
                     ].filter(Boolean).join('');
@@ -3697,7 +3736,7 @@
             const path = (selectedAssetInfo && selectedAssetInfo.path) ? selectedAssetInfo.path : '';
             const fi = document.getElementById('asset-upload-file');
             const out = document.getElementById('asset-upload-result');
-            if (!path) { out.textContent = '请先选中一个资产路径'; return false; }
+            if (!path) { out.textContent = t('assetSelectPathFirst'); return false; }
             if (!fi.files.length) { return true; } // 允许仅改坐标
             const file = fi.files[0];
             const fd = new FormData();
@@ -3723,19 +3762,22 @@
                 fd.append('pixel_art', '1');
             }
 
-            out.textContent = '⏳ 正在上传并替换，请稍候...';
+            out.textContent = t('assetUploading');
             const res = await fetch('/assets/upload', { method: 'POST', body: fd });
             const data = await res.json();
             if (!data.ok) {
-                out.textContent = `❌ 更新失败：${data.msg || res.status}`;
+                out.textContent = tf('assetUpdateFail', { msg: data.msg || res.status });
                 return false;
             }
 
             if (data.converted) {
                 const toType = data.converted.to || 'spritesheet';
-                out.textContent = `✅ 已上传（动图→${toType}）：${data.path} ｜ ${data.converted.frames}帧 ${data.converted.frame_w}x${data.converted.frame_h}`;
+                out.textContent = tf('assetUploadedAnim', {
+                    type: toType, path: data.path, frames: data.converted.frames,
+                    w: data.converted.frame_w, h: data.converted.frame_h
+                });
             } else {
-                out.textContent = `✅ 已上传：${data.path}`;
+                out.textContent = tf('assetUploaded', { path: data.path });
             }
             return true;
         }
@@ -3749,8 +3791,8 @@
             if (!okUpload) return;
 
             if (out) {
-                if (hasFile) out.textContent += ' ｜ ✅ 已上传并刷新';
-                else out.textContent = '✅ 已确认并刷新';
+                if (hasFile) out.textContent += t('assetUploadedRefresh');
+                else out.textContent = t('assetConfirmedRefresh');
             }
 
             // 刷新前关闭侧边栏，行为与地图替换一致
@@ -3874,8 +3916,8 @@ function toggleBrokerPanel() {
             try { setState('idle', t('moveSuccess').replace('✅ ', '')); } catch (e) {}
         }
 
-        function setWorkingStatus(detail = '工作中') {
-            try { setState('writing', detail); } catch (e) {}
+        function setWorkingStatus(detail) {
+            try { setState('writing', detail || t('statusWorking')); } catch (e) {}
         }
 
         async function ensureGeminiConfigLoaded() {
@@ -3910,7 +3952,7 @@ function toggleBrokerPanel() {
             const msg = document.getElementById('gemini-config-msg');
             const key = (input?.value || '').trim();
             if (!key) {
-                if (msg) msg.textContent = '请输入有效 API Key';
+                if (msg) msg.textContent = t('geminiNeedKey');
                 return;
             }
             try {
@@ -3921,15 +3963,15 @@ function toggleBrokerPanel() {
                 });
                 const data = await res.json();
                 if (!data.ok) {
-                    if (msg) msg.textContent = `保存失败：${data.msg || res.status}`;
+                    if (msg) msg.textContent = tf('geminiSaveFail', { msg: data.msg || res.status });
                     return;
                 }
-                if (msg) msg.textContent = '✅ 已保存，可重新点击搬家/中介';
+                if (msg) msg.textContent = t('geminiSaved');
                 const box = document.getElementById('asset-gemini-config');
                 if (box) box.style.display = 'none';
                 await ensureGeminiConfigLoaded();
             } catch (e) {
-                if (msg) msg.textContent = `保存失败：${e}`;
+                if (msg) msg.textContent = tf('geminiSaveFail', { msg: e });
             }
         }
 
@@ -3968,7 +4010,7 @@ function toggleBrokerPanel() {
                 await new Promise(r => setTimeout(r, pollInterval));
                 dots = (dots + 1) % 4;
                 const elapsed = Math.round((Date.now() - startTime) / 1000);
-                out.textContent = progressMsg + '（已等待 ' + elapsed + '秒）' + '.'.repeat(dots);
+                out.textContent = tf('genPollWait', { msg: progressMsg, elapsed, dots: '.'.repeat(dots) });
                 try {
                     const pollRes = await fetch('/assets/generate-rpg-background/poll?task_id=' + encodeURIComponent(taskId));
                     const pollData = await pollRes.json();
@@ -3979,7 +4021,7 @@ function toggleBrokerPanel() {
                     continue;
                 }
             }
-            return { ok: false, msg: '生图超时（超过5分钟），请重试' };
+            return { ok: false, msg: t('genTimeout') };
         }
 
         function _handleGenError(data, out) {
@@ -3988,20 +4030,20 @@ function toggleBrokerPanel() {
                 const box = document.getElementById('asset-gemini-config');
                 if (box) box.style.display = 'block';
             } else if (data.code === 'API_KEY_REVOKED_OR_LEAKED') {
-                out.textContent = '❌ 当前 API Key 已失效/疑似泄露，请更换新 Key 后重试';
+                out.textContent = t('genKeyRevoked');
                 const box = document.getElementById('asset-gemini-config');
                 if (box) box.style.display = 'block';
             } else if (data.code === 'MODEL_NOT_AVAILABLE') {
-                out.textContent = '❌ 当前模型在此通道不可用，请切换可用模型后重试' + (data.detail ? ('\n\n详情：' + data.detail) : '');
+                out.textContent = t('genModelUnavailable') + (data.detail ? tf('genModelDetail', { detail: data.detail }) : '');
             } else {
-                out.textContent = `❌ 生成失败：${data.msg || 'unknown error'}`;
+                out.textContent = tf('genFail', { msg: data.msg || 'unknown error' });
             }
         }
 
         async function generateCustomRpgBackground() {
             const brokerBtn = document.querySelector('#asset-broker-row .btn-broker');
             flashButtonActive(brokerBtn);
-            setWorkingStatus('正在处理中介装修方案');
+            setWorkingStatus(t('brokerWorking'));
             const out = document.getElementById('asset-move-result') || document.getElementById('asset-upload-result');
             const prompt = (document.getElementById('asset-broker-prompt')?.value || '').trim();
             if (!prompt) {
@@ -4014,7 +4056,7 @@ function toggleBrokerPanel() {
                 const data = await _startAndPollGeneration(
                     { prompt, speed_mode: speedMode },
                     out,
-                    '🏘️ 正在按中介方案生成底图'
+                    t('brokerGenProgress')
                 );
                 if (!data.ok) {
                     _handleGenError(data, out);
@@ -4025,10 +4067,10 @@ function toggleBrokerPanel() {
                 if (ok) {
                     markMoveSuccess(out, brokerBtn);
                 } else {
-                    out.textContent = '✅ 已生成并替换底图（局部刷新失败，可手动刷新页面）';
+                    out.textContent = t('genPartialRefreshFail');
                 }
             } catch (e) {
-                out.textContent = `❌ 生成失败：${e}`;
+                out.textContent = tf('genFail', { msg: e });
             } finally {
                 hideRoomLoadingOverlay();
             }
@@ -4037,29 +4079,29 @@ function toggleBrokerPanel() {
         async function generateRpgBackground() {
             const moveBtn = document.getElementById('btn-move-house');
             flashButtonActive(moveBtn);
-            setWorkingStatus('正在搬新家');
+            setWorkingStatus(t('moveWorking'));
             const out = document.getElementById('asset-move-result') || document.getElementById('asset-upload-result');
             showRoomLoadingOverlay();
-            out.textContent = '🧳 正在打包行李，请稍后（约30~120秒）';
+            out.textContent = t('movePacking');
             try {
                 const data = await _startAndPollGeneration(
                     { speed_mode: speedMode },
                     out,
-                    '🧳 正在生成新房间'
+                    t('moveGenProgress')
                 );
                 if (!data.ok) {
                     _handleGenError(data, out);
                     return;
                 }
-                out.textContent = '✅ 已生成并替换底图，正在刷新房间...';
+                out.textContent = t('genDoneRefresh');
                 const ok = await refreshOfficeBackgroundOnly();
                 if (ok) {
                     markMoveSuccess(out, moveBtn);
                 } else {
-                    out.textContent = '✅ 已生成并替换底图（局部刷新失败，可手动刷新页面）';
+                    out.textContent = t('genPartialRefreshFail');
                 }
             } catch (e) {
-                out.textContent = `❌ 生成失败：${e}`;
+                out.textContent = tf('genFail', { msg: e });
             } finally {
                 hideRoomLoadingOverlay();
             }
@@ -4070,32 +4112,31 @@ function toggleBrokerPanel() {
             flashButtonActive(homeBtn);
             const out = document.getElementById('asset-move-result') || document.getElementById('asset-upload-result');
 
-            const confirmMsg = '⚠️ 回老家会覆盖当前自定义房间背景（可从 bg-history 恢复历史图）。\n确定继续吗？';
+            const confirmMsg = t('homeRestoreConfirm');
             if (!window.confirm(confirmMsg)) {
-                out.textContent = '已取消回老家';
+                out.textContent = t('homeRestoreCancelled');
                 return;
             }
 
-            setWorkingStatus('正在回老家');
-            // 点击即刻显示遮罩，先于任何网络调用
+            setWorkingStatus(t('homeRestoreWorking'));
             showRoomLoadingOverlay();
-            out.textContent = '🏡 正在回老家（恢复初始底图）...';
+            out.textContent = t('homeRestoreProgress');
             try {
                 const res = await fetch('/assets/restore-reference-background', { method: 'POST' });
                 const data = await res.json();
                 if (!data.ok) {
-                    out.textContent = `❌ 恢复失败：${data.msg || res.status}`;
+                    out.textContent = tf('homeRestoreFail', { msg: data.msg || res.status });
                     return;
                 }
-                out.textContent = '✅ 已恢复初始底图';
+                out.textContent = t('homeRestoreDone');
                 const ok = await refreshOfficeBackgroundOnly();
                 if (ok) {
                     markMoveSuccess(out, homeBtn);
                 } else {
-                    out.textContent = '✅ 已恢复初始底图（局部刷新失败，可手动刷新页面）';
+                    out.textContent = t('homeRestorePartial');
                 }
             } catch (e) {
-                out.textContent = `❌ 恢复失败：${e}`;
+                out.textContent = tf('homeRestoreFail', { msg: e });
             } finally {
                 hideRoomLoadingOverlay();
             }
@@ -4106,31 +4147,31 @@ function toggleBrokerPanel() {
             flashButtonActive(btn);
             const out = document.getElementById('asset-move-result') || document.getElementById('asset-upload-result');
 
-            const confirmMsg = '⚠️ 将回退到最近一次生成的房间背景，确定继续吗？';
+            const confirmMsg = t('lastBgConfirm');
             if (!window.confirm(confirmMsg)) {
-                out.textContent = '已取消回退';
+                out.textContent = t('lastBgCancelled');
                 return;
             }
 
-            setWorkingStatus('正在回退到上一次背景');
+            setWorkingStatus(t('lastBgWorking'));
             showRoomLoadingOverlay();
-            out.textContent = '↩️ 正在回退到最近一次生成底图...';
+            out.textContent = t('lastBgProgress');
             try {
                 const res = await fetch('/assets/restore-last-generated-background', { method: 'POST' });
                 const data = await res.json();
                 if (!data.ok) {
-                    out.textContent = `❌ 回退失败：${data.msg || res.status}`;
+                    out.textContent = tf('lastBgFail', { msg: data.msg || res.status });
                     return;
                 }
                 const ok = await refreshOfficeBackgroundOnly();
                 if (ok) {
-                    out.textContent = '✅ 已回退到上一次背景';
+                    out.textContent = t('lastBgDone');
                 } else {
-                    out.textContent = '✅ 已回退到上一次背景（局部刷新失败，可手动刷新页面）';
+                    out.textContent = t('lastBgPartial');
                 }
-                try { setState('idle', '已回退到上一次背景'); } catch (e) {}
+                try { setState('idle', t('lastBgState')); } catch (e) {}
             } catch (e) {
-                out.textContent = `❌ 回退失败：${e}`;
+                out.textContent = tf('lastBgFail', { msg: e });
             } finally {
                 hideRoomLoadingOverlay();
             }
@@ -4142,7 +4183,7 @@ function toggleBrokerPanel() {
             if (!ct.includes('application/json')) {
                 const txt = await res.text();
                 const brief = (txt || '').replace(/\s+/g, ' ').slice(0, 120);
-                throw new Error(`接口未返回 JSON（${res.status}）: ${brief || 'empty response'}`);
+                throw new Error(tf('fetchNotJson', { status: res.status, brief: brief || 'empty response' }));
             }
             return await res.json();
         }
@@ -4162,7 +4203,7 @@ function toggleBrokerPanel() {
                     }
                 } catch (e) {
                     const out = document.getElementById('asset-move-result') || document.getElementById('asset-upload-result');
-                    if (out) out.textContent = `❌ 收藏列表加载失败：${e.message || e}`;
+                    if (out) out.textContent = tf('homeFavLoadFail', { msg: e.message || e });
                 }
             }
 
@@ -4191,13 +4232,13 @@ function toggleBrokerPanel() {
             try {
                 const data = await fetchJsonSafe('/assets/home-favorites/save-current', { method: 'POST' });
                 if (!data.ok) {
-                    out.textContent = `❌ 收藏失败：${data.msg || 'unknown error'}`;
+                    out.textContent = tf('homeFavSaveFail', { msg: data.msg || 'unknown error' });
                     return;
                 }
                 out.textContent = t('homeFavSaved');
                 await renderHomeFavorites(true);
             } catch (e) {
-                out.textContent = `❌ 收藏失败：${e.message || e}`;
+                out.textContent = tf('homeFavSaveFail', { msg: e.message || e });
             }
         }
 
@@ -4205,7 +4246,7 @@ function toggleBrokerPanel() {
             const out = document.getElementById('asset-move-result') || document.getElementById('asset-upload-result');
             if (!id) return;
             showRoomLoadingOverlay();
-            setWorkingStatus('正在替换收藏地图');
+            setWorkingStatus(t('homeFavApplyWorking'));
             try {
                 const data = await fetchJsonSafe('/assets/home-favorites/apply', {
                     method: 'POST',
@@ -4213,14 +4254,14 @@ function toggleBrokerPanel() {
                     body: JSON.stringify({ id })
                 });
                 if (!data.ok) {
-                    out.textContent = `❌ 替换失败：${data.msg || 'unknown error'}`;
+                    out.textContent = tf('homeFavApplyFail', { msg: data.msg || 'unknown error' });
                     return;
                 }
                 const ok = await refreshOfficeBackgroundOnly();
-                out.textContent = ok ? t('homeFavApplied') : `${t('homeFavApplied')}（局部刷新失败，可手动刷新页面）`;
-                try { setState('idle', '已应用收藏地图'); } catch (e) {}
+                out.textContent = ok ? t('homeFavApplied') : tf('homeFavApplyPartial', { msg: t('homeFavApplied') });
+                try { setState('idle', t('homeFavApplyState')); } catch (e) {}
             } catch (e) {
-                out.textContent = `❌ 替换失败：${e.message || e}`;
+                out.textContent = tf('homeFavApplyFail', { msg: e.message || e });
             } finally {
                 hideRoomLoadingOverlay();
             }
@@ -4229,7 +4270,7 @@ function toggleBrokerPanel() {
         async function deleteHomeFavorite(id) {
             const out = document.getElementById('asset-move-result') || document.getElementById('asset-upload-result');
             if (!id) return;
-            if (!window.confirm('确定删除这个收藏吗？删除后不可恢复。')) return;
+            if (!window.confirm(t('homeFavDeleteConfirm'))) return;
             try {
                 const data = await fetchJsonSafe('/assets/home-favorites/delete', {
                     method: 'POST',
@@ -4237,13 +4278,13 @@ function toggleBrokerPanel() {
                     body: JSON.stringify({ id })
                 });
                 if (!data.ok) {
-                    out.textContent = `❌ 删除失败：${data.msg || 'unknown error'}`;
+                    out.textContent = tf('homeFavDeleteFail', { msg: data.msg || 'unknown error' });
                     return;
                 }
                 out.textContent = t('homeFavDeleted');
                 await renderHomeFavorites(true);
             } catch (e) {
-                out.textContent = `❌ 删除失败：${e.message || e}`;
+                out.textContent = tf('homeFavDeleteFail', { msg: e.message || e });
             }
         }
 
@@ -4251,10 +4292,10 @@ function toggleBrokerPanel() {
             const out = document.getElementById('asset-upload-result');
             const path = selectedAssetInfo && selectedAssetInfo.path;
             if (!path) {
-                if (out) out.textContent = '请先选择一个资产';
+                if (out) out.textContent = t('assetSelectFirst');
                 return;
             }
-            if (!window.confirm(`⚠️ 确定将 ${path} 重置为默认资产吗？`)) return;
+            if (!window.confirm(tf('assetResetConfirm', { path }))) return;
             try {
                 const res = await fetch('/assets/restore-default', {
                     method: 'POST',
@@ -4263,13 +4304,13 @@ function toggleBrokerPanel() {
                 });
                 const data = await res.json();
                 if (!data.ok) {
-                    if (out) out.textContent = `❌ 重置失败：${data.msg || res.status}`;
+                    if (out) out.textContent = tf('assetResetFail', { msg: data.msg || res.status });
                     return;
                 }
                 await refreshSceneObjectByAssetPath(path);
-                if (out) out.textContent = `✅ 已重置为默认资产：${path}`;
+                if (out) out.textContent = tf('assetResetDone', { path });
             } catch (e) {
-                if (out) out.textContent = `❌ 重置失败：${e}`;
+                if (out) out.textContent = tf('assetResetFail', { msg: e });
             }
         }
 
@@ -4277,10 +4318,10 @@ function toggleBrokerPanel() {
             const out = document.getElementById('asset-upload-result');
             const path = selectedAssetInfo && selectedAssetInfo.path;
             if (!path) {
-                if (out) out.textContent = '请先选择一个资产';
+                if (out) out.textContent = t('assetSelectFirst');
                 return;
             }
-            if (!window.confirm(`⚠️ 确定将 ${path} 回退到上一版吗？`)) return;
+            if (!window.confirm(tf('assetRestoreConfirm', { path }))) return;
             try {
                 const res = await fetch('/assets/restore-prev', {
                     method: 'POST',
@@ -4289,13 +4330,13 @@ function toggleBrokerPanel() {
                 });
                 const data = await res.json();
                 if (!data.ok) {
-                    if (out) out.textContent = `❌ 回退失败：${data.msg || res.status}`;
+                    if (out) out.textContent = tf('assetRestoreFail', { msg: data.msg || res.status });
                     return;
                 }
                 await refreshSceneObjectByAssetPath(path);
-                if (out) out.textContent = `✅ 已回退到上一版：${path}`;
+                if (out) out.textContent = tf('assetRestoreDone', { path });
             } catch (e) {
-                if (out) out.textContent = `❌ 回退失败：${e}`;
+                if (out) out.textContent = tf('assetRestoreFail', { msg: e });
             }
         }
 
@@ -4380,20 +4421,20 @@ function toggleBrokerPanel() {
                         delete guestBubbles[agentId];
                     }
                     fetchGuestAgents();
-                    alert((name || agentId) + ' left the room');
+                    alert(tf('guestLeft', { name: name || agentId }));
                 } else {
                     // demo agent 没在后端也允许本地隐藏
                     if (DEMO_MODE && (name === '尼卡' || name === '水星')) {
                         hiddenDemoNames.add(name);
                         removeGuestSpriteByName(name);
                         renderGuestAgentList();
-                        alert(name + ' 已离开房间（demo）');
+                        alert(tf('guestLeftDemo', { name }));
                         return;
                     }
-                    alert('离开失败：' + (data.msg || '未知错误'));
+                    alert(tf('guestLeaveFail', { msg: data.msg || 'unknown error' }));
                 }
             }).catch(error => {
-                alert('请求失败：' + error);
+                alert(tf('guestRequestFail', { error }));
             });
         }
 
@@ -4405,12 +4446,12 @@ function toggleBrokerPanel() {
             }).then(response => response.json()).then(data => {
                 if (data.ok) {
                     fetchGuestAgents();
-                    alert('已批准该访客接入');
+                    alert(t('guestApproved'));
                 } else {
-                    alert('批准失败：' + (data.msg || '未知错误'));
+                    alert(tf('guestApproveFail', { msg: data.msg || 'unknown error' }));
                 }
             }).catch(error => {
-                alert('请求失败：' + error);
+                alert(tf('guestRequestFail', { error }));
             });
         }
 
@@ -4422,12 +4463,12 @@ function toggleBrokerPanel() {
             }).then(response => response.json()).then(data => {
                 if (data.ok) {
                     fetchGuestAgents();
-                    alert('已拒绝该访客');
+                    alert(t('guestRejected'));
                 } else {
-                    alert('拒绝失败：' + (data.msg || '未知错误'));
+                    alert(tf('guestRejectFail', { msg: data.msg || 'unknown error' }));
                 }
             }).catch(error => {
-                alert('请求失败：' + error);
+                alert(tf('guestRequestFail', { error }));
             });
         }
 

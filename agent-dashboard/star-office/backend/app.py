@@ -250,6 +250,20 @@ ensure_electron_standalone_snapshot()
 
 
 _INDEX_HTML_CACHE = None
+_INDEX_HTML_MTIME = None
+
+
+def _index_html_response():
+    """Serve index.html; reload from disk when the file changes (dev-friendly)."""
+    global _INDEX_HTML_CACHE, _INDEX_HTML_MTIME
+    mtime = os.path.getmtime(FRONTEND_INDEX_FILE)
+    if _INDEX_HTML_CACHE is None or _INDEX_HTML_MTIME != mtime:
+        with open(FRONTEND_INDEX_FILE, "r", encoding="utf-8") as f:
+            _INDEX_HTML_CACHE = f.read().replace("{{VERSION_TIMESTAMP}}", VERSION_TIMESTAMP)
+        _INDEX_HTML_MTIME = mtime
+    resp = make_response(_INDEX_HTML_CACHE)
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return resp
 
 
 @app.route("/", methods=["GET"])
@@ -258,16 +272,7 @@ def index():
     # 默认禁用页面打开即换背景，避免首屏慢
     # 如需启用，可配置 AUTO_ROTATE_HOME_ON_PAGE_OPEN=1
     _maybe_apply_random_home_favorite()
-
-    global _INDEX_HTML_CACHE
-    if _INDEX_HTML_CACHE is None:
-        with open(FRONTEND_INDEX_FILE, "r", encoding="utf-8") as f:
-            raw_html = f.read()
-        _INDEX_HTML_CACHE = raw_html.replace("{{VERSION_TIMESTAMP}}", VERSION_TIMESTAMP)
-
-    resp = make_response(_INDEX_HTML_CACHE)
-    resp.headers["Content-Type"] = "text/html; charset=utf-8"
-    return resp
+    return _index_html_response()
 
 
 @app.route("/electron-standalone", methods=["GET"])
@@ -1584,9 +1589,9 @@ def assets_restore_reference_background():
     try:
         target = FRONTEND_PATH / "office_bg_small.webp"
         if not target.exists():
-            return jsonify({"ok": False, "msg": "office_bg_small.webp 不存在"}), 404
+            return jsonify({"ok": False, "msg": "office_bg_small.webp not found"}), 404
         if not os.path.exists(ROOM_REFERENCE_IMAGE):
-            return jsonify({"ok": False, "msg": "参考图不存在"}), 404
+            return jsonify({"ok": False, "msg": "Reference room image not found"}), 404
 
         # 备份当前底图
         bak = target.with_suffix(target.suffix + ".bak")
@@ -1607,7 +1612,7 @@ def assets_restore_reference_background():
         # 慢路径：仅在必要时重编码
         if not fast_copied:
             if Image is None:
-                return jsonify({"ok": False, "msg": "Pillow 不可用"}), 500
+                return jsonify({"ok": False, "msg": "Pillow is not installed — run: pip install pillow (in star-office/.venv)"}), 500
             with Image.open(ROOM_REFERENCE_IMAGE) as im:
                 im = im.convert("RGBA").resize((1280, 720), Image.Resampling.LANCZOS)
                 im.save(target, "WEBP", quality=92, method=6)
@@ -1617,7 +1622,7 @@ def assets_restore_reference_background():
             "ok": True,
             "path": "office_bg_small.webp",
             "size": st.st_size,
-            "msg": "已恢复初始底图",
+            "msg": "Original background restored",
         })
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500

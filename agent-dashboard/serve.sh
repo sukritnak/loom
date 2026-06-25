@@ -21,13 +21,15 @@ if up "$PORT"; then echo "Star-Office already running → $URL"; open_browser "$
 # seed status.json so the bridge has something to mirror
 [ -f status.json ] || node agent-status.js reset "" >/dev/null 2>&1 || true
 
-# one-time: python venv + flask (pillow is optional and skipped on purpose)
+# venv + flask + pillow (Go Home / image resize). Recreate if path moved (bad shebang).
 VENV="$STAR/.venv"; PY="$VENV/bin/python"
-if [ ! -x "$PY" ]; then
-  echo "first run: creating venv + installing flask (one-time)…"
+venv_ok() { [ -x "$PY" ] && "$PY" -c 'import sys' 2>/dev/null; }
+if ! venv_ok; then
+  echo "recreating star-office venv (missing or moved from old path)…"
+  rm -rf "$VENV"
   python3 -m venv "$VENV"
-  "$VENV/bin/pip" install -q --disable-pip-version-check flask >/dev/null
 fi
+"$PY" -m pip install -q --disable-pip-version-check flask pillow >/dev/null
 
 # loop -> office bridge: seed once, then keep refreshing in the background
 node star-office-bridge.js --once >/dev/null 2>&1 || true
