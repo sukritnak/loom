@@ -2659,6 +2659,25 @@
             refreshActivitySourceOptions();
         }
 
+        /** After Clear log — show new archive in dropdown immediately, then sync counts from server. */
+        async function refreshArchivesAfterClear(clearResult) {
+            const arc = clearResult && clearResult.archive;
+            if (arc && arc.id) {
+                const hit = activityArchives.find(a => a.id === arc.id);
+                if (hit) hit.count = (hit.count || 0) + (arc.added || 0);
+                else activityArchives.unshift({ id: arc.id, date: arc.date || arc.id.slice(7, -5), count: arc.added || 0 });
+                activityArchives.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+                refreshActivitySourceOptions();
+            }
+            await loadActivityArchives();
+            activitySource = 'live';
+            const sel = document.getElementById('activity-source-select');
+            if (sel) sel.value = 'live';
+            updateActivitySourceLiveUi();
+            const clearBtn = document.getElementById('activity-clear-btn');
+            if (clearBtn) clearBtn.style.display = '';
+        }
+
         function onActivitySourceChange() {
             const sel = document.getElementById('activity-source-select');
             activitySource = sel ? sel.value : 'live';
@@ -2743,10 +2762,7 @@
                 const response = await fetch('/activity/clear', { method: 'POST' });
                 const data = await response.json();
                 if (!response.ok || !data.ok) throw new Error(data.msg || 'clear failed');
-                await loadActivityArchives();
-                activitySource = 'live';
-                const sel = document.getElementById('activity-source-select');
-                if (sel) sel.value = 'live';
+                await refreshArchivesAfterClear(data);
                 await loadLoopActivity();
             } catch (e) {
                 alert((t('activityClearBtn') || 'Clear log') + ': ' + (e.message || e));

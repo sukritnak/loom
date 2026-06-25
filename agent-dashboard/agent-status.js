@@ -7,7 +7,7 @@
  *
  * Usage:
  *   node agent-status.js reset ["task title"]      reset agents to idle; keeps rolling log
- *   node agent-status.js clearlog                  archive log to log-archive/status-YYYY-MM-DD.json, clear feed
+ *   node agent-status.js clearlog                  archive log to log-archive/status-YYYY-MM-DD.json (date from last entry), clear feed
  *   node agent-status.js task  "task title"        set the current task / sprint title
  *   node agent-status.js loop  <n>                 set the loop round number
  *   node agent-status.js set <id> <state> ["task text"] ["log message"]
@@ -48,6 +48,23 @@ const MSG_CAP = 12000; // max chars per say/report line
 
 function todayKey() { return new Date().toISOString().slice(0, 10); }
 
+const DAY_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Archive filename day — last log entry's `at` date, else logDay, else today. */
+function dayKeyFromLog(entries, fallback) {
+  const log = Array.isArray(entries) ? entries : [];
+  for (let i = log.length - 1; i >= 0; i--) {
+    const at = log[i]?.at;
+    if (typeof at === 'string' && at.length >= 10) {
+      const d = at.slice(0, 10);
+      if (DAY_KEY_RE.test(d)) return d;
+    }
+  }
+  const fb = String(fallback || '');
+  if (DAY_KEY_RE.test(fb)) return fb;
+  return todayKey();
+}
+
 function archiveLogEntries(entries, dayKey) {
   if (!entries.length) return 0;
   fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
@@ -73,10 +90,11 @@ function maybeRotateDailyLog(s) {
 
 function clearLog(s) {
   const log = Array.isArray(s.log) ? s.log : [];
-  const n = archiveLogEntries(log, todayKey());
+  const dayKey = dayKeyFromLog(log, s.logDay);
+  const n = archiveLogEntries(log, dayKey);
   s.log = [];
   s.logDay = todayKey();
-  return n;
+  return { n, dayKey };
 }
 
 function emptyState(task) {
@@ -207,9 +225,11 @@ switch ((cmd || '').toLowerCase()) {
     break;
   }
   case 'clearlog': {
-    const n = clearLog(s);
+    const { n, dayKey } = clearLog(s);
     save(s);
-    console.log('log cleared (' + n + ' entries archived to log-archive/status-' + todayKey() + '.json)');
+    const archiveId = 'status-' + dayKey + '.json';
+    console.log('log cleared (' + n + ' entries archived to log-archive/' + archiveId + ')');
+    if (n > 0) console.log('ARCHIVE:' + JSON.stringify({ id: archiveId, date: dayKey, added: n }));
     break;
   }
   case 'task':

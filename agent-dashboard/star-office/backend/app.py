@@ -1186,7 +1186,18 @@ def clear_activity():
         if result.returncode != 0:
             msg = (result.stderr or result.stdout or "clearlog failed").strip()
             return jsonify({"ok": False, "msg": msg}), 500
-        return jsonify({"ok": True, "msg": (result.stdout or "log cleared").strip()})
+        stdout = (result.stdout or "").strip()
+        archive = None
+        msg = stdout
+        for line in reversed(stdout.splitlines()):
+            if line.startswith("ARCHIVE:"):
+                try:
+                    archive = json.loads(line[8:])
+                except json.JSONDecodeError:
+                    pass
+            elif line.startswith("log cleared"):
+                msg = line
+        return jsonify({"ok": True, "msg": msg, "archive": archive})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
