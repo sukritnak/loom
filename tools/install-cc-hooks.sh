@@ -1,6 +1,7 @@
 #!/usr/bin/env zsh
 # install-cc-hooks.sh — wire Claude Code hooks → Loom dashboard (cc-dash-bridge.js).
 # Merges into ~/.claude/settings.json without removing your other hooks.
+# Replaces stale dash-bridge paths (e.g. after moving the Loom repo).
 # Usage: zsh tools/install-cc-hooks.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,40 +12,47 @@ chmod +x "$BRIDGE" "$CC_BRIDGE"
 
 node -e "
 const fs = require('fs');
-const bridge = process.argv[1];
+const ccBridge = process.argv[1];
 const settingsPath = process.argv[2];
-const entry = { type: 'command', command: 'node ' + JSON.stringify(bridge), async: true };
+const entry = { type: 'command', command: 'node ' + JSON.stringify(ccBridge), async: true };
 const hookBlock = (matcher) => ({
   ...(matcher ? { matcher } : {}),
   hooks: [entry],
 });
 const loomHooks = {
   SubagentStart: [hookBlock()],
-  PostToolUse: [hookBlock('Edit|Write'), hookBlock('Bash')],
+  PostToolUse: [hookBlock('Edit|Write|StrReplace|Delete|Bash')],
   SubagentStop: [hookBlock()],
   Stop: [hookBlock()],
 };
+const isLoomDash = (h) => /dash-bridge|cc-dash-bridge/.test(String(h && h.command || ''));
+
 let s = {};
 try { s = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch (e) {}
 s.hooks = s.hooks || {};
-const marker = 'dash-bridge.js';
-function hasBridge(arr) {
-  return Array.isArray(arr) && arr.some(b =>
-    (b.hooks || []).some(h => String(h.command || '').includes(marker))
-  );
+
+// Drop broken / old Loom dashboard hook entries, then re-append fresh blocks.
+for (const ev of Object.keys(s.hooks)) {
+  const arr = s.hooks[ev];
+  if (!Array.isArray(arr)) continue;
+  s.hooks[ev] = arr
+    .map((block) => ({
+      ...block,
+      hooks: (block.hooks || []).filter((h) => !isLoomDash(h)),
+    }))
+    .filter((block) => (block.hooks || []).length > 0);
 }
 for (const [ev, blocks] of Object.entries(loomHooks)) {
-  if (hasBridge(s.hooks[ev])) continue;
   s.hooks[ev] = [...(s.hooks[ev] || []), ...blocks];
 }
+
 fs.mkdirSync(require('path').dirname(settingsPath), { recursive: true });
 fs.writeFileSync(settingsPath, JSON.stringify(s, null, 2) + '\n');
 console.log('  ✓ Claude Code hooks → dashboard bridge');
-console.log('    ' + bridge);
-" "$BRIDGE" "$SETTINGS"
+console.log('    ' + ccBridge);
+" "$CC_BRIDGE" "$SETTINGS"
 
 mkdir -p "$HOME/.loop-dash"
 echo "  ✓ state dir ~/.loop-dash"
 echo ""
 echo "Restart Claude Code (or start a new session) so hooks load."
-echo "Dashboard still needs loop.config.json in cwd or a parent folder for project tags."

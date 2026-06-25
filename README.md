@@ -264,6 +264,7 @@ First command does everything:
 | Hermes              | Install team skills → `~/.hermes/skills/`                   |
 | **external skills** | Install recommended → `~/.agents/skills/` + Hermes symlinks |
 | Base path           | Register `~/.loop-base`                                     |
+| dashboard hooks     | Claude Code + Cursor → `install-dash-hooks.sh`              |
 | dashboard           | Open `http://localhost:19000`                               |
 
 
@@ -301,6 +302,33 @@ After editing agent definitions, sync all platforms:
 ```zsh
 zsh tools/sync-agents.sh    # source = .claude/agents/
 ```
+
+> **⚠ Moving the Loom folder after `deploy.sh`**
+>
+> Install writes **absolute paths** on your machine — not relative to git:
+>
+> | What | Where |
+> | ---- | ----- |
+> | Base pointer | `~/.loop-base` |
+> | Dashboard hooks (Claude Code) | `~/.claude/settings.json` → `cc-dash-bridge.js` |
+> | Dashboard hooks (Cursor) | `~/.cursor/hooks.json` → `dash-bridge.js` |
+> | L3 auto-approve (optional) | `~/.claude/settings.json` → `l3-permission-hook.js` |
+>
+> If you **move or rename** the cloned `loom` repo (e.g. Desktop → Documents), those paths go stale.
+> Symptoms: dashboard stays quiet, `dash.sh serve` fails, Claude hooks do nothing, wrong or missing project tags.
+>
+> **Fix** — from the **new** Loom location:
+>
+> ```zsh
+> cd /path/to/loom
+> zsh tools/deploy.sh
+> ```
+>
+> Then restart **Claude Code** and **Cursor** so hooks reload.
+>
+> `git pull` alone does **not** refresh hooks — run `deploy.sh` (or at minimum `zsh tools/install-dash-hooks.sh` and rewrite `~/.loop-base`) after moving.
+>
+> Control folders under `agent-build/` and your real project code are **not** affected — only the blueprint install on this machine.
 
 ### 2) Start work — chat commands (primary)
 
@@ -367,7 +395,7 @@ Resume details → [Resume a session](#resume-a-session--reopen-a-project-you-al
 | `Use loop-start` / `Use loop-orch`        | Yes               | Uses `.active-project` or skill pins target           |
 | `node cfg.js`, `verify-paths`, `scaffold` | No                | Must `cd` into control folder (tools read cwd config) |
 | `dash.sh serve` / `where`                 | Yes               | Central board; cwd-independent                        |
-| `dash.sh set/reset/log`                   | Yes but wrong tag | Without cwd config → project tag `(unknown)`          |
+| `dash.sh set/reset/log`                   | Yes               | From Base — resolves project via `.active-project` (no `(unknown)` tag) |
 
 
 ---
@@ -414,6 +442,21 @@ Full loop spec → [LOOP.md](LOOP.md) · Reference: [Loop Engineering Guide 2026
 
 `deploy.sh` copies subagents to `~/.claude/agents/` — usable in every project immediately.
 
+**Auto-sync activity to the dashboard (Claude Code + Cursor hooks):**
+
+```zsh
+zsh tools/install-dash-hooks.sh   # included in deploy.sh
+```
+
+After install → **restart Claude Code and/or Cursor**. Hooks mirror:
+- file edits (`Edit` / `Write` / `StrReplace` / `Delete`)
+- known shell commands only (e.g. `npm test`, `eslint` — not raw debug one-liners)
+- sub-agent stop summaries and session stop (when the message is long enough)
+
+Project tag resolves from cwd `loop.config.json`, parent walk, or `.active-project` in Loom — never `(unknown)`.
+
+Hermes and manual chat still benefit from explicit `dash.sh report` / `say` calls.
+
 ```
 Use loop-start
 Use loop-orch at L1: ...
@@ -429,6 +472,8 @@ Open the folder — Cursor reads `.claude/agents/` automatically.
 Optional personas: Settings → Custom Modes → paste each `.claude/agents/*.md`.
 
 Chat like Claude Code (`Use loop-orch at L1: ...`) or switch Custom Modes.
+
+**Auto-bridge:** same `install-dash-hooks.sh` as Claude Code (see above) — Cursor also gets `afterFileEdit`, `afterShellExecution`, and `afterAgentResponse` hooks.
 
 **Capabilities:** great for interactive edits; less parallel fan-out than Claude Code. Good for hands-on fix/review.
 
@@ -753,7 +798,7 @@ Hermes: `/loop-orch run at L1: <task>`
 | `Use loop-start` / `Use loop-orch` in chat               | **No** — uses `.active-project`                            |
 | `verify-paths`, `scaffold`, `init-config`, `node cfg.js` | **Yes** — tools read `loop.config.json` from cwd           |
 | `dash.sh serve` / `where`                                | **No** — central board                                     |
-| `dash.sh set/reset/log`                                  | Recommended `cd` to control — else project tag `(unknown)` |
+| `dash.sh set/reset/log`                                  | Recommended `cd` to control — from Base uses `.active-project` instead of `(unknown)` |
 
 
 Prefer opening the folder in your IDE — open the **control folder** as workspace, then `Use loop-orch` (cwd has `loop.config.json`):
@@ -821,18 +866,18 @@ TL;DR + PASS/FAIL + decisions here
 EOF
 ```
 
-Commands: `say` (long multiline speech) · `delegate` · `skill` · `cmd` · `event` · `log` · `set`
-Feed keeps 800 lines · Star-Office **Loop Activity** panel shows recent activity + speech bubbles
+Commands: `say` (long multiline speech) · `delegate` · `skill` · `cmd` · `event` · `log` · `set` · `clearlog`
+Feed keeps 400 lines (rolling) · daily archive in `agent-dashboard/log-archive/` · **Loop Activity** panel has Clear log + archived dates
 
 Opens on `deploy.sh` · at `loop-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
 
 **Star-Office dashboard** (`agent-dashboard/star-office/`) — vendored from
 **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** by [ringhyacinth](https://github.com/ringhyacinth).
 Code is **MIT**; **art assets are for non-commercial learning use only** (see upstream LICENSE).
-Loom layers: `star-office-bridge.js`, Loop Activity panel, `cc-dash-bridge.js` (Claude Code → board), and `agent-status.js` feed commands (`file`, `report`, `wait`, …).
+Loom layers: `star-office-bridge.js`, Loop Activity panel, `dash-bridge.js` / `cc-dash-bridge.js` (Claude Code + Cursor → board), and `agent-status.js` feed commands (`file`, `report`, `wait`, …).
 
 - `star-office-bridge.js` mirrors loop `status.json` → office + `activity.json` (`GET /activity`)
-- **Loop Activity** panel shows full **say/report/test** text · readable system font · wrapped bubbles
+- **Loop Activity** panel shows full **say/report/test** text · readable system font · wrapped bubbles · View per message
 - 8 role characters in zones (orch = main, others as guests)
 - Office plaque = project name
 - First run creates a small venv + installs flask
@@ -880,7 +925,7 @@ zsh tools/dash.sh serve               # open board
 | Component        | Credit                                                                                                                                                                             |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Pixel office UI  | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [ringhyacinth](https://github.com/ringhyacinth). MIT code; art assets **non-commercial learning use only**. |
-| Loop integration | `star-office-bridge.js`, `agent-status.js`, `cc-dash-bridge.js`, `l3-permission-hook.js` — part of this repo                                                                       |
+| Loop integration | `star-office-bridge.js`, `agent-status.js`, `dash-bridge.js`, `cc-dash-bridge.js`, `l3-permission-hook.js` — part of this repo |
 
 
 ### Skills shipped with Loom (`hermes-skills/`)
