@@ -35,6 +35,10 @@ except Exception:
 
 # Paths (project-relative, no hardcoded absolute paths)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DASH_DIR = os.path.dirname(ROOT_DIR)
+AGENT_STATUS_JS = os.path.join(DASH_DIR, "agent-status.js")
+ARCHIVE_DIR = os.path.join(DASH_DIR, "log-archive")
+ARCHIVE_NAME_RE = re.compile(r"^status-\d{4}-\d{2}-\d{2}\.json$")
 MEMORY_DIR = os.path.join(os.path.dirname(ROOT_DIR), "memory")
 FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
 FRONTEND_INDEX_FILE = os.path.join(FRONTEND_DIR, "index.html")
@@ -1162,6 +1166,78 @@ def get_activity():
             return jsonify(json.load(f))
     except FileNotFoundError:
         return jsonify({"log": [], "project": "", "task": "", "loop": 1, "updatedAt": None})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e), "log": []}), 500
+
+
+@app.route("/activity/clear", methods=["POST"])
+def clear_activity():
+    """Archive status.json log to log-archive/ and clear the live feed."""
+    try:
+        if not os.path.isfile(AGENT_STATUS_JS):
+            return jsonify({"ok": False, "msg": "agent-status.js not found"}), 500
+        result = subprocess.run(
+            ["node", AGENT_STATUS_JS, "clearlog"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=DASH_DIR,
+        )
+        if result.returncode != 0:
+            msg = (result.stderr or result.stdout or "clearlog failed").strip()
+            return jsonify({"ok": False, "msg": msg}), 500
+        return jsonify({"ok": True, "msg": (result.stdout or "log cleared").strip()})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/activity/archives", methods=["GET"])
+def list_activity_archives():
+    """List daily log archives in log-archive/."""
+    try:
+        if not os.path.isdir(ARCHIVE_DIR):
+            return jsonify({"archives": []})
+        archives = []
+        for name in sorted(os.listdir(ARCHIVE_DIR), reverse=True):
+            if not ARCHIVE_NAME_RE.match(name):
+                continue
+            path = os.path.join(ARCHIVE_DIR, name)
+            count = 0
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                count = len(data) if isinstance(data, list) else 0
+            except Exception:
+                pass
+            archives.append({
+                "id": name,
+                "date": name[len("status-"):-len(".json")],
+                "count": count,
+            })
+        return jsonify({"archives": archives})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e), "archives": []}), 500
+
+
+@app.route("/activity/archive/<name>", methods=["GET"])
+def get_activity_archive(name):
+    """Return one archived log file (read-only)."""
+    if not ARCHIVE_NAME_RE.match(name):
+        return jsonify({"ok": False, "msg": "invalid archive name", "log": []}), 400
+    path = os.path.join(ARCHIVE_DIR, name)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        log = data if isinstance(data, list) else []
+        return jsonify({
+            "archive": name,
+            "date": name[len("status-"):-len(".json")],
+            "count": len(log),
+            "log": log,
+            "updatedAt": None,
+        })
+    except FileNotFoundError:
+        return jsonify({"ok": False, "msg": "not found", "log": []}), 404
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e), "log": []}), 500
 

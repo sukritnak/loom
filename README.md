@@ -1,10 +1,22 @@
-# Loom
+<p align="center">
+  <img src="assets/loom-logo.svg" alt="Loom logo" width="160">
+</p>
 
-**AI Agent Software Team** — central blueprint (control-repo) for software agent loops.
+<h1 align="center">Loom</h1>
+
+<p align="center"><strong>AI Agent Software Team</strong> — central blueprint for plan → build → verify loops</p>
+
+<p align="center"><em>Nine agents. One thread. Keeps weaving until it ships.</em></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/works%20with-9%20agents-6366f1?style=flat-square" alt="works with 9 agents">
+  <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Cursor%20%7C%20Hermes-0ea5e9?style=flat-square" alt="platform">
+  <img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT license">
+</p>
 
 > **Language:** English (this document) · [ไทย](README-TH.md)
 >
-> **Workspace:** clone or open this repo as `**loom`** (the blueprint — not your app code).
+> **Workspace:** clone or open this repo as **`loom`** (the blueprint — not your app code).
 
 A team of **9 AI agents** working in a **loop** (plan → build → verify → iterate). Works on **Claude Code · Cursor · Hermes**.
 

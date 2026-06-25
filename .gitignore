@@ -5,6 +5,7 @@
 loop.config.json
 STATE.md
 status.json
+agent-dashboard/log-archive/
 agent-dashboard/star-office/activity.json
 .env
 .env.*

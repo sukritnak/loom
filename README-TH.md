@@ -1,6 +1,18 @@
-# Loom
+<p align="center">
+  <img src="assets/loom-logo.svg" alt="Loom logo" width="160">
+</p>
 
-**AI Agent Software Team** — พิมพ์เขียวกลาง (control-repo) สำหรับ software agent loops
+<h1 align="center">Loom</h1>
+
+<p align="center"><strong>AI Agent Software Team</strong> — พิมพ์เขียวกลางสำหรับ loop วางแผน → สร้าง → ตรวจ</p>
+
+<p align="center"><em>เก้าตัวแทน หนึ่งเส้นด้าย ทอ loop จนส่งงานได้</em></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/works%20with-9%20agents-6366f1?style=flat-square" alt="works with 9 agents">
+  <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Cursor%20%7C%20Hermes-0ea5e9?style=flat-square" alt="platform">
+  <img src="https://img.shields.io/badge/license-MIT-22c55e?style=flat-square" alt="MIT license">
+</p>
 
 > **ภาษา:** [English](README.md) · **ไทย** (เอกสารนี้)
 >

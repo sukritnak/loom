@@ -876,6 +876,41 @@
             letter-spacing: 0.02em;
             margin-bottom: 8px;
         }
+        #activity-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        #activity-source-select {
+            flex: 1 1 auto;
+            min-width: 0;
+            font-size: 11px;
+            padding: 5px 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        #activity-clear-btn {
+            flex-shrink: 0;
+            font-size: 11px;
+            padding: 5px 8px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #cbd5e1;
+            cursor: pointer;
+        }
+        #activity-clear-btn:hover:not(:disabled) {
+            background: #334155;
+            border-color: #64748b;
+        }
+        #activity-clear-btn:disabled {
+            opacity: 0.5;
+            cursor: wait;
+        }
         #activity-meta {
             color: #94a3b8;
             font-size: 12px;
@@ -1290,6 +1325,10 @@
         <div id="activity-panel">
             <div id="activity-panel-title">⚡ Loop Activity</div>
             <div id="activity-meta">Waiting for loop logs…</div>
+            <div id="activity-toolbar">
+                <select id="activity-source-select" onchange="onActivitySourceChange()"></select>
+                <button id="activity-clear-btn" type="button" onclick="clearLoopActivity()">Clear log</button>
+            </div>
             <div id="activity-feed">
                 <div style="color:#64748b;font-size:12px;">No activity yet — loop-orch should call dash.sh say/delegate/skill/cmd</div>
             </div>
@@ -1432,7 +1471,7 @@
                 assetHintNotInScene: '当前场景未检测到此对象，仍可替换文件（刷新后生效）',
                 assetHintDefault: '通用素材：建议保持原图尺寸、透明通道与视觉重心一致，避免错位或失真',
                 showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
-                memoTitle: '昨 日 小 记', activityTitle: '⚡ Loop Activity', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
+                memoTitle: '昨 日 小 记', activityTitle: '⚡ Loop Activity', activitySourceLive: 'Live', activityArchiveEmpty: '（无归档）', activityArchiveCount: '条', activityClearBtn: '清空日志', activityClearConfirm: '将当前日志备份到 log-archive/ 并清空活动面板？', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
                 loadingOffice: '正在加载 Star 的像素办公室...'
             },
             en: {
@@ -1460,7 +1499,7 @@
                 assetHintNotInScene: 'This object is not detected in current scene; you can still replace file (effective after refresh)',
                 assetHintDefault: 'Generic asset: keep source size, alpha channel, and visual anchor to avoid drift/distortion',
                 showCoords: 'Show Coords', hideCoords: 'Hide Coords', moveView: 'Pan View', lockView: 'Lock View',
-                memoTitle: 'YESTERDAY NOTES', activityTitle: '⚡ Loop Activity', guestTitle: 'VISITOR LIST', officeTitle: 'Zenji Monmin Office',
+                memoTitle: 'YESTERDAY NOTES', activityTitle: '⚡ Loop Activity', activitySourceLive: 'Live', activityArchiveEmpty: '(no archives)', activityArchiveCount: 'entries', activityClearBtn: 'Clear log', activityClearConfirm: 'Archive current log to log-archive/ and clear the feed?', guestTitle: 'VISITOR LIST', officeTitle: 'Zenji Monmin Office',
                 loadingOffice: 'Loading Star’s pixel office...'
             },
             ja: {
@@ -1488,7 +1527,7 @@
                 assetHintNotInScene: '現在のシーンでこのオブジェクトは未検出です。ファイル差し替えは可能（更新後に反映）',
                 assetHintDefault: '汎用素材：元サイズ・透過・視覚アンカーを維持し、ズレや崩れを防いでください',
                 showCoords: '座標表示', hideCoords: '座標非表示', moveView: '視点移動', lockView: '視点固定',
-                memoTitle: '昨日のメモ', guestTitle: '訪問者リスト', officeTitle: 'ハイシン・ロブスターのオフィス',
+                memoTitle: '昨日のメモ', activityTitle: '⚡ Loop Activity', activitySourceLive: 'ライブ', activityArchiveEmpty: '（アーカイブなし）', activityArchiveCount: '件', activityClearBtn: 'ログ削除', activityClearConfirm: '現在のログを log-archive/ に保存してフィードを空にしますか？', guestTitle: '訪問者リスト', officeTitle: 'ハイシン・ロブスターのオフィス',
                 loadingOffice: 'Star のピクセルオフィスを読み込み中...'
             }
         };
@@ -1575,6 +1614,8 @@
             if (memoTitle) memoTitle.textContent = t('memoTitle');
             const activityTitle = document.getElementById('activity-panel-title');
             if (activityTitle) activityTitle.textContent = t('activityTitle') || '⚡ Loop Activity';
+            setText('activity-clear-btn', 'activityClearBtn');
+            refreshActivitySourceOptions();
             const guestTitle = document.getElementById('guest-agent-panel-title');
             if (guestTitle) guestTitle.textContent = t('guestTitle');
             const plaqueTitle = (typeof window.officeNameFromServer !== 'undefined' && window.officeNameFromServer) || t('officeTitle');
@@ -1737,27 +1778,108 @@
             return `<div class="activity-line${sayKind ? ' say-kind' : ''}${reportKind ? ' report-kind' : ''}${fileKind ? ' file-kind' : ''}">${head}${title}${msg}${foot}</div>`;
         }
 
-        async function loadLoopActivity() {
+        let activityArchives = [];
+        let activitySource = 'live';
+
+        function isLiveActivitySource() { return activitySource === 'live'; }
+
+        function refreshActivitySourceOptions() {
+            const sel = document.getElementById('activity-source-select');
+            if (!sel) return;
+            const prev = activitySource;
+            const liveLabel = t('activitySourceLive') || 'Live';
+            const countSuffix = t('activityArchiveCount') || 'entries';
+            let html = `<option value="live">${liveLabel}</option>`;
+            activityArchives.forEach(a => {
+                const label = `${a.date} (${a.count} ${countSuffix})`;
+                html += `<option value="${escapeActivityText(a.id)}">${label}</option>`;
+            });
+            sel.innerHTML = html;
+            if (prev === 'live' || activityArchives.some(a => a.id === prev)) sel.value = prev;
+            else sel.value = 'live';
+            activitySource = sel.value;
+            const clearBtn = document.getElementById('activity-clear-btn');
+            if (clearBtn) clearBtn.style.display = isLiveActivitySource() ? '' : 'none';
+        }
+
+        async function loadActivityArchives() {
+            try {
+                const response = await fetch('/activity/archives?t=' + Date.now(), { cache: 'no-store' });
+                const data = await response.json();
+                activityArchives = Array.isArray(data.archives) ? data.archives : [];
+            } catch (e) {
+                activityArchives = [];
+            }
+            refreshActivitySourceOptions();
+        }
+
+        function onActivitySourceChange() {
+            const sel = document.getElementById('activity-source-select');
+            activitySource = sel ? sel.value : 'live';
+            const clearBtn = document.getElementById('activity-clear-btn');
+            if (clearBtn) clearBtn.style.display = isLiveActivitySource() ? '' : 'none';
+            loadLoopActivity();
+        }
+
+        function renderActivityFeed(lines, metaExtra) {
             const feed = document.getElementById('activity-feed');
             const meta = document.getElementById('activity-meta');
             if (!feed) return;
+            if (meta && metaExtra != null) meta.textContent = metaExtra;
+            if (!lines.length) {
+                feed.innerHTML = '<div style="color:#64748b;font-size:11px;">No activity yet — loop-orch should call dash.sh delegate/skill/cmd</div>';
+                return;
+            }
+            feed.innerHTML = lines.slice(-250).reverse().map(renderActivityLine).join('');
+            feed.scrollTop = 0;
+        }
+
+        async function loadLoopActivity() {
+            const meta = document.getElementById('activity-meta');
+            if (!document.getElementById('activity-feed')) return;
             try {
-                const response = await fetch('/activity?t=' + Date.now(), { cache: 'no-store' });
+                const url = isLiveActivitySource()
+                    ? '/activity?t=' + Date.now()
+                    : '/activity/archive/' + encodeURIComponent(activitySource) + '?t=' + Date.now();
+                const response = await fetch(url, { cache: 'no-store' });
                 const data = await response.json();
                 const lines = Array.isArray(data.log) ? data.log : [];
-                const head = [];
-                if (data.project) head.push('📁 ' + data.project);
-                if (data.task) head.push(data.task);
-                if (data.loop) head.push('round ' + data.loop);
-                if (meta) meta.textContent = head.join(' · ') || 'Loop activity';
-                if (!lines.length) {
-                    feed.innerHTML = '<div style="color:#64748b;font-size:11px;">No activity yet — loop-orch should call dash.sh delegate/skill/cmd</div>';
-                    return;
+                if (isLiveActivitySource()) {
+                    const head = [];
+                    if (data.project) head.push('📁 ' + data.project);
+                    if (data.task) head.push(data.task);
+                    if (data.loop) head.push('round ' + data.loop);
+                    renderActivityFeed(lines, head.join(' · ') || 'Loop activity');
+                } else {
+                    const archive = activityArchives.find(a => a.id === activitySource);
+                    const label = archive ? archive.date : activitySource.replace(/^status-/, '').replace(/\.json$/, '');
+                    const countSuffix = t('activityArchiveCount') || 'entries';
+                    const head = `📦 ${label} · ${lines.length} ${countSuffix}`;
+                    renderActivityFeed(lines, head);
                 }
-                feed.innerHTML = lines.slice(-250).reverse().map(renderActivityLine).join('');
-                feed.scrollTop = 0;
             } catch (e) {
                 if (meta) meta.textContent = 'Activity feed unavailable';
+            }
+        }
+
+        async function clearLoopActivity() {
+            if (!isLiveActivitySource()) return;
+            if (!confirm(t('activityClearConfirm') || 'Archive current log and clear the feed?')) return;
+            const btn = document.getElementById('activity-clear-btn');
+            if (btn) btn.disabled = true;
+            try {
+                const response = await fetch('/activity/clear', { method: 'POST' });
+                const data = await response.json();
+                if (!response.ok || !data.ok) throw new Error(data.msg || 'clear failed');
+                await loadActivityArchives();
+                activitySource = 'live';
+                const sel = document.getElementById('activity-source-select');
+                if (sel) sel.value = 'live';
+                await loadLoopActivity();
+            } catch (e) {
+                alert((t('activityClearBtn') || 'Clear log') + ': ' + (e.message || e));
+            } finally {
+                if (btn) btn.disabled = false;
             }
         }
 
@@ -4706,7 +4828,7 @@ function toggleBrokerPanel() {
             });
 
             // loop activity feed
-            loadLoopActivity();
+            loadActivityArchives().then(loadLoopActivity);
 
             fetchStatus();
             fetchGuestAgents();
@@ -4715,7 +4837,7 @@ function toggleBrokerPanel() {
 
         function update(time) {
             if (time - lastFetch > FETCH_INTERVAL) { fetchStatus(); lastFetch = time; }
-            if (time - lastActivityFetch > ACTIVITY_FETCH_INTERVAL) { loadLoopActivity(); lastActivityFetch = time; }
+            if (time - lastActivityFetch > ACTIVITY_FETCH_INTERVAL && isLiveActivitySource()) { loadLoopActivity(); lastActivityFetch = time; }
             if (time - lastGuestAgentsFetch > GUEST_AGENTS_FETCH_INTERVAL) { fetchGuestAgents(); lastGuestAgentsFetch = time; }
 
             // 兜底：非 idle 时确保机房动画在播，idle 时静止

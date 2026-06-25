@@ -7,6 +7,7 @@
  *
  * Usage:
  *   node agent-status.js reset ["task title"]      reset agents to idle; keeps rolling log
+ *   node agent-status.js clearlog                  archive log to log-archive/status-YYYY-MM-DD.json, clear feed
  *   node agent-status.js task  "task title"        set the current task / sprint title
  *   node agent-status.js loop  <n>                 set the loop round number
  *   node agent-status.js set <id> <state> ["task text"] ["log message"]
@@ -33,18 +34,52 @@ const path = require('path');
 const { skillLabel, cmdLabel } = require('./capability-labels');
 
 const FILE = path.join(__dirname, 'status.json');
+const ARCHIVE_DIR = path.join(__dirname, 'log-archive');
 const IDS = ['orch', 'pm', 'design', 'be', 'besr', 'fe', 'feanim', 'qa'];
 const STATES = ['idle', 'work', 'fix', 'done'];
 const META_KEYS = ['kind', 'to', 'skill', 'cmd', 'activity', 'title', 'speech', 'file', 'action', 'detail', 'lines'];
 const FILE_ACTIONS = ['create', 'edit', 'delete', 'rename'];
 const PROJECT = process.env.LOOP_PROJECT || '';
-const LOG_CAP = 800; // ponytail: rolling cross-project history
+const LOG_CAP = 400; // ponytail: rolling in-memory feed; older lines → log-archive/
 const MSG_CAP = 12000; // max chars per say/report line
+
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+
+function archiveLogEntries(entries, dayKey) {
+  if (!entries.length) return 0;
+  fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+  const file = path.join(ARCHIVE_DIR, `status-${dayKey}.json`);
+  let existing = [];
+  try {
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+    existing = Array.isArray(raw) ? raw : [];
+  } catch (e) { /* new archive file */ }
+  fs.writeFileSync(file, JSON.stringify(existing.concat(entries), null, 2));
+  return entries.length;
+}
+
+function maybeRotateDailyLog(s) {
+  const today = todayKey();
+  if (!s.logDay) { s.logDay = today; return; }
+  if (s.logDay === today) return;
+  const log = Array.isArray(s.log) ? s.log : [];
+  if (log.length) archiveLogEntries(log, s.logDay);
+  s.log = [];
+  s.logDay = today;
+}
+
+function clearLog(s) {
+  const log = Array.isArray(s.log) ? s.log : [];
+  const n = archiveLogEntries(log, todayKey());
+  s.log = [];
+  s.logDay = todayKey();
+  return n;
+}
 
 function emptyState(task) {
   const agents = {};
   IDS.forEach(id => { agents[id] = { state: 'idle', task: '' }; });
-  return { task: task || '', project: PROJECT, loop: 1, updatedAt: new Date().toISOString(), agents, log: [] };
+  return { task: task || '', project: PROJECT, loop: 1, logDay: todayKey(), updatedAt: new Date().toISOString(), agents, log: [] };
 }
 function tagProject(s) { if (PROJECT) s.project = PROJECT; }
 function load() {
@@ -52,6 +87,8 @@ function load() {
   catch (e) { return emptyState(''); }
 }
 function save(s) {
+  maybeRotateDailyLog(s);
+  if (!s.logDay) s.logDay = todayKey();
   s.updatedAt = new Date().toISOString();
   fs.writeFileSync(FILE, JSON.stringify(s, null, 2));
 }
@@ -147,6 +184,12 @@ switch ((cmd || '').toLowerCase()) {
     pushLog(ns, 'orch', '── new task: ' + (PROJECT ? '[' + PROJECT + '] ' : '') + (args[0] || '(untitled)') + ' ──', { kind: 'system' });
     save(ns);
     console.log('status reset' + (PROJECT ? ' · project: ' + PROJECT : '') + (args[0] ? ' · task: ' + args[0] : ''));
+    break;
+  }
+  case 'clearlog': {
+    const n = clearLog(s);
+    save(s);
+    console.log('log cleared (' + n + ' entries archived to log-archive/status-' + todayKey() + '.json)');
     break;
   }
   case 'task':
@@ -287,5 +330,5 @@ switch ((cmd || '').toLowerCase()) {
     break;
   }
   default:
-    console.log('commands: reset | task | loop | set | log | event | delegate | skill | cmd | progress | file | report | wait | say');
+    console.log('commands: reset | clearlog | task | loop | set | log | event | delegate | skill | cmd | progress | file | report | wait | say');
 }
