@@ -260,12 +260,38 @@ First command does everything:
 
 | Step                | What it does                                                |
 | ------------------- | ----------------------------------------------------------- |
-| agents              | Copy subagents → `~/.claude/agents/`                        |
-| Hermes              | Install team skills → `~/.hermes/skills/`                   |
-| **external skills** | Install recommended → `~/.agents/skills/` + Hermes symlinks |
-| Base path           | Register `~/.loop-base`                                     |
-| dashboard hooks     | Claude Code + Cursor → `install-dash-hooks.sh`              |
-| dashboard           | Open `http://localhost:19000`                               |
+| **always**          | Register `~/.loop-base` · open dashboard at `:19000`        |
+| agents              | Copy subagents → `~/.claude/agents/` **if Claude detected** |
+| Hermes skills       | Install team skills → `~/.hermes/skills/` **if Hermes detected** |
+| **external skills** | Recommended → `~/.agents/skills/` (+ Hermes symlinks if Hermes) |
+| dashboard hooks     | Auto-bridge per platform → `install-dash-hooks.sh` (see below) |
+| L3 hook             | Claude Code permission auto-allow **if Claude detected**    |
+
+
+**Platforms are optional — `deploy.sh` never fails if one is missing.**
+
+Installers detect what is on your machine and **skip the rest** (exit 0, message like `(skip Cursor hooks …)`). You can use **only Claude Code, only Cursor, or only Hermes**.
+
+
+| Platform        | Detected when                                              | Installed by `deploy.sh`                                      | If not present        |
+| --------------- | ---------------------------------------------------------- | ------------------------------------------------------------- | --------------------- |
+| **Claude Code** | `claude` CLI **or** `~/.claude/settings.json`              | `~/.claude/agents/` · CC dashboard hooks · L3 permission hook | skipped — no error    |
+| **Cursor**      | `cursor` CLI **or** `~/.cursor/` folder                    | Dashboard hooks in `~/.cursor/hooks.json`                     | skipped — no error    |
+| **Hermes**      | `~/.hermes/config.yaml` (run `hermes setup` first)         | Team skills · shell hooks in config · hook allowlist          | skipped — no error    |
+
+Cursor always reads agent defs from **this repo’s** `.claude/agents/` when the folder is open — no global copy required.
+
+**Add a platform later** (e.g. you first used Cursor, then install Hermes):
+
+```zsh
+hermes setup                              # once, if adding Hermes
+zsh tools/deploy.sh                       # or: zsh tools/install-dash-hooks.sh
+zsh tools/sync-agents.sh                  # refresh Hermes skills if needed
+```
+
+Restart **Claude Code / Cursor / Hermes** after hook changes.
+
+**After `git pull`:** run `zsh tools/deploy.sh` again to refresh hook paths — safe even if you only have one platform.
 
 
 Skip external skills (no network / install later):
@@ -313,6 +339,7 @@ zsh tools/sync-agents.sh    # source = .claude/agents/
 > | Dashboard hooks (Claude Code) | `~/.claude/settings.json` → `cc-dash-bridge.js` |
 > | Dashboard hooks (Cursor) | `~/.cursor/hooks.json` → `dash-bridge.js` |
 > | L3 auto-approve (optional) | `~/.claude/settings.json` → `l3-permission-hook.js` |
+> | Hermes shell hooks | `~/.hermes/config.yaml` → `dash-bridge.js` |
 >
 > If you **move or rename** the cloned `loom` repo (e.g. Desktop → Documents), those paths go stale.
 > Symptoms: dashboard stays quiet, `dash.sh serve` fails, Claude hooks do nothing, wrong or missing project tags.
@@ -324,7 +351,7 @@ zsh tools/sync-agents.sh    # source = .claude/agents/
 > zsh tools/deploy.sh
 > ```
 >
-> Then restart **Claude Code** and **Cursor** so hooks reload.
+> Then restart **Claude Code, Cursor, and/or Hermes** so hooks reload.
 >
 > `git pull` alone does **not** refresh hooks — run `deploy.sh` (or at minimum `zsh tools/install-dash-hooks.sh` and rewrite `~/.loop-base`) after moving.
 >
@@ -436,26 +463,36 @@ Full loop spec → [LOOP.md](LOOP.md) · Reference: [Loop Engineering Guide 2026
 | Parallel work   | full (worktree)       | limited                         | yes (subagents)       |
 | Automation/cron | via loop              | —                               | built-in              |
 | Strength        | full loop             | hands-on edit/review            | headless + scheduling |
+| Dashboard hooks | `~/.claude/settings.json` | `~/.cursor/hooks.json`      | `~/.hermes/config.yaml` |
+| Required for Loom | optional (any one)  | optional (any one)              | optional (any one)    |
+
+
+### Dashboard auto-bridge (all platforms)
+
+One command wires every **detected** platform to the central board (`http://localhost:19000`):
+
+```zsh
+zsh tools/install-dash-hooks.sh   # included in deploy.sh — skips missing platforms
+```
+
+| Platform      | Hook file / config              | What mirrors to the board |
+| ------------- | ------------------------------- | ------------------------- |
+| Claude Code   | `~/.claude/settings.json`       | file edits · labeled shell · sub-agent / stop summaries |
+| Cursor        | `~/.cursor/hooks.json`          | above + `afterFileEdit` · `afterShellExecution` · assistant responses |
+| Hermes        | `~/.hermes/config.yaml`         | `write_file` / `patch` / `terminal` · sub-agent stop · turn end (`post_llm_call`) |
+
+Project tag resolves from cwd `loop.config.json`, parent walk, or `.active-project` in Loom — never `(unknown)`.
+
+Shell activity shows **human-readable labels only** (e.g. `npm test`) — not raw debug commands.
+
+Long loop summaries still benefit from explicit `dash.sh report` / `say` on all platforms.
+
+After install → **restart** the IDE or Hermes. Hermes gateway/cron: `hermes --accept-hooks` or `hooks_auto_accept: true` in config (allowlist is pre-seeded by install).
 
 
 ### Claude Code
 
-`deploy.sh` copies subagents to `~/.claude/agents/` — usable in every project immediately.
-
-**Auto-sync activity to the dashboard (Claude Code + Cursor hooks):**
-
-```zsh
-zsh tools/install-dash-hooks.sh   # included in deploy.sh
-```
-
-After install → **restart Claude Code and/or Cursor**. Hooks mirror:
-- file edits (`Edit` / `Write` / `StrReplace` / `Delete`)
-- known shell commands only (e.g. `npm test`, `eslint` — not raw debug one-liners)
-- sub-agent stop summaries and session stop (when the message is long enough)
-
-Project tag resolves from cwd `loop.config.json`, parent walk, or `.active-project` in Loom — never `(unknown)`.
-
-Hermes and manual chat still benefit from explicit `dash.sh report` / `say` calls.
+`deploy.sh` copies subagents to `~/.claude/agents/` when Claude is detected — usable in every project immediately.
 
 ```
 Use loop-start
@@ -473,13 +510,11 @@ Optional personas: Settings → Custom Modes → paste each `.claude/agents/*.md
 
 Chat like Claude Code (`Use loop-orch at L1: ...`) or switch Custom Modes.
 
-**Auto-bridge:** same `install-dash-hooks.sh` as Claude Code (see above) — Cursor also gets `afterFileEdit`, `afterShellExecution`, and `afterAgentResponse` hooks.
-
 **Capabilities:** great for interactive edits; less parallel fan-out than Claude Code. Good for hands-on fix/review.
 
 ### Hermes
 
-`deploy.sh` installs team skills (`loop-start loop-orch pm design fe fe-anim be be-sr qa LOOP`)
+When Hermes is detected, `deploy.sh` installs team skills (`loop-start loop-orch pm design fe fe-anim be be-sr qa LOOP`)
 to `~/.hermes/skills/` with external skill symlinks.
 
 ```
@@ -500,7 +535,7 @@ hermes bundles create frontend-dev -s fe -s fe-anim -s solid
 
 **Capabilities:** autonomous/headless, cron, multi-channel. Good for scheduled loops (e.g. morning triage). Must run from / point at the right control folder.
 
-> All three platforms read `loop.config.json` from the **folder you're in**. Start with `loop-start` to pin the right project.
+> All three platforms read `loop.config.json` from the **folder you're in**. Start with `loop-start` to pin the right project. **You do not need all three** — pick one.
 
 ---
 

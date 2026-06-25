@@ -1,11 +1,18 @@
 #!/usr/bin/env zsh
 # install-cursor-hooks.sh — wire Cursor user hooks → Loom dashboard (dash-bridge.js).
 # Merges into ~/.cursor/hooks.json without removing your other hooks.
+# Skips silently when Cursor is not installed.
 # Usage: zsh tools/install-cursor-hooks.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BRIDGE="$ROOT/agent-dashboard/dash-bridge.js"
 SETTINGS="$HOME/.cursor/hooks.json"
+
+if ! command -v cursor >/dev/null 2>&1 && [[ ! -d "$HOME/.cursor" ]]; then
+  echo "  (skip Cursor hooks — Cursor not detected; install Cursor then re-run)"
+  exit 0
+fi
+
 chmod +x "$ROOT/agent-dashboard/dash-bridge.js" "$ROOT/agent-dashboard/cc-dash-bridge.js"
 
 node -e "

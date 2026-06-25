@@ -1,11 +1,18 @@
 #!/usr/bin/env zsh
 # install-l3-hooks.sh — auto-approve Claude Code prompts when loop.config autonomy is L3.
 # Merges PermissionRequest hook into ~/.claude/settings.json (keeps your other hooks).
+# Skips silently when Claude Code is not installed.
 # Usage: zsh tools/install-l3-hooks.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HOOK="$ROOT/agent-dashboard/l3-permission-hook.js"
 SETTINGS="$HOME/.claude/settings.json"
+
+if ! command -v claude >/dev/null 2>&1 && [[ ! -f "$SETTINGS" ]]; then
+  echo "  (skip L3 hooks — Claude Code not detected)"
+  exit 0
+fi
+
 chmod +x "$HOOK"
 
 node -e "

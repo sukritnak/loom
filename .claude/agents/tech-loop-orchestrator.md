@@ -279,7 +279,7 @@ Then **restart Claude Code / Cursor**. Hooks mirror file edits, shell commands, 
 
 **Cursor:** hooks land in `~/.cursor/hooks.json` (merged with your existing hooks). Chat text still needs `report` for long summaries unless `afterAgentResponse` fired for that turn.
 
-**Hermes / plain terminal:** no IDE hooks — call `zsh "$B/tools/dash.sh" …` explicitly (see examples above).
+**Hermes / plain terminal:** Hermes gets auto-bridge via `install-hermes-hooks.sh` (in `install-dash-hooks.sh`). Plain shell with no agent runtime still needs explicit `zsh "$B/tools/dash.sh" …` (see examples above).
 
 ### Dashboard ≠ chat (required — read this)
 **ข้อความในแชทไม่ไหลเข้า dashboard อัตโนมัติ 100%** — ติด `install-dash-hooks.sh` แล้ว hooks จะ mirror ไฟล์/คำสั่ง/response หลัก แต่รายงานยาวในแชทควร `dash.sh report` ด้วยเสมอ

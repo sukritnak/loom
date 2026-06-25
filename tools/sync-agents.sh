@@ -14,10 +14,14 @@ ls "$SRC"/*.md >/dev/null 2>&1 || { echo "no agents in $SRC"; exit 1; }
 n=$(ls "$SRC"/*.md | wc -l | tr -d ' ')
 echo "== sync agents (source: $SRC, $n files) =="
 
-# Claude Code (global)
-mkdir -p "$HOME/.claude/agents"
-cp -f "$SRC"/*.md "$HOME/.claude/agents/"
-echo "  ✓ Claude Code  → ~/.claude/agents/  ($n agents)"
+# Claude Code (global) — only if Claude Code is present
+if command -v claude >/dev/null 2>&1 || [[ -d "$HOME/.claude" ]]; then
+  mkdir -p "$HOME/.claude/agents"
+  cp -f "$SRC"/*.md "$HOME/.claude/agents/"
+  echo "  ✓ Claude Code  → ~/.claude/agents/  ($n agents)"
+else
+  echo "  - Claude Code  → not detected (skipped)"
+fi
 
 # Hermes
 if command -v hermes >/dev/null 2>&1 || [ -d "$HOME/.hermes" ]; then

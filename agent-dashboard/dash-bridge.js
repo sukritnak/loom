@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
  * dash-bridge.js — universal hook bridge → Loom central dashboard.
- * Claude Code (~/.claude/settings.json) + Cursor (~/.cursor/hooks.json).
+ * Claude Code (~/.claude/settings.json) · Cursor (~/.cursor/hooks.json) · Hermes (shell hooks in config.yaml).
  *
  * Usage: node dash-bridge.js [eventHint]
  *   eventHint optional when hook_event_name is missing (Cursor afterAgentResponse).
@@ -36,7 +36,7 @@ const SKIP_SHELL_RES = [
 const SKIP_FILE_RES = [
   /(^|\/)agent-dashboard\/(dash-bridge|agent-status|cc-dash-bridge)\.js$/,
   /(^|\/)agent-dashboard\/status\.json$/,
-  /(^|\/)tools\/(dash\.sh|resolve-project\.js|install-(dash|cursor|cc)-hooks\.sh)$/,
+  /(^|\/)tools\/(dash\.sh|resolve-project\.js|install-(dash|cursor|cc|hermes)-hooks\.sh)$/,
   /(^|\/)log-archive\//,
 ];
 const EVENT_HINT = (process.argv[2] || '').trim();
@@ -74,13 +74,35 @@ function mapWho(agentType) {
   return AGENT_MAP[k] || AGENT_MAP[k.replace(/-/g, '')] || 'orch';
 }
 
+function isHermes(input) {
+  const e = String(input.hook_event_name || '');
+  return e.includes('_'); // post_tool_call, subagent_stop, …
+}
+
+function hermesOk() {
+  process.stdout.write('{}\n');
+}
+
+function exitBridge(input) {
+  if (isHermes(input)) hermesOk();
+  process.exit(0);
+}
+
+function extra(input) {
+  return input.extra && typeof input.extra === 'object' ? input.extra : {};
+}
+
 function normalizeEvent(input) {
   const raw = input.hook_event_name || EVENT_HINT || '';
   const e = String(raw).toLowerCase();
   const map = {
     subagentstart: 'subagentStart',
     posttooluse: 'postToolUse',
+    post_tool_call: 'postToolUse',
     subagentstop: 'subagentStop',
+    subagent_stop: 'subagentStop',
+    subagent_start: 'subagentStart',
+    post_llm_call: 'afterAgentResponse',
     afteragentresponse: 'afterAgentResponse',
     afterfileedit: 'afterFileEdit',
     aftershellexecution: 'afterShellExecution',
@@ -249,17 +271,18 @@ function main() {
   const st = loadState(sid);
 
   if (event === 'subagentStart') {
-    const who = mapWho(input.agent_type || input.subagent_type);
+    const ex = extra(input);
+    const who = mapWho(ex.child_role || input.agent_type || input.subagent_type);
     st.who = who;
-    st.agent_type = input.agent_type || input.subagent_type || '';
+    st.agent_type = ex.child_role || input.agent_type || input.subagent_type || '';
     st.cwd = cwd;
     saveState(sid, st);
-    const label = (input.task || input.agent_type || input.subagent_type || who).slice(0, 80);
+    const label = (ex.child_goal || input.task || input.agent_type || input.subagent_type || who).slice(0, 80);
     dash(['set', who, 'work', label, `subagent started: ${label}`, `speech=เริ่มงาน: ${label}`], project, controlDir);
-    process.exit(0);
+    exitBridge(input);
   }
 
-  const who = st.who || mapWho(input.agent_type || input.subagent_type) || 'orch';
+  const who = st.who || mapWho(extra(input).child_role || input.agent_type || input.subagent_type) || 'orch';
 
   if (event === 'postToolUse') {
     const tool = input.tool_name || '';
@@ -277,10 +300,18 @@ function main() {
     } else if (tool === 'Delete') {
       const fp = relPath(ti.path || ti.file_path || '', cwd);
       handleFile(who, 'delete', fp, '', project, controlDir, st, sid);
-    } else if (tool === 'Shell' || tool === 'Bash') {
+    } else if (tool === 'write_file') {
+      const fp = relPath(ti.path || '', cwd);
+      const detail = ti.content ? String(ti.content).split('\n')[0].trim().slice(0, 140) : '';
+      handleFile(who, 'create', fp, detail, project, controlDir, st, sid);
+    } else if (tool === 'patch') {
+      const fp = relPath(ti.path || '', cwd);
+      const detail = ti.new_string ? String(ti.new_string).split('\n')[0].trim().slice(0, 140) : '';
+      handleFile(who, 'edit', fp, detail, project, controlDir, st, sid);
+    } else if (tool === 'Shell' || tool === 'Bash' || tool === 'terminal') {
       handleShell(who, ti.command || '', project, controlDir, st, sid);
     }
-    process.exit(0);
+    exitBridge(input);
   }
 
   if (event === 'afterFileEdit') {
@@ -288,17 +319,18 @@ function main() {
     const edit = Array.isArray(input.edits) && input.edits[0];
     const detail = edit && edit.new_string ? String(edit.new_string).split('\n')[0].trim().slice(0, 140) : '';
     handleFile(who, 'edit', fp, detail, project, controlDir, st, sid);
-    process.exit(0);
+    exitBridge(input);
   }
 
   if (event === 'afterShellExecution') {
     handleShell(who, input.command || '', project, controlDir, st, sid);
-    process.exit(0);
+    exitBridge(input);
   }
 
   if (event === 'subagentStop') {
-    const id = mapWho(input.agent_type || input.subagent_type || st.agent_type || st.who);
-    let msg = String(input.summary || input.last_assistant_message || '').trim();
+    const ex = extra(input);
+    const id = mapWho(ex.child_role || input.agent_type || input.subagent_type || st.agent_type || st.who);
+    let msg = String(ex.child_summary || input.summary || input.last_assistant_message || '').trim();
     if (!msg && input.agent_transcript_path && fs.existsSync(input.agent_transcript_path)) {
       try {
         const tail = fs.readFileSync(input.agent_transcript_path, 'utf8').slice(-12000);
@@ -306,12 +338,14 @@ function main() {
       } catch (e) { /* ok */ }
     }
     reportMessage(st, sid, id, msg, project, controlDir);
-    process.exit(0);
+    exitBridge(input);
   }
 
   if (event === 'afterAgentResponse') {
-    reportMessage(st, sid, 'orch', input.text || '', project, controlDir);
-    cursorOk();
+    const ex = extra(input);
+    reportMessage(st, sid, 'orch', input.text || ex.assistant_response || '', project, controlDir);
+    if (isHermes(input)) hermesOk();
+    else cursorOk();
     process.exit(0);
   }
 
@@ -319,10 +353,10 @@ function main() {
     const msg = String(input.last_assistant_message || '').trim();
     const recent = st.lastReportAt && (Date.now() - st.lastReportAt < 8000);
     if (!recent && msg) reportMessage(st, sid, 'orch', msg, project, controlDir);
-    process.exit(0);
+    exitBridge(input);
   }
 
-  process.exit(0);
+  exitBridge(input);
 }
 
 if (process.argv.includes('--self-check')) {
@@ -331,6 +365,8 @@ if (process.argv.includes('--self-check')) {
   console.assert(shouldSkipFile('agent-dashboard/dash-bridge.js'), 'skip dash-bridge file');
   console.assert(cleanDetail('#!/usr/bin/env node') === '', 'strip shebang');
   console.assert(!shouldSkipShell('npm test'), 'keep npm test');
+  console.assert(normalizeEvent({ hook_event_name: 'post_tool_call' }) === 'postToolUse', 'hermes post_tool_call');
+  console.assert(normalizeEvent({ hook_event_name: 'subagent_stop' }) === 'subagentStop', 'hermes subagent_stop');
   console.assert(cmdLabel('npm test'), 'label npm test');
   console.log('dash-bridge self-check ok');
   process.exit(0);

@@ -27,8 +27,12 @@ fi
 if [ "${DEPLOY_SKIP_EXTERNAL_SKILLS:-}" != 1 ]; then
   echo "== recommended external skills =="
   zsh tools/install-external-skills.sh
-  zsh tools/install-hermes-skills.sh >/dev/null   # refresh Hermes symlinks
-  echo "  ✓ Hermes external symlinks refreshed"
+  if command -v hermes >/dev/null 2>&1 || [ -d "$HOME/.hermes" ]; then
+    zsh tools/install-hermes-skills.sh >/dev/null   # refresh Hermes symlinks
+    echo "  ✓ Hermes external symlinks refreshed"
+  else
+    echo "  - Hermes skills  → not detected (skipped)"
+  fi
 else
   echo "  (skipped external skills — DEPLOY_SKIP_EXTERNAL_SKILLS=1)"
 fi

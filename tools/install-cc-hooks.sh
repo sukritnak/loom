@@ -2,12 +2,19 @@
 # install-cc-hooks.sh — wire Claude Code hooks → Loom dashboard (cc-dash-bridge.js).
 # Merges into ~/.claude/settings.json without removing your other hooks.
 # Replaces stale dash-bridge paths (e.g. after moving the Loom repo).
+# Skips silently when Claude Code is not installed.
 # Usage: zsh tools/install-cc-hooks.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BRIDGE="$ROOT/agent-dashboard/dash-bridge.js"
 CC_BRIDGE="$ROOT/agent-dashboard/cc-dash-bridge.js"
 SETTINGS="$HOME/.claude/settings.json"
+
+if ! command -v claude >/dev/null 2>&1 && [[ ! -f "$SETTINGS" ]]; then
+  echo "  (skip Claude Code hooks — \`claude\` not found; install Claude Code then re-run)"
+  exit 0
+fi
+
 chmod +x "$BRIDGE" "$CC_BRIDGE"
 
 node -e "
