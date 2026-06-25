@@ -12,18 +12,19 @@
             font-style: normal;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; min-height: 100%; }
+        html, body { width: 100%; height: 100%; }
         body {
             background: #1a1a2e;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
             align-items: stretch;
-            min-height: 100vh;
+            height: 100vh;
+            max-height: 100vh;
             font-family: 'ArkPixel', 'Courier New', monospace;
             padding: 8px 12px;
             gap: 10px;
-            overflow-x: hidden;
+            overflow: hidden;
         }
         /* Main layout: office (left) + Loop Activity (right) — full viewport width */
         #main-stage {
@@ -33,7 +34,11 @@
             gap: 8px;
             width: 100%;
             max-width: none;
-            min-height: calc(100vh - 16px);
+            flex: 1 1 auto;
+            height: 100%;
+            min-height: 0;
+            max-height: 100%;
+            overflow: hidden;
             transition: transform .25s ease;
             will-change: transform;
             align-items: stretch;
@@ -46,6 +51,7 @@
             flex-direction: column;
             gap: 14px;
             min-width: 0;
+            min-height: 0;
         }
         #bottom-panels {
             display: flex;
@@ -859,7 +865,10 @@
             width: 100%;
             min-width: 0;
             max-width: 300px;
-            min-height: calc(100vh - 16px);
+            height: 100%;
+            min-height: 0;
+            max-height: 100%;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             background: linear-gradient(180deg, #141824 0%, #10131c 100%);
@@ -868,6 +877,11 @@
             padding: 14px 16px 12px;
             box-sizing: border-box;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        }
+        #activity-panel-title,
+        #activity-meta,
+        #activity-toolbar {
+            flex-shrink: 0;
         }
         #activity-panel-title {
             color: #e2e8f0;
@@ -921,14 +935,17 @@
         #activity-feed {
             flex: 1 1 auto;
             min-height: 0;
-            max-height: none;
             overflow-y: auto;
+            overscroll-behavior: contain;
             display: flex;
             flex-direction: column;
             gap: 8px;
             padding-right: 6px;
+            scrollbar-color: #475569 transparent;
+            scrollbar-width: thin;
         }
         #activity-feed::-webkit-scrollbar { width: 8px; }
+        #activity-feed::-webkit-scrollbar-track { background: transparent; }
         #activity-feed::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
         .activity-line {
             background: rgba(15, 23, 42, 0.9);
@@ -952,7 +969,31 @@
         .activity-line .act-msg hr.sep { border: none; border-top: 1px solid #334155; margin: 8px 0; }
         .act-tag.report { color: #c4b5fd; border-color: #7c3aed; }
         .act-tag.wait { color: #fcd34d; border-color: #d97706; }
-        .activity-line .act-head { color: #cbd5e1; margin-bottom: 6px; font-size: 12px; }
+        .activity-line .act-head-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .activity-line .act-head { color: #cbd5e1; margin-bottom: 0; font-size: 12px; flex: 1 1 auto; min-width: 0; }
+        .act-view-btn {
+            flex-shrink: 0;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #cbd5e1;
+            cursor: pointer;
+        }
+        .act-view-btn:hover { background: #334155; border-color: #64748b; }
+        .activity-line .act-detail {
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
         .activity-line .act-title { color: #f8fafc; font-weight: 700; font-size: 14px; margin-bottom: 6px; }
         .activity-line .act-msg {
             color: #f1f5f9;
@@ -960,6 +1001,156 @@
             word-break: break-word;
             font-size: 13px;
             line-height: 1.55;
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .activity-line .act-pre {
+            max-height: 5.8em;
+            overflow: hidden;
+        }
+        #activity-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 10000010;
+            background: rgba(2, 6, 23, 0.72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        #activity-modal-backdrop[hidden] { display: none !important; }
+        #activity-modal {
+            width: min(720px, 96vw);
+            max-height: min(86vh, 900px);
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(180deg, #141824 0%, #10131c 100%);
+            border: 2px solid #475569;
+            border-radius: 12px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+        }
+        #activity-modal-header {
+            padding: 14px 16px 10px;
+            border-bottom: 1px solid #334155;
+            flex-shrink: 0;
+        }
+        #activity-modal-title {
+            color: #f8fafc;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.35;
+            margin-top: 6px;
+        }
+        #activity-modal-sub {
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        #activity-modal-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 14px 16px;
+            color: #f1f5f9;
+            font-size: 14px;
+            line-height: 1.6;
+            overscroll-behavior: contain;
+        }
+        #activity-modal-body .act-pre {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            background: #0a0c12;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            color: #e2e8f0;
+            max-height: none;
+        }
+        #activity-modal-body .activity-modal-meta-block {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #334155;
+            color: #94a3b8;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        #activity-modal-footer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px 14px;
+            border-top: 1px solid #334155;
+            flex-shrink: 0;
+        }
+        #activity-modal-pos {
+            flex: 1 1 auto;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+        .activity-modal-btn {
+            font-size: 12px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #1e293b;
+            color: #e2e8f0;
+            cursor: pointer;
+        }
+        .activity-modal-btn:hover { background: #334155; }
+        .activity-modal-btn.primary {
+            border-color: #6366f1;
+            background: #4338ca;
+        }
+        .activity-modal-btn.danger {
+            border-color: #dc2626;
+            background: #991b1b;
+        }
+        .activity-modal-btn.danger:hover { background: #b91c1c; }
+        #activity-clear-confirm-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 10000011;
+            background: rgba(2, 6, 23, 0.72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        #activity-clear-confirm-backdrop[hidden] { display: none !important; }
+        #activity-clear-confirm {
+            width: min(420px, 92vw);
+            background: linear-gradient(180deg, #141824 0%, #10131c 100%);
+            border: 2px solid #475569;
+            border-radius: 12px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+        }
+        #activity-clear-confirm-title {
+            padding: 14px 16px 8px;
+            color: #f8fafc;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        #activity-clear-confirm-body {
+            padding: 0 16px 14px;
+            color: #cbd5e1;
+            font-size: 13px;
+            line-height: 1.55;
+        }
+        #activity-clear-confirm-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 10px 16px 14px;
+            border-top: 1px solid #334155;
         }
         .activity-line .act-meta { color: #94a3b8; font-size: 11px; margin-top: 6px; }
         .act-tag { display: inline-block; padding: 2px 7px; border-radius: 999px; border: 1px solid #475569; margin-right: 5px; font-size: 10px; font-weight: 600; }
@@ -1106,10 +1297,18 @@
             body {
                 padding: 0;
                 gap: 0;
+                height: auto;
+                max-height: none;
                 overflow-x: auto;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 align-items: stretch;
+            }
+
+            #main-stage {
+                height: auto;
+                max-height: none;
+                overflow: visible;
             }
 
             #main-stage {
@@ -1130,11 +1329,14 @@
                 grid-row: 2;
                 min-width: 0;
                 max-width: none;
+                height: auto;
+                max-height: none;
                 min-height: 320px;
             }
 
             #activity-feed {
                 min-height: 260px;
+                max-height: 50vh;
             }
 
             #bottom-panels {
@@ -1334,6 +1536,33 @@
             </div>
         </div>
     </div>
+
+    <div id="activity-modal-backdrop" hidden onclick="closeActivityModal()">
+        <div id="activity-modal" role="dialog" aria-modal="true" aria-labelledby="activity-modal-title" onclick="event.stopPropagation()">
+            <div id="activity-modal-header">
+                <div id="activity-modal-sub"></div>
+                <div id="activity-modal-title"></div>
+            </div>
+            <div id="activity-modal-body"></div>
+            <div id="activity-modal-footer">
+                <button type="button" class="activity-modal-btn" id="activity-modal-prev" onclick="stepActivityModal(-1)">← Prev</button>
+                <span id="activity-modal-pos"></span>
+                <button type="button" class="activity-modal-btn" id="activity-modal-next" onclick="stepActivityModal(1)">Next →</button>
+                <button type="button" class="activity-modal-btn primary" id="activity-modal-close" onclick="closeActivityModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="activity-clear-confirm-backdrop" hidden onclick="closeClearLogConfirm()">
+        <div id="activity-clear-confirm" role="dialog" aria-modal="true" aria-labelledby="activity-clear-confirm-title" onclick="event.stopPropagation()">
+            <div id="activity-clear-confirm-title">Archive live log?</div>
+            <div id="activity-clear-confirm-body"></div>
+            <div id="activity-clear-confirm-actions">
+                <button type="button" class="activity-modal-btn" id="activity-clear-cancel-btn" onclick="closeClearLogConfirm()">Cancel</button>
+                <button type="button" class="activity-modal-btn danger" id="activity-clear-ok-btn" onclick="confirmClearLoopActivity()">Move to Archived</button>
+            </div>
+        </div>
+    </div>
     
     <div id="asset-highlight"></div>
     <div id="room-loading-overlay" aria-live="polite" aria-busy="true">
@@ -1471,7 +1700,7 @@
                 assetHintNotInScene: '当前场景未检测到此对象，仍可替换文件（刷新后生效）',
                 assetHintDefault: '通用素材：建议保持原图尺寸、透明通道与视觉重心一致，避免错位或失真',
                 showCoords: '显示坐标', hideCoords: '隐藏坐标', moveView: '移动视野', lockView: '锁定视野',
-                memoTitle: '昨 日 小 记', activityTitle: '⚡ Loop Activity', activitySourceLive: 'Live', activityArchiveEmpty: '（无归档）', activityArchiveCount: '条', activityClearBtn: '清空日志', activityClearConfirm: '将当前日志备份到 log-archive/ 并清空活动面板？', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
+                memoTitle: '昨 日 小 记', activityTitle: '⚡ Loop Activity', activitySourceLive: 'Live', activityArchiveEmpty: '（无归档）', activityArchiveCount: '条', activityClearBtn: '清空日志', activityClearConfirmTitle: '归档当前日志？', activityClearConfirmBody: '将把 {count} 条消息移到 Archived（log-archive/），并清空 Live 面板。之后可在下拉菜单中查看。', activityClearConfirmOk: '移到 Archived', activityClearConfirmCancel: '取消', activityViewBtn: '查看', activityModalClose: '关闭', activityModalPrev: '← 上一条', activityModalNext: '下一条 →', guestTitle: '访 客 列 表', officeTitle: '海辛小龙虾的办公室',
                 loadingOffice: '正在加载 Star 的像素办公室...'
             },
             en: {
@@ -1499,7 +1728,7 @@
                 assetHintNotInScene: 'This object is not detected in current scene; you can still replace file (effective after refresh)',
                 assetHintDefault: 'Generic asset: keep source size, alpha channel, and visual anchor to avoid drift/distortion',
                 showCoords: 'Show Coords', hideCoords: 'Hide Coords', moveView: 'Pan View', lockView: 'Lock View',
-                memoTitle: 'YESTERDAY NOTES', activityTitle: '⚡ Loop Activity', activitySourceLive: 'Live', activityArchiveEmpty: '(no archives)', activityArchiveCount: 'entries', activityClearBtn: 'Clear log', activityClearConfirm: 'Archive current log to log-archive/ and clear the feed?', guestTitle: 'VISITOR LIST', officeTitle: 'Zenji Monmin Office',
+                memoTitle: 'YESTERDAY NOTES', activityTitle: '⚡ Loop Activity', activitySourceLive: 'Live', activityArchiveEmpty: '(no archives)', activityArchiveCount: 'entries', activityClearBtn: 'Clear log', activityClearConfirmTitle: 'Archive live log?', activityClearConfirmBody: 'Move {count} message(s) to Archived (log-archive/) and clear the live feed. You can view them again from the dropdown.', activityClearConfirmOk: 'Move to Archived', activityClearConfirmCancel: 'Cancel', activityViewBtn: 'View', activityModalClose: 'Close', activityModalPrev: '← Prev', activityModalNext: 'Next →', guestTitle: 'VISITOR LIST', officeTitle: 'Zenji Monmin Office',
                 loadingOffice: 'Loading Star’s pixel office...'
             },
             ja: {
@@ -1527,7 +1756,7 @@
                 assetHintNotInScene: '現在のシーンでこのオブジェクトは未検出です。ファイル差し替えは可能（更新後に反映）',
                 assetHintDefault: '汎用素材：元サイズ・透過・視覚アンカーを維持し、ズレや崩れを防いでください',
                 showCoords: '座標表示', hideCoords: '座標非表示', moveView: '視点移動', lockView: '視点固定',
-                memoTitle: '昨日のメモ', activityTitle: '⚡ Loop Activity', activitySourceLive: 'ライブ', activityArchiveEmpty: '（アーカイブなし）', activityArchiveCount: '件', activityClearBtn: 'ログ削除', activityClearConfirm: '現在のログを log-archive/ に保存してフィードを空にしますか？', guestTitle: '訪問者リスト', officeTitle: 'ハイシン・ロブスターのオフィス',
+                memoTitle: '昨日のメモ', activityTitle: '⚡ Loop Activity', activitySourceLive: 'ライブ', activityArchiveEmpty: '（アーカイブなし）', activityArchiveCount: '件', activityClearBtn: 'ログ削除', activityClearConfirmTitle: 'ライブログをアーカイブしますか？', activityClearConfirmBody: '{count} 件を Archived（log-archive/）へ移動し、ライブフィードを空にします。ドロップダウンから再表示できます。', activityClearConfirmOk: 'Archived へ移動', activityClearConfirmCancel: 'キャンセル', activityViewBtn: '表示', activityModalClose: '閉じる', activityModalPrev: '← 前へ', activityModalNext: '次へ →', guestTitle: '訪問者リスト', officeTitle: 'ハイシン・ロブスターのオフィス',
                 loadingOffice: 'Star のピクセルオフィスを読み込み中...'
             }
         };
@@ -1615,7 +1844,18 @@
             const activityTitle = document.getElementById('activity-panel-title');
             if (activityTitle) activityTitle.textContent = t('activityTitle') || '⚡ Loop Activity';
             setText('activity-clear-btn', 'activityClearBtn');
+            setText('activity-clear-cancel-btn', 'activityClearConfirmCancel');
+            setText('activity-clear-ok-btn', 'activityClearConfirmOk');
+            const clearConfirmTitle = document.getElementById('activity-clear-confirm-title');
+            if (clearConfirmTitle) clearConfirmTitle.textContent = t('activityClearConfirmTitle') || 'Archive live log?';
+            setText('activity-modal-close', 'activityModalClose');
+            setText('activity-modal-prev', 'activityModalPrev');
+            setText('activity-modal-next', 'activityModalNext');
             refreshActivitySourceOptions();
+            if (typeof activityFeedEntries !== 'undefined' && activityFeedEntries.length) {
+                const feed = document.getElementById('activity-feed');
+                if (feed) feed.innerHTML = activityFeedEntries.map((entry, i) => renderActivityLine(entry, i)).join('');
+            }
             const guestTitle = document.getElementById('guest-agent-panel-title');
             if (guestTitle) guestTitle.textContent = t('guestTitle');
             const plaqueTitle = (typeof window.officeNameFromServer !== 'undefined' && window.officeNameFromServer) || t('officeTitle');
@@ -1750,7 +1990,7 @@
 
         const FILE_VERB = { create: 'สร้าง', edit: 'แก้', delete: 'ลบ', rename: 'ย้าย' };
 
-        function renderActivityLine(entry) {
+        function renderActivityLine(entry, index) {
             const who = LOOP_AGENT_NAMES[entry.who] || entry.who || '?';
             const tags = [];
             if (entry.kind) tags.push(`<span class="act-tag ${escapeActivityText(entry.kind)}">${escapeActivityText(entry.kind)}</span>`);
@@ -1761,7 +2001,8 @@
             if (entry.cmd) meta.push('cmd: ' + escapeActivityText(entry.cmd));
             if (entry.activity && entry.activity !== entry.title && entry.kind !== 'file') meta.push(escapeActivityText(entry.activity));
             if (entry.project) meta.push('[' + escapeActivityText(entry.project) + ']');
-            const head = `<span class="act-head">${escapeActivityText(entry.t || '')} · ${escapeActivityText(who)} ${tags.join(' ')}</span>`;
+            const viewLabel = escapeActivityText(t('activityViewBtn') || 'View');
+            const head = `<div class="act-head-row"><span class="act-head">${escapeActivityText(entry.t || '')} · ${escapeActivityText(who)} ${tags.join(' ')}</span><button type="button" class="act-view-btn" onclick="openActivityModal(${index})">${viewLabel}</button></div>`;
             const sayKind = (entry.kind === 'say' || entry.kind === 'report' || entry.kind === 'test');
             const fileKind = entry.kind === 'file';
             const reportKind = entry.kind === 'report';
@@ -1777,6 +2018,78 @@
             const foot = meta.length ? `<div class="act-meta">${meta.join(' · ')}</div>` : '';
             return `<div class="activity-line${sayKind ? ' say-kind' : ''}${reportKind ? ' report-kind' : ''}${fileKind ? ' file-kind' : ''}">${head}${title}${msg}${foot}</div>`;
         }
+
+        let activityFeedEntries = [];
+        let activityModalIndex = 0;
+
+        function formatActivityModalBody(entry) {
+            const fileKind = entry.kind === 'file';
+            let html = '';
+            if (fileKind && entry.file) {
+                html += `<div class="act-file">${escapeActivityText(entry.file)}</div>`;
+                if (entry.detail) html += `<div class="act-detail" style="-webkit-line-clamp:unset;display:block;overflow:visible;">${formatActivityMsg(entry.detail)}</div>`;
+                if (entry.lines) html += `<div class="act-lines">${escapeActivityText(entry.lines)}</div>`;
+            }
+            if (entry.msg) html += `<div class="act-msg" style="-webkit-line-clamp:unset;display:block;overflow:visible;">${formatActivityMsg(entry.msg)}</div>`;
+            if (entry.speech && entry.speech !== entry.msg && entry.speech !== entry.title) {
+                html += `<div class="activity-modal-meta-block"><strong>speech</strong><br>${formatActivityMsg(entry.speech)}</div>`;
+            }
+            const metaBits = [];
+            if (entry.project) metaBits.push('project: ' + escapeActivityText(entry.project));
+            if (entry.cmd) metaBits.push('cmd: ' + escapeActivityText(entry.cmd));
+            if (entry.skill) metaBits.push('skill: ' + escapeActivityText(entry.skill));
+            if (entry.at) metaBits.push('at: ' + escapeActivityText(entry.at));
+            if (metaBits.length) html += `<div class="activity-modal-meta-block">${metaBits.join('<br>')}</div>`;
+            return html || '<div style="color:#64748b;">(empty message)</div>';
+        }
+
+        function showActivityModalEntry() {
+            const entry = activityFeedEntries[activityModalIndex];
+            if (!entry) return;
+            const who = LOOP_AGENT_NAMES[entry.who] || entry.who || '?';
+            const sub = document.getElementById('activity-modal-sub');
+            const titleEl = document.getElementById('activity-modal-title');
+            const body = document.getElementById('activity-modal-body');
+            const pos = document.getElementById('activity-modal-pos');
+            const tags = [entry.kind, entry.action, entry.to ? ('→ ' + (LOOP_AGENT_NAMES[entry.to] || entry.to)) : ''].filter(Boolean).join(' · ');
+            if (sub) sub.textContent = `${entry.t || ''} · ${who}${tags ? ' · ' + tags : ''}`;
+            if (titleEl) titleEl.textContent = entry.title || entry.activity || entry.msg?.split('\n').find(l => l.trim())?.slice(0, 140) || 'Activity message';
+            if (body) body.innerHTML = formatActivityModalBody(entry);
+            if (pos) pos.textContent = `${activityModalIndex + 1} / ${activityFeedEntries.length}`;
+        }
+
+        function openActivityModal(index) {
+            if (!activityFeedEntries.length) return;
+            activityModalIndex = Math.max(0, Math.min(index, activityFeedEntries.length - 1));
+            showActivityModalEntry();
+            const backdrop = document.getElementById('activity-modal-backdrop');
+            if (backdrop) backdrop.hidden = false;
+        }
+
+        function closeActivityModal() {
+            const backdrop = document.getElementById('activity-modal-backdrop');
+            if (backdrop) backdrop.hidden = true;
+        }
+
+        function stepActivityModal(delta) {
+            const n = activityFeedEntries.length;
+            if (!n) return;
+            activityModalIndex = (activityModalIndex + delta + n) % n;
+            showActivityModalEntry();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const clearBackdrop = document.getElementById('activity-clear-confirm-backdrop');
+            if (clearBackdrop && !clearBackdrop.hidden) {
+                if (e.key === 'Escape') closeClearLogConfirm();
+                return;
+            }
+            const backdrop = document.getElementById('activity-modal-backdrop');
+            if (!backdrop || backdrop.hidden) return;
+            if (e.key === 'Escape') closeActivityModal();
+            else if (e.key === 'ArrowLeft') stepActivityModal(-1);
+            else if (e.key === 'ArrowRight') stepActivityModal(1);
+        });
 
         let activityArchives = [];
         let activitySource = 'live';
@@ -1830,7 +2143,8 @@
                 feed.innerHTML = '<div style="color:#64748b;font-size:11px;">No activity yet — loop-orch should call dash.sh delegate/skill/cmd</div>';
                 return;
             }
-            feed.innerHTML = lines.slice(-250).reverse().map(renderActivityLine).join('');
+            activityFeedEntries = lines.slice(-250).reverse();
+            feed.innerHTML = activityFeedEntries.map((entry, i) => renderActivityLine(entry, i)).join('');
             feed.scrollTop = 0;
         }
 
@@ -1862,11 +2176,35 @@
             }
         }
 
-        async function clearLoopActivity() {
+        function openClearLogConfirm() {
             if (!isLiveActivitySource()) return;
-            if (!confirm(t('activityClearConfirm') || 'Archive current log and clear the feed?')) return;
+            const backdrop = document.getElementById('activity-clear-confirm-backdrop');
+            const body = document.getElementById('activity-clear-confirm-body');
+            const title = document.getElementById('activity-clear-confirm-title');
+            const count = activityFeedEntries.length;
+            if (title) title.textContent = t('activityClearConfirmTitle') || 'Archive live log?';
+            if (body) {
+                const tpl = t('activityClearConfirmBody') || 'Move {count} message(s) to Archived (log-archive/) and clear the live feed. You can view them again from the dropdown.';
+                body.textContent = tpl.replace('{count}', String(count));
+            }
+            if (backdrop) backdrop.hidden = false;
+        }
+
+        function closeClearLogConfirm() {
+            const backdrop = document.getElementById('activity-clear-confirm-backdrop');
+            if (backdrop) backdrop.hidden = true;
+        }
+
+        function clearLoopActivity() {
+            openClearLogConfirm();
+        }
+
+        async function confirmClearLoopActivity() {
+            closeClearLogConfirm();
             const btn = document.getElementById('activity-clear-btn');
+            const okBtn = document.getElementById('activity-clear-ok-btn');
             if (btn) btn.disabled = true;
+            if (okBtn) okBtn.disabled = true;
             try {
                 const response = await fetch('/activity/clear', { method: 'POST' });
                 const data = await response.json();
@@ -1880,6 +2218,7 @@
                 alert((t('activityClearBtn') || 'Clear log') + ': ' + (e.message || e));
             } finally {
                 if (btn) btn.disabled = false;
+                if (okBtn) okBtn.disabled = false;
             }
         }
 
