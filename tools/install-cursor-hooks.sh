@@ -30,20 +30,25 @@ const loomHooks = {
   subagentStop: [entry('subagentStop')],
   postToolUse: [entry('postToolUse', 'Shell|Write|StrReplace|Delete|Edit|Bash')],
   afterFileEdit: [entry('afterFileEdit')],
+  afterTabFileEdit: [entry('afterTabFileEdit')],
   afterShellExecution: [entry('afterShellExecution')],
   afterAgentResponse: [entry('afterAgentResponse', 'AgentResponse')],
   stop: [entry('stop')],
 };
+const isLoomDash = (h) => /dash-bridge|cc-dash-bridge/.test(String(h && h.command || ''));
+
 let s = { version: 1, hooks: {} };
 try { s = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch (e) {}
 s.version = s.version || 1;
 s.hooks = s.hooks || {};
-const marker = 'dash-bridge.js';
-function hasBridge(arr) {
-  return Array.isArray(arr) && arr.some(h => String(h.command || '').includes(marker));
+
+for (const ev of Object.keys(s.hooks)) {
+  const arr = s.hooks[ev];
+  if (!Array.isArray(arr)) continue;
+  s.hooks[ev] = arr.filter((h) => !isLoomDash(h));
+  if (!s.hooks[ev].length) delete s.hooks[ev];
 }
 for (const [ev, blocks] of Object.entries(loomHooks)) {
-  if (hasBridge(s.hooks[ev])) continue;
   s.hooks[ev] = [...(s.hooks[ev] || []), ...blocks];
 }
 fs.mkdirSync(require('path').dirname(settingsPath), { recursive: true });

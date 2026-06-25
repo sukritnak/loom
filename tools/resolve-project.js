@@ -66,7 +66,50 @@ function resolveControlDir(startDir) {
   return startDir || process.cwd();
 }
 
-module.exports = { cleanProject, resolveProject, resolveControlDir };
+const expandPath = (p) => String(p || '').replace(/^~(?=$|[/\\])/, os.homedir());
+
+function serviceRoots(controlDir) {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(controlDir, 'loop.config.json'), 'utf8'));
+    const services = Array.isArray(cfg.services) ? cfg.services : [];
+    const base = expandPath(cfg.base_dir || '');
+    return services.map((s) => {
+      const p = expandPath(s.path);
+      if (!p) return '';
+      if (path.isAbsolute(p)) return path.normalize(p);
+      return path.normalize(path.resolve(base || controlDir, p));
+    }).filter(Boolean);
+  } catch (e) {
+    return [];
+  }
+}
+
+/** Short path for dashboard: relative to service/control root, else basename. */
+function resolveDisplayPath(fp, controlDir, cwd) {
+  const raw = String(fp || '').trim();
+  if (!raw) return '';
+  if (raw.includes('→')) {
+    const [a, b] = raw.split('→').map((s) => s.trim());
+    return `${resolveDisplayPath(a, controlDir, cwd)} → ${resolveDisplayPath(b, controlDir, cwd)}`;
+  }
+  let abs = raw;
+  if (!path.isAbsolute(raw)) {
+    try { abs = path.resolve(cwd || controlDir || process.cwd(), raw); }
+    catch (e) { return path.basename(raw); }
+  }
+  abs = path.normalize(abs);
+  const roots = [...new Set([controlDir, ...serviceRoots(controlDir)].filter(Boolean))]
+    .sort((a, b) => b.length - a.length);
+  for (const root of roots) {
+    const rel = path.relative(root, abs);
+    if (rel && !rel.startsWith('..') && !path.isAbsolute(rel)) {
+      return rel.split(path.sep).join('/');
+    }
+  }
+  return path.basename(abs);
+}
+
+module.exports = { cleanProject, resolveProject, resolveControlDir, resolveDisplayPath, serviceRoots };
 
 if (require.main === module) {
   process.stdout.write(resolveProject(process.cwd()));

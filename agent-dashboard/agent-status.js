@@ -24,6 +24,8 @@
  *       long agent speech / audit / test report (multiline — use heredoc with --stdin)
  *   node agent-status.js file <who> <action> "<path>" [detail="what changed"] [lines="+N -M"] [speech=...]
  *       action = create | edit | delete | rename  (rename path: "old/path → new/path")
+ *   node agent-status.js file-append <who> "<path>" [detail="more lines"] [lines="+N -M"] [speech=...]
+ *       append detail to the latest file log for the same who+path (rapid hook coalesce)
  *   node agent-status.js report <who> title="..." [speech="bubble TL;DR"] [--stdin | @file | body...]
  *       full agent return — same depth as chat (root cause, branch, AC table, gates). kind=report.
  *   node agent-status.js wait <who> "waiting for …" [speech=...]  — orch waiting on background agents
@@ -32,13 +34,13 @@
 const fs = require('fs');
 const path = require('path');
 const { skillLabel, cmdLabel } = require('./capability-labels');
-const { cleanProject, resolveProject, resolveControlDir } = require(path.join(__dirname, '../tools/resolve-project.js'));
+const { cleanProject, resolveProject, resolveControlDir, resolveDisplayPath } = require(path.join(__dirname, '../tools/resolve-project.js'));
 
 const FILE = path.join(__dirname, 'status.json');
 const ARCHIVE_DIR = path.join(__dirname, 'log-archive');
 const IDS = ['orch', 'pm', 'design', 'be', 'besr', 'fe', 'feanim', 'qa'];
 const STATES = ['idle', 'work', 'fix', 'done'];
-const META_KEYS = ['kind', 'to', 'skill', 'cmd', 'activity', 'title', 'speech', 'file', 'action', 'detail', 'lines'];
+const META_KEYS = ['kind', 'to', 'skill', 'cmd', 'activity', 'title', 'speech', 'file', 'action', 'detail', 'removed', 'added', 'lines', 'lineStart', 'lineEnd', 'removedLineStart', 'addedLineStart'];
 const FILE_ACTIONS = ['create', 'edit', 'delete', 'rename'];
 const PROJECT = cleanProject(process.env.LOOP_PROJECT || '');
 const LOG_CAP = 400; // ponytail: rolling in-memory feed; older lines → log-archive/
@@ -109,6 +111,22 @@ function pickMeta(meta) {
   const o = {};
   for (const k of META_KEYS) if (meta[k]) o[k] = meta[k];
   return o;
+}
+
+/** @path.json sidecar from dash-bridge — { removed, added } with full multiline diff. */
+function loadEditJson(rest) {
+  const metaArgs = [];
+  let payload = {};
+  for (const a of rest) {
+    const s = String(a);
+    if (s.startsWith('@')) {
+      try {
+        const p = s.slice(1);
+        if (fs.existsSync(p)) payload = { ...payload, ...JSON.parse(fs.readFileSync(p, 'utf8')) };
+      } catch (e) { /* ok */ }
+    } else metaArgs.push(a);
+  }
+  return { payload, metaArgs };
 }
 function pushLog(s, who, msg, meta = {}) {
   const body = String(msg || '');
@@ -284,23 +302,80 @@ switch ((cmd || '').toLowerCase()) {
     if (!FILE_ACTIONS.includes(action)) { console.error('bad action. use: ' + FILE_ACTIONS.join(' | ')); process.exit(1); }
     if (!filePath) { console.error('usage: file <who> <action> "<path>" [detail=...] [lines=...] [speech=...]'); process.exit(1); }
     tagProject(s);
-    const parsed = pickMeta(parseMeta(rest));
-    const detail = parsed.detail || '';
+    const { payload, metaArgs } = loadEditJson(rest);
+    const parsed = pickMeta(parseMeta(metaArgs));
+    const removed = payload.removed || parsed.removed || '';
+    const added = payload.added || parsed.added || parsed.detail || '';
     const lines = parsed.lines || '';
-    const base = path.basename(String(filePath).split('→')[0].trim());
+    const controlDir = process.env.LOOP_CONTROL_DIR || resolveControlDir(process.cwd());
+    const displayPath = resolveDisplayPath(filePath, controlDir);
+    const base = path.basename(String(displayPath).split('→')[0].trim());
     const verb = { create: 'สร้าง', edit: 'แก้', delete: 'ลบ', rename: 'ย้าย' }[action] || action;
-    const task = (verb + ' ' + base).slice(0, 100);
-    const msgParts = [action + ' · ' + filePath];
-    if (detail) msgParts.push(detail);
-    if (lines) msgParts.push(lines);
+    const task = (parsed.activity || `${verb} ${base}`).slice(0, 100);
+    const msgParts = [`${action} · ${displayPath}`];
     if (s.agents[who].state !== 'fix') s.agents[who].state = 'work';
     s.agents[who].task = task;
-    s.agents[who].file = String(filePath).slice(0, 160);
+    s.agents[who].file = String(displayPath).slice(0, 160);
     pushLog(s, who, msgParts.join('\n'), ensureSpeech({
-      kind: 'file', action, file: filePath, detail, lines, activity: task, ...parsed,
+      kind: 'file', action, file: displayPath, detail: added, removed, added, lines, activity: task, ...parsed,
     }, msgParts.join('\n')));
     save(s);
-    console.log('file: ' + who + ' · ' + action + ' · ' + filePath);
+    console.log('file: ' + who + ' · ' + action + ' · ' + displayPath);
+    break;
+  }
+  case 'file-append': {
+    const [who, filePath, ...rest] = args;
+    if (!IDS.includes(who)) { console.error('bad id. use: ' + IDS.join(' | ')); process.exit(1); }
+    if (!filePath) { console.error('usage: file-append <who> "<path>" [detail=...] [lines=...] [speech=...]'); process.exit(1); }
+    tagProject(s);
+    const { payload, metaArgs } = loadEditJson(rest);
+    const parsed = pickMeta(parseMeta(metaArgs));
+    const addDetail = payload.added || parsed.added || parsed.detail || '';
+    const addRemoved = payload.removed || parsed.removed || '';
+    const addLines = parsed.lines || '';
+    const controlDir = process.env.LOOP_CONTROL_DIR || resolveControlDir(process.cwd());
+    const displayPath = resolveDisplayPath(filePath, controlDir);
+    const base = path.basename(String(displayPath).split('→')[0].trim());
+    const log = Array.isArray(s.log) ? s.log : [];
+    let entry = null;
+    for (let i = log.length - 1; i >= 0; i--) {
+      const e = log[i];
+      if (e.who === who && e.kind === 'file' && e.file === displayPath) { entry = e; break; }
+    }
+    if (!entry) {
+      const verb = 'แก้';
+      const task = (parsed.activity || `${verb} ${base}`).slice(0, 100);
+      if (s.agents[who].state !== 'fix') s.agents[who].state = 'work';
+      s.agents[who].task = task;
+      s.agents[who].file = String(displayPath).slice(0, 160);
+      pushLog(s, who, `edit · ${displayPath}`, ensureSpeech({
+        kind: 'file', action: 'edit', file: displayPath,
+        detail: addDetail, removed: addRemoved, added: addDetail, lines: addLines, activity: task, ...parsed,
+      }, `edit · ${displayPath}`));
+      save(s);
+      console.log('file-append (new): ' + who + ' · ' + displayPath);
+      break;
+    }
+    if (addRemoved) entry.removed = entry.removed ? `${entry.removed}\n${addRemoved}` : addRemoved;
+    if (addDetail) {
+      entry.added = entry.added ? `${entry.added}\n${addDetail}` : addDetail;
+      entry.detail = entry.added;
+    }
+    if (addLines) entry.lines = addLines;
+    if (parsed.lineStart && !entry.lineStart) entry.lineStart = parsed.lineStart;
+    if (parsed.removedLineStart && !entry.removedLineStart) entry.removedLineStart = parsed.removedLineStart;
+    if (parsed.addedLineStart && !entry.addedLineStart) entry.addedLineStart = parsed.addedLineStart;
+    if (parsed.lineEnd) {
+      const cur = parseInt(entry.lineEnd, 10) || 0;
+      const neu = parseInt(parsed.lineEnd, 10) || 0;
+      if (neu > cur) entry.lineEnd = parsed.lineEnd;
+    } else if (parsed.lineStart && !entry.lineEnd) entry.lineEnd = parsed.lineStart;
+    entry.msg = `${entry.action || 'edit'} · ${displayPath}`;
+    if (parsed.speech) entry.speech = parsed.speech;
+    if (s.agents[who].state !== 'fix') s.agents[who].state = 'work';
+    s.agents[who].file = String(displayPath).slice(0, 160);
+    save(s);
+    console.log('file-append: ' + who + ' · ' + displayPath);
     break;
   }
   case 'wait': {

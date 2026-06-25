@@ -10,7 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { cleanProject, resolveProject, resolveControlDir } = require(path.join(__dirname, '../tools/resolve-project.js'));
+const { cleanProject, resolveProject, resolveControlDir, resolveDisplayPath } = require(path.join(__dirname, '../tools/resolve-project.js'));
 const { cmdLabel } = require('./capability-labels');
 
 const IDS = new Set(['orch', 'pm', 'design', 'be', 'besr', 'fe', 'feanim', 'qa']);
@@ -24,6 +24,67 @@ const AGENT_MAP = {
 };
 const STATE_DIR = path.join(os.homedir(), '.loop-dash');
 const DEDUPE_MS = 4000;
+const FILE_COALESCE_MS = 20000; // merge rapid edits to same file into one log line
+const FILE_DETAIL_CAP = 8000;
+
+/** Full changed text for activity feed (all lines, not first-line preview). */
+function fileEditDetail(...parts) {
+  return parts
+    .flatMap(p => (Array.isArray(p) ? p : [p]))
+    .map(s => String(s || '').trimEnd())
+    .filter(s => s.trim())
+    .join('\n')
+    .trim();
+}
+
+/** Split long edit text into multiple log chunks (never truncate). */
+function splitDetail(text) {
+  const t = String(text || '').trim();
+  if (!t) return [];
+  if (t.length <= FILE_DETAIL_CAP) return [t];
+  const chunks = [];
+  let rest = t;
+  while (rest.length > FILE_DETAIL_CAP) {
+    let cut = rest.lastIndexOf('\n', FILE_DETAIL_CAP);
+    if (cut < FILE_DETAIL_CAP * 0.4) cut = FILE_DETAIL_CAP;
+    chunks.push(rest.slice(0, cut).trimEnd());
+    rest = rest.slice(cut).trimStart();
+  }
+  if (rest) chunks.push(rest);
+  return chunks;
+}
+
+function splitEditPair(removed, added) {
+  const rParts = removed ? splitDetail(removed) : [];
+  const aParts = added ? splitDetail(added) : [];
+  const n = Math.max(rParts.length, aParts.length, 1);
+  const chunks = [];
+  for (let i = 0; i < n; i++) {
+    chunks.push({ removed: rParts[i] || '', added: aParts[i] || '' });
+  }
+  return chunks;
+}
+
+function pushFileDash(who, action, displayFp, chunk, project, controlDir, opts = {}) {
+  const base = path.basename(String(displayFp).split('→')[0].trim());
+  const verb = action === 'create' ? 'สร้าง' : action === 'delete' ? 'ลบ' : 'แก้';
+  const suffix = opts.suffix || '';
+  const tmp = path.join(STATE_DIR, `edit-${Date.now()}-${process.pid}.json`);
+  fs.writeFileSync(tmp, JSON.stringify({ removed: chunk.removed || '', added: chunk.added || '' }));
+  const args = opts.append
+    ? ['file-append', who, displayFp, `@${tmp}`]
+    : ['file', who, action, displayFp, `@${tmp}`];
+  args.push(`speech=${verb} ${base}${suffix}`);
+  if (suffix) args.push(`activity=${verb} ${base}${suffix}`);
+  const lm = opts.lineMeta || {};
+  if (lm.lines) args.push(`lines=${lm.lines}`);
+  if (lm.lineStart) args.push(`lineStart=${lm.lineStart}`);
+  if (lm.lineEnd) args.push(`lineEnd=${lm.lineEnd}`);
+  if (lm.removedLineStart) args.push(`removedLineStart=${lm.removedLineStart}`);
+  if (lm.addedLineStart) args.push(`addedLineStart=${lm.addedLineStart}`);
+  dash(args, project, controlDir);
+  try { fs.unlinkSync(tmp); } catch (e) { /* ok */ }
+}
 /** Internal / debug shell — never show on the activity board. */
 const SKIP_SHELL_RES = [
   /agent-status\.js|dash\.sh|dash-bridge|cc-dash-bridge|resolve-project\.js/i,
@@ -105,6 +166,7 @@ function normalizeEvent(input) {
     post_llm_call: 'afterAgentResponse',
     afteragentresponse: 'afterAgentResponse',
     afterfileedit: 'afterFileEdit',
+    aftertabfileedit: 'afterFileEdit',
     aftershellexecution: 'afterShellExecution',
     stop: 'stop',
   };
@@ -168,6 +230,131 @@ function cleanDetail(detail) {
   return d;
 }
 
+/** File diff text — keep all lines (imports/comments are valid diff content). */
+function editText(raw) {
+  const t = String(raw || '').trimEnd();
+  if (!t.trim()) return '';
+  if (/^#!/.test(t.trim())) return '';
+  return t.trim();
+}
+
+function pickField(obj, keys) {
+  if (!obj || typeof obj !== 'object') return '';
+  for (const k of keys) {
+    if (obj[k] != null && String(obj[k]).length) return String(obj[k]);
+  }
+  return '';
+}
+
+function toolInput(input) {
+  const ex = extra(input);
+  return input.tool_input || input.toolInput || input.input || input.arguments
+    || ex.tool_input || ex.toolInput || {};
+}
+
+function filePathFrom(ti, cwd) {
+  const raw = pickField(ti, ['path', 'file_path', 'filePath', 'target', 'file']);
+  return relPath(raw, cwd);
+}
+
+function editPairFrom(ti) {
+  return {
+    removed: editText(pickField(ti, ['old_string', 'oldString', 'old_str', 'oldStr', 'search', 'find', 'before'])),
+    added: editText(pickField(ti, ['new_string', 'newString', 'new_str', 'newStr', 'replace', 'content', 'text', 'body', 'after', 'patch'])),
+  };
+}
+
+function parseLineNum(v) {
+  const n = parseInt(String(v ?? ''), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function lineRangeFromEdit(e) {
+  if (!e || typeof e !== 'object') return null;
+  const r = e.range || e.line_range || e.lineRange || {};
+  const start = parseLineNum(pickField(r, ['start_line_number', 'startLineNumber', 'start_line', 'startLine']))
+    ?? parseLineNum(pickField(e, ['start_line_number', 'startLineNumber', 'start_line', 'startLine', 'line', 'line_number']));
+  let end = parseLineNum(pickField(r, ['end_line_number', 'endLineNumber', 'end_line', 'endLine']))
+    ?? parseLineNum(pickField(e, ['end_line_number', 'endLineNumber', 'end_line', 'endLine']));
+  if (!start) return null;
+  if (!end) end = start;
+  return { start, end };
+}
+
+function lineFromContent(content, snippet) {
+  const lines = String(snippet || '').split('\n');
+  for (const raw of lines) {
+    const needle = raw.trimEnd();
+    if (!needle.trim()) continue;
+    const idx = content.indexOf(needle);
+    if (idx >= 0) return content.slice(0, idx).split('\n').length;
+  }
+  return null;
+}
+
+function absFilePath(fp, cwd) {
+  if (!fp) return '';
+  try {
+    return path.isAbsolute(fp) ? fp : path.resolve(cwd || process.cwd(), fp);
+  } catch (e) { return fp; }
+}
+
+/** Line gutter for diff UI — hook range when present, else locate added text in file on disk. */
+function lineMetaForEdit(edits, ti, fp, cwd, removed, added) {
+  const editList = Array.isArray(edits) ? edits : [];
+  let start = null;
+  let end = null;
+  for (const e of editList) {
+    const range = lineRangeFromEdit(e);
+    if (!range) continue;
+    if (start == null || range.start < start) start = range.start;
+    if (end == null || range.end > end) end = range.end;
+  }
+  if (start == null && ti) {
+    start = parseLineNum(pickField(ti, ['start_line', 'startLine', 'line', 'line_number', 'start_line_number']));
+    end = parseLineNum(pickField(ti, ['end_line', 'endLine', 'end_line_number'])) || start;
+  }
+  const addedText = added || '';
+  const removedText = removed || '';
+  if (start == null && addedText) {
+    try {
+      const abs = absFilePath(fp, cwd);
+      const content = fs.readFileSync(abs, 'utf8');
+      const ln = lineFromContent(content, addedText);
+      if (ln) {
+        start = ln;
+        end = ln + Math.max(0, addedText.split('\n').length - 1);
+      }
+    } catch (e) { /* ok */ }
+  }
+  if (start == null) return {};
+  if (!end) {
+    const span = Math.max(addedText.split('\n').length, removedText.split('\n').length, 1);
+    end = start + span - 1;
+  }
+  const rangeLabel = end > start ? `L${start}–${end}` : `L${start}`;
+  return {
+    lineStart: String(start),
+    lineEnd: String(end),
+    removedLineStart: String(start),
+    addedLineStart: String(start),
+    lines: rangeLabel,
+  };
+}
+
+function editsFromAfterFileEdit(input) {
+  const edits = Array.isArray(input.edits) ? input.edits : [];
+  if (edits.length) {
+    return {
+      removed: fileEditDetail(edits.map((e) => pickField(e, ['old_string', 'oldString', 'old_str', 'oldStr', 'before']))),
+      added: fileEditDetail(edits.map((e) => pickField(e, ['new_string', 'newString', 'new_str', 'newStr', 'after']))),
+      edits,
+    };
+  }
+  const pair = editPairFrom(input);
+  return { ...pair, edits: [] };
+}
+
 function recentKey(st, bucket, key) {
   st[bucket] = st[bucket] || {};
   const now = Date.now();
@@ -179,6 +366,21 @@ function recentKey(st, bucket, key) {
     for (const k of keys.slice(0, keys.length - 60)) delete st[bucket][k];
   }
   return false;
+}
+
+function touchFileEdit(st, key) {
+  st.recentFiles = st.recentFiles || {};
+  st.recentFiles[key] = Date.now();
+  const keys = Object.keys(st.recentFiles);
+  if (keys.length > 60) {
+    for (const k of keys.slice(0, keys.length - 60)) delete st.recentFiles[k];
+  }
+}
+
+function fileEditCoalesce(st, key) {
+  st.recentFiles = st.recentFiles || {};
+  const last = st.recentFiles[key];
+  return last && Date.now() - last < FILE_COALESCE_MS;
 }
 
 function relPath(abs, cwd) {
@@ -197,6 +399,7 @@ function dash(argv, project, controlDir) {
   const p = cleanProject(project || process.env.LOOP_PROJECT);
   if (p) env.LOOP_PROJECT = p;
   else delete env.LOOP_PROJECT;
+  if (controlDir) env.LOOP_CONTROL_DIR = controlDir;
   spawnSync(process.execPath, [script, ...argv], {
     env,
     cwd: controlDir,
@@ -234,18 +437,27 @@ function reportMessage(st, sid, who, msg, project, controlDir) {
   return true;
 }
 
-function handleFile(who, action, fp, detail, project, controlDir, st, sid) {
+function handleFile(who, action, fp, edit, project, controlDir, st, sid, cwd, opts = {}) {
   if (!fp || shouldSkipFile(fp)) return;
+  const displayFp = resolveDisplayPath(fp, controlDir, cwd || controlDir);
+  const removed = editText(edit && edit.removed);
+  const added = editText(edit && edit.added);
+  if (!removed && !added && action !== 'delete') return;
+  const lineMeta = opts.lineMeta || lineMetaForEdit(opts.edits, opts.ti, fp, cwd, removed, added);
+  const chunks = splitEditPair(removed, added);
   const key = `${who}:${action}:${normPath(fp)}`;
-  if (recentKey(st, 'recentFiles', key)) return;
+  const coalesce = fileEditCoalesce(st, key);
+  touchFileEdit(st, key);
   saveState(sid, st);
-  const base = path.basename(String(fp).split('→')[0].trim());
-  const verb = action === 'create' ? 'สร้าง' : action === 'delete' ? 'ลบ' : 'แก้';
-  const d = cleanDetail(detail);
-  const args = ['file', who, action, fp];
-  if (d) args.push(`detail=${d}`);
-  args.push(`speech=${verb} ${base}`);
-  dash(args, project, controlDir);
+  chunks.forEach((chunk, i) => {
+    const merge = coalesce || i > 0;
+    const suffix = !merge && chunks.length > 1 ? ` (${i + 1}/${chunks.length})` : '';
+    pushFileDash(who, action, displayFp, chunk, project, controlDir, {
+      append: merge,
+      suffix,
+      lineMeta: i === 0 ? lineMeta : {},
+    });
+  });
 }
 
 function handleShell(who, cmd, project, controlDir, st, sid) {
@@ -285,40 +497,37 @@ function main() {
   const who = st.who || mapWho(extra(input).child_role || input.agent_type || input.subagent_type) || 'orch';
 
   if (event === 'postToolUse') {
-    const tool = input.tool_name || '';
-    const ti = input.tool_input || {};
+    const tool = String(input.tool_name || input.tool || '').trim();
+    const ti = toolInput(input);
     if (tool === 'Write' || tool === 'Edit') {
-      const fp = relPath(ti.file_path || ti.filePath || '', cwd);
-      handleFile(who, tool === 'Write' ? 'create' : 'edit', fp,
-        tool === 'Edit' && ti.new_string ? String(ti.new_string).split('\n')[0].trim().slice(0, 140)
-          : tool === 'Write' && ti.content ? String(ti.content).split('\n')[0].trim().slice(0, 140) : '',
-        project, controlDir, st, sid);
-    } else if (tool === 'StrReplace') {
-      const fp = relPath(ti.path || ti.file_path || ti.filePath || '', cwd);
-      const detail = ti.new_string ? String(ti.new_string).split('\n')[0].trim().slice(0, 140) : '';
-      handleFile(who, 'edit', fp, detail, project, controlDir, st, sid);
+      const fp = filePathFrom(ti, cwd);
+      const pair = tool === 'Write'
+        ? { removed: '', added: editText(pickField(ti, ['content', 'new_string', 'newString', 'text', 'body'])) }
+        : editPairFrom(ti);
+      handleFile(who, tool === 'Write' ? 'create' : 'edit', fp, pair, project, controlDir, st, sid, cwd, { ti });
+    } else if (tool === 'StrReplace' || tool === 'search_replace') {
+      const fp = filePathFrom(ti, cwd);
+      const pair = editPairFrom(ti);
+      handleFile(who, 'edit', fp, pair, project, controlDir, st, sid, cwd, { ti });
     } else if (tool === 'Delete') {
-      const fp = relPath(ti.path || ti.file_path || '', cwd);
-      handleFile(who, 'delete', fp, '', project, controlDir, st, sid);
+      const fp = filePathFrom(ti, cwd);
+      handleFile(who, 'delete', fp, {}, project, controlDir, st, sid, cwd, { ti });
     } else if (tool === 'write_file') {
-      const fp = relPath(ti.path || '', cwd);
-      const detail = ti.content ? String(ti.content).split('\n')[0].trim().slice(0, 140) : '';
-      handleFile(who, 'create', fp, detail, project, controlDir, st, sid);
+      const fp = filePathFrom(ti, cwd);
+      handleFile(who, 'create', fp, { removed: '', added: editText(pickField(ti, ['content', 'text', 'body'])) }, project, controlDir, st, sid, cwd, { ti });
     } else if (tool === 'patch') {
-      const fp = relPath(ti.path || '', cwd);
-      const detail = ti.new_string ? String(ti.new_string).split('\n')[0].trim().slice(0, 140) : '';
-      handleFile(who, 'edit', fp, detail, project, controlDir, st, sid);
+      const fp = filePathFrom(ti, cwd);
+      handleFile(who, 'edit', fp, editPairFrom(ti), project, controlDir, st, sid, cwd, { ti });
     } else if (tool === 'Shell' || tool === 'Bash' || tool === 'terminal') {
-      handleShell(who, ti.command || '', project, controlDir, st, sid);
+      handleShell(who, ti.command || pickField(ti, ['command', 'cmd']) || '', project, controlDir, st, sid);
     }
     exitBridge(input);
   }
 
   if (event === 'afterFileEdit') {
-    const fp = relPath(input.file_path || '', cwd);
-    const edit = Array.isArray(input.edits) && input.edits[0];
-    const detail = edit && edit.new_string ? String(edit.new_string).split('\n')[0].trim().slice(0, 140) : '';
-    handleFile(who, 'edit', fp, detail, project, controlDir, st, sid);
+    const fp = relPath(input.file_path || input.filePath || '', cwd);
+    const bundle = editsFromAfterFileEdit(input);
+    handleFile(who, 'edit', fp, bundle, project, controlDir, st, sid, cwd, { edits: bundle.edits, ti: input });
     exitBridge(input);
   }
 
@@ -368,6 +577,12 @@ if (process.argv.includes('--self-check')) {
   console.assert(normalizeEvent({ hook_event_name: 'post_tool_call' }) === 'postToolUse', 'hermes post_tool_call');
   console.assert(normalizeEvent({ hook_event_name: 'subagent_stop' }) === 'subagentStop', 'hermes subagent_stop');
   console.assert(cmdLabel('npm test'), 'label npm test');
+  console.assert(splitDetail('x'.repeat(9000)).length >= 2, 'split long detail');
+  console.assert(resolveDisplayPath('/tmp/proj/src/a.ts', '/tmp/proj') === 'src/a.ts', 'display path rel');
+  console.assert(editText('import { x } from "y";').includes('import'), 'keep import in diff');
+  console.assert(editPairFrom({ old_string: 'a', new_string: 'b' }).added === 'b', 'edit pair');
+  console.assert(editPairFrom({ oldString: 'a', newString: 'b' }).removed === 'a', 'camelCase edit pair');
+  console.assert(lineRangeFromEdit({ range: { start_line_number: 57, end_line_number: 63 } }).start === 57, 'cursor tab range');
   console.log('dash-bridge self-check ok');
   process.exit(0);
 }
