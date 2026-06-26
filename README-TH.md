@@ -26,6 +26,86 @@
 
 **ทำไมชื่อ Loom?** แนวเดียวกับ Hermes (ส่งงาน) หรือ Ponytail (โค้ดน้อยที่สุด) — **Loom** คือที่ *ทอ* loop ซอฟต์แวร์: วางแผน → สร้าง → ตรวจ → วนใหม่ ด้วยทีม agent บนเส้นด้ายเดียว ชื่อสั้นของพิมพ์เขียว; แอปจริงยังอยู่ที่ control folder และ service path
 
+## Quick start — Claude Code
+
+**ครั้งเดียวต่อเครื่อง** (clone repo นี้ แล้วรันจากในโฟลเดอร์):
+
+```zsh
+git clone <repo-url> loom
+cd loom
+zsh tools/deploy.sh
+```
+
+ลงทะเบียน `~/.loop-base` · ติดตั้ง CLI `loom` (`~/.local/bin/loom`) · copy agents ไป `~/.claude/agents/` · เปิด dashboard ที่ `http://localhost:19000`
+
+**ทุกครั้งที่ใช้งาน — จากโฟลเดอร์ไหนก็ได้บนเครื่อง:**
+
+```zsh
+loom wrap claude
+```
+
+แสดง banner LOOM + path blueprint แล้วเปิด **Claude Code โดย cwd = blueprint** สตาร์ท dashboard ก่อน แล้ว **`--agent loom-start`** + ข้อความแรก **`Use loom-start`** ข้ามด้วย `LOOM_WRAP_NO_START=1`
+
+<p align="center">
+  <img src="assets/loom-wrap-claude-demo.gif" alt="loom wrap claude — banner ในเทอร์มินัล เปิด Claude Code พร้อม Use loom-start อัตโนมัติ loom where แล้วเปิด dashboard ที่ localhost:19000" width="820">
+</p>
+
+<p align="center">
+  <em><code>loom wrap claude</code> → Claude เรียก <code>loom-start</code> ให้ · <code>loom where</code> ดูสถานะ blueprint · dashboard ที่ <code>http://localhost:19000</code></em>
+</p>
+
+### ดู dashboard
+
+`loom wrap claude` สตาร์ท board กลางใน background เปิดซ้ำได้ตลอด:
+
+```zsh
+loom where          # path blueprint + โปรเจกต์ active
+loom dash serve     # เปิด http://localhost:19000
+```
+
+<p align="center">
+  <picture>
+    <source srcset="assets/loom-dashboard-show.gif" type="image/gif">
+    <img src="assets/loom-dashboard-show.png" alt="Loom status dashboard — pixel office พร้อม activity feed" width="820">
+  </picture>
+</p>
+
+<p align="center">
+  <em>Live board — pixel office + Loop Activity. Office UI จาก <a href="https://github.com/ringhyacinth/Star-Office-UI">Star-Office-UI</a>.</em>
+</p>
+
+> **Warp terminal:** โหมด Agent อาจ autodetect บรรทัดนี้เป็น AI prompt แล้วแปลงเป็น `/agent loom …` (ใช้ credits ของ Warp แทนรัน CLI) บังคับให้รันเป็น shell ด้วย prefix `!` หรือกด **`Cmd+I`** สลับเป็น Terminal mode ก่อน:
+>
+> ```zsh
+> !loom wrap claude
+> ```
+>
+> ทางเลือก: **Settings → Agents → Warp Agent → Input** — ปิด autodetect หรือเพิ่ม `loom` ใน natural-language denylist
+
+ในแชต Claude Code (ปกติ **ไม่ต้องพิมพ์เอง** — `loom wrap claude` เรียก `loom-start` ให้แล้ว):
+
+```
+Use loom-start
+```
+
+ผ่าน Step 0–4 (dashboard · base folder · control folder · lock เป้า) แล้วส่งต่อ:
+
+```
+Use loom-orch at L1: <อธิบาย feature หรือ bug>
+```
+
+ไม่ต้อง `cd` เข้าโปรเจกต์ — `loom-orch` อ่าน `.active-project` จาก blueprint เมื่อ cwd ไม่มี `loop.config.json`
+
+| คำสั่ง | ทำอะไร |
+| ------ | ------ |
+| `loom where` | path blueprint · โปรเจกต์ active · `loom wrap claude` → `Use loom-start` (auto) |
+| `loom start` | wizard ในเทอร์มินัล — flow เดียวกับ `Use loom-start` |
+| `loom dash serve` | dashboard agent กลาง (`:19000`) |
+
+**ติดตั้งไว้แล้ว?** หลัง `git pull` รัน `zsh tools/deploy.sh` จาก repo อีกครั้งเพื่ออัปเดต CLI และ hooks
+
+→ ติดตั้งเต็ม (Cursor · Hermes · skills): [เริ่มต้นใช้งาน](#เริ่มต้นใช้งาน)
+
 ---
 
 ## สถาปัตยกรรม 3 ชั้น
@@ -849,10 +929,7 @@ zsh tools/deploy.sh    # register ~/.loop-base
 ### Show dashboard
 
 <p align="center">
-  <picture>
-    <source srcset="assets/loom-dashboard-show.gif" type="image/gif">
-    <img src="assets/loom-dashboard-show.png" alt="Loom status dashboard — ออฟฟิศพิกเซล พร้อม activity feed สด การ์ดสถานะ agent และ diff ไฟล์ TypeScript" width="820">
-  </picture>
+  <img src="assets/loom-dashboard-show.png" alt="Loom status dashboard — ออฟฟิศพิกเซล พร้อม activity feed สด การ์ดสถานะ agent และ diff ไฟล์ TypeScript" width="820">
 </p>
 
 <p align="center">

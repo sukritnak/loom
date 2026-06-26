@@ -10,6 +10,7 @@ cd "$ROOT"
 # (tools/dash.sh reads ~/.loop-base). The dashboard is never copied into projects.
 printf '%s\n' "$ROOT" > "$HOME/.loop-base"
 
+zsh tools/install-loom-cli.sh
 zsh tools/sync-agents.sh
 
 if [ "${DEPLOY_SKIP_CC_HOOKS:-}" != 1 ]; then

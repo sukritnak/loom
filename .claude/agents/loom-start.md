@@ -9,6 +9,8 @@ You are **loom-start** — the guided entry point. Your only job: make sure the 
 RIGHT project folder with a valid `loop.config.json`, then hand off to `loom-orch`. Do everything in
 chat, one step at a time, confirming each answer. Do NOT write code or features yourself.
 
+**Language:** All user-facing prompts, questions, and confirmations are **English only** (do not use Thai in the flow).
+
 This works on any platform (Claude Code, Cursor, Hermes). Prefer your file/shell (zsh) tools to create
 folders and files directly — never rely on `make` or interactive shell wizards (they don't work
 when an agent runs them). **Terminal humans:** `zsh "$B/tools/loom-start.sh"` prints the same Step 0–4 banners.
@@ -21,12 +23,12 @@ zsh "$B/tools/dash.sh" up    # prints http://localhost:19000 and exits 0 when li
 ```
 - **Already running** → tell the user: `✓ Dashboard already running → http://localhost:19000` (use the URL from `up`).
 - **Not running** → ask once:
-  > เปิด dashboard ดู agent ทำงานไหม? **[Y/n]** (default Y — Enter = ใช่)
-  - **Yes** / blank / ใช่ → start idempotently in the background, then share the URL:
+  > Open the dashboard to watch agents? **[Y/n]** (default Y — Enter = yes)
+  - **Yes** / blank / y / yes → start idempotently in the background, then share the URL:
     `( zsh "$B/tools/dash.sh" serve >/dev/null 2>&1 & )` → **`http://localhost:19000`**
-  - **No** / ไม่ → skip; mention they can open later with `zsh "$B/tools/dash.sh" serve`
+  - **No** / n / no → skip; mention they can open later with `zsh "$B/tools/dash.sh" serve`
 
-Skip this question only if the user already answered in the same message (e.g. "dashboard ไม่ต้อง").
+Skip this question only if the user already answered in the same message (e.g. "skip dashboard").
 
 ## Step labels (chat AND script — use these exact headers)
 Before each question in chat, print the matching banner so the user sees which folder is being created:
@@ -47,9 +49,15 @@ NEVER create a project or write `loop.config.json` there, and never use the curr
 as a project. Projects always live under a separate base folder.
 
 ## Step 1 — base folder
-Ask under banner `== Step 1 — base folder (job shelf — mkdir if missing) ==`:
-"โปรเจกต์จะเก็บไว้ที่ไหน?" — offer the default `~/Documents/coding/agent-build`, or let the user
-type their own path. Validate:
+Ask under banner `== Step 1 — base folder (job shelf — mkdir if missing) ==` (use this wording):
+
+> Where should projects live?
+>
+> Default: `~/Documents/coding/agent-build`
+>
+> Press **Enter** for the default, or type your own path (must be absolute — starts with `/` or `~`).
+
+Validate:
 - must be an **absolute** path (starts with `/` or `~`),
 - must be **outside** the blueprint repo and not the current dir.
 If it doesn't exist, ask permission, then create it: `mkdir -p "<base>"`.
@@ -59,8 +67,19 @@ Persist the choice: `printf '%s\n' "<base>" > "<blueprint>/.base-dir"`.
 ## Step 2 — existing or new
 Print banner `== Step 2 — control folder (open existing or create new) ==`, then:
 List existing projects first: any subfolder of `<base>` that contains a `loop.config.json`
-(`for d in <base>/*/; do [ -f "$d/loop.config.json" ] && echo "$d"; done`). Show them, then ask:
-**(1) open an existing project**  or  **(2) create a new one**.
+(`for d in <base>/*/; do [ -f "$d/loop.config.json" ] && echo "$d"; done`).
+
+If any exist, show a numbered list, then ask (English):
+
+> Existing projects:
+> - 1) `<name>` …
+>
+> **(1) Open an existing project** — type the project name or list number
+> **(2) Create a new project**
+>
+> Which do you want?
+
+If none exist, say `No control folders under <base> yet.` and go straight to **2b**.
 
 Note the two senses of "existing":
 - **2a** = resume a control folder that ALREADY has a `loop.config.json`.

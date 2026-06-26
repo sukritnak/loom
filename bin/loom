@@ -1,0 +1,257 @@
+#!/usr/bin/env zsh
+# loom — global CLI. Blueprint path from ~/.loop-base (set by deploy.sh).
+#   loom wrap claude [-- claude-args…]   open Claude Code in the blueprint
+#   loom where                            print blueprint path
+#   loom dash [cmd…]                      central dashboard (dash.sh)
+#   loom start [args…]                    loom-start wizard
+set -euo pipefail
+
+loom_tty() { [[ -t 1 && -z "${NO_COLOR:-}" ]]; }
+
+loom_c() {
+  loom_tty || return 0
+  print -rn -- $'\033['"$1"'m'
+}
+
+loom_reset() { loom_tty && print -rn -- $'\033[0m' || true; }
+
+# Theme: loom-logo.svg — #818cf8 · #6366f1 · #4f46e5 · #c7d2fe
+loom_banner() {
+  local i b g l d r
+  if loom_tty; then
+    i=$'\033[38;5;141m'
+    b=$'\033[1;38;5;99m'
+    g=$'\033[38;5;63m'
+    l=$'\033[38;5;189m'
+    d=$'\033[2;38;5;245m'
+    r=$'\033[0m'
+  else
+    i= b= g= l= d= r=
+  fi
+  cat <<BANNER
+${i}        │   │   │   │   │   │${r}
+${g}     ═══════════════════════════════${r}
+${i}        │ ${l}●${i} │ ${l}●${i} │ ${l}●${i} │   │   │   │${r}
+${g}     ═══════════════════════════════${r}
+${i}        │   │   │ ${l}●${i} │ ${l}●${i} │ ${l}●${i} │${r}
+${g}     ═══════════════════════════════${r}
+${i}        │   │   │   │   │   │${r}
+
+${b}     ██╗      ██████╗  ██████╗  ███╗   ███╗${r}
+${b}     ██║     ██╔═══██╗██╔═══██╗ ████╗ ████║${r}
+${b}     ██║     ██║   ██║██║   ██║ ██╔████╔██║${r}
+${b}     ██║     ██║   ██║██║   ██║ ██║╚██╔╝██║${r}
+${b}     ███████╗╚██████╔╝╚██████╔╝ ██║ ╚═╝ ██║${r}
+${b}     ╚══════╝ ╚═════╝  ╚═════╝  ╚═╝     ╚═╝${r}
+${d}           plan → build → verify · AI agent team${r}
+BANNER
+}
+
+loom_base() {
+  local b="${LOOP_BASE:-}"
+  if [[ -z "$b" && -f "$HOME/.loop-base" ]]; then
+    b="$(head -n1 "$HOME/.loop-base")"
+  fi
+  b="${b%/}"
+  if [[ -z "$b" || ! -d "$b" ]]; then
+    return 1
+  fi
+  print -r -- "$b"
+}
+
+loom_base_or_die() {
+  local b
+  b="$(loom_base)" || {
+    loom_banner
+    echo
+    echo "  ✗ Blueprint not registered (~/.loop-base missing or stale)"
+    echo "  → First time:  cd /path/to/loom && zsh tools/deploy.sh"
+    exit 1
+  }
+  print -r -- "$b"
+}
+
+loom_print_where_block() {
+  local b="$1" ctx="${2:-where}" active proj
+  local hi lo ok r
+  if loom_tty; then
+    hi=$'\033[1;38;5;99m'
+    lo=$'\033[2;38;5;245m'
+    ok=$'\033[38;5;114m'
+    r=$'\033[0m'
+  else
+    hi= lo= ok= r=
+  fi
+
+  echo
+  echo "${hi}  ┌─ blueprint ${lo}────────────────────────────────${r}"
+  echo "${hi}  │${r}  ${b}"
+  echo "${hi}  └────────────────────────────────────────────────${r}"
+
+  if [[ -f "$b/.active-project" ]]; then
+    active="$(head -n1 "$b/.active-project")"
+    if [[ -n "$active" && -d "$active" && -f "$active/loop.config.json" ]]; then
+      proj="$(node -e "
+        try { console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).project||''); }
+        catch(e) { process.exit(0); }
+      " "$active/loop.config.json" 2>/dev/null || true)"
+      echo
+      echo "${ok}  ✓ active project${r}${proj:+ → ${proj}}"
+      echo "${lo}    ${active}${r}"
+    fi
+  fi
+
+  echo
+  if [[ "${LOOM_WRAP_NO_START:-}" == 1 ]]; then
+    echo "${hi}  next in chat${r}"
+    echo "    ${ok}Use loom-start${r}"
+    if [[ -n "${active:-}" && -d "${active:-}" && -f "${active}/loop.config.json" ]]; then
+      echo "    ${ok}Use loom-orch at L1: <describe the feature or bug>${r}"
+    fi
+    if [[ "$ctx" == where ]]; then
+      echo
+      echo "${lo}    loom wrap claude${r}  ${lo}(no auto-start — LOOM_WRAP_NO_START=1)${r}"
+    fi
+  elif [[ "$ctx" == wrap ]]; then
+    echo "${hi}  launching Claude Code${r}"
+    echo "    ${ok}→ Use loom-start${r} ${lo}(auto)${r}"
+  else
+    echo "${hi}  loom wrap claude${r}"
+    echo "    ${ok}→ Use loom-start${r} ${lo}(auto)${r}"
+    if [[ -n "${active:-}" && -d "${active:-}" && -f "${active}/loop.config.json" ]]; then
+      echo "    ${ok}→ Use loom-orch at L1: …${r} ${lo}(after start, or resume)${r}"
+    fi
+  fi
+  echo
+}
+
+loom_wrap_intro() {
+  local b="$1"
+  loom_banner
+  loom_print_where_block "$b" wrap
+}
+
+loom_active_dirs() {
+  local b="$1" active roots
+  [[ -f "$b/.active-project" ]] || return 0
+  active="$(head -n1 "$b/.active-project")"
+  [[ -n "$active" && -d "$active" ]] || return 0
+  print -r -- "$active"
+  roots="$(node -e "
+    const r = require(process.argv[1]);
+    const c = r.resolveControlDir(process.argv[2]);
+    for (const p of r.serviceRoots(c)) console.log(p);
+  " "$b/tools/resolve-project.js" "$active" 2>/dev/null || true)"
+  [[ -n "$roots" ]] && print -r -- ${=roots}
+}
+
+loom_claude_has_agent_flag() {
+  local a
+  for a in "$@"; do
+    [[ "$a" == --agent || "$a" == --agents ]] && return 0
+  done
+  return 1
+}
+
+loom_should_auto_start() {
+  [[ "${LOOM_WRAP_NO_START:-}" == 1 ]] && return 1
+  loom_claude_has_agent_flag "$@" && return 1
+  local a
+  for a in "$@"; do
+    [[ "$a" == --continue || "$a" == -c || "$a" == --resume || "$a" == -r ]] && return 1
+  done
+  return 0
+}
+
+loom_ensure_dashboard() {
+  local b="$1" url port="${STAR_BACKEND_PORT:-19000}"
+  if url="$(zsh "$b/tools/dash.sh" up 2>/dev/null)"; then
+    echo "  ✓ dashboard → ${url}"
+    return 0
+  fi
+  ( zsh "$b/tools/dash.sh" serve >/dev/null 2>&1 & )
+  sleep 1
+  if url="$(zsh "$b/tools/dash.sh" up 2>/dev/null)"; then
+    echo "  ✓ dashboard → ${url}"
+  else
+    echo "  ✓ dashboard starting → http://localhost:${port}"
+  fi
+}
+
+loom_help() {
+  cat <<'EOF'
+loom — Loom blueprint CLI (path from ~/.loop-base)
+
+  loom wrap claude [-- claude-args…]
+      Launch Claude Code with cwd = blueprint, pre-start dashboard,
+      --agent loom-start, and first message Use loom-start.
+      Set LOOM_WRAP_NO_START=1 to skip.
+
+  loom where              Blueprint path + active project + wrap auto-start hint
+  loom dash [cmd…]        Central dashboard (serve · set · log · …)
+  loom start [args…]      loom-start wizard (Steps 1–4)
+
+Run once per machine from the loom repo:
+  zsh tools/deploy.sh
+EOF
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  wrap)
+    shift
+    case "${1:-}" in
+      claude)
+        shift
+        [[ "${1:-}" == "--" ]] && shift
+        if ! command -v claude >/dev/null 2>&1; then
+          echo "loom: claude CLI not found (install Claude Code)" >&2
+          exit 1
+        fi
+        B="$(loom_base_or_die)"
+        loom_wrap_intro "$B"
+        dirs=()
+        while IFS= read -r d; do
+          [[ -n "$d" && -d "$d" ]] && dirs+=("$d")
+        done < <(loom_active_dirs "$B")
+        cd "$B"
+        if loom_should_auto_start "$@"; then
+          loom_ensure_dashboard "$B"
+        fi
+        argv=()
+        (( ${#dirs[@]} )) && argv+=( --add-dir "${dirs[@]}" )
+        if loom_should_auto_start "$@"; then
+          argv+=( --agent loom-start "${LOOM_WRAP_START_PROMPT:-Use loom-start}" )
+        fi
+        argv+=( "$@" )
+        exec claude "${argv[@]}"
+        ;;
+      *)
+        echo "loom wrap: supported: claude" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+  where|base)
+    B="$(loom_base_or_die)"
+    loom_banner
+    loom_print_where_block "$B"
+    ;;
+  dash)
+    shift
+    B="$(loom_base_or_die)"
+    exec zsh "$B/tools/dash.sh" "$@"
+    ;;
+  start)
+    shift
+    B="$(loom_base_or_die)"
+    exec zsh "$B/tools/loom-start.sh" "$@"
+    ;;
+  help|-h|--help|"")
+    loom_help
+    ;;
+  *)
+    echo "loom: unknown command: $cmd (try: loom help)" >&2
+    exit 1
+    ;;
+esac

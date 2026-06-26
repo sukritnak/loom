@@ -31,6 +31,12 @@ zsh tools/deploy.sh                        # install team + register ~/.loop-bas
 DEPLOY_SKIP_EXTERNAL_SKILLS=1 zsh tools/deploy.sh  # skip external skill download
 ```
 
+### Claude Code from anywhere (after deploy)
+```zsh
+loom wrap claude                           # cwd = blueprint; active project dirs via --add-dir if set
+loom where                                 # print ~/.loop-base path
+```
+
 ### Start/resume a project (chat — preferred)
 ```
 Use loom-start       # Claude Code / Cursor

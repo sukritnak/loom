@@ -26,6 +26,86 @@ A team of **9 AI agents** working in a **loop** (plan → build → verify → i
 
 **Why “Loom”?** Like Hermes carries messages and Ponytail trims code to the bone, **Loom** is where software loops get *woven* — plan, build, verify, repeat — with a team of agents on one thread. Short name for the blueprint; your real apps still live in control folders and service paths.
 
+## Quick start — Claude Code
+
+**Once per machine** (clone this repo, then run from inside it):
+
+```zsh
+git clone <repo-url> loom
+cd loom
+zsh tools/deploy.sh
+```
+
+This registers `~/.loop-base`, installs the global `loom` CLI (`~/.local/bin/loom`), copies agents to `~/.claude/agents/`, and opens the dashboard at `http://localhost:19000`.
+
+**Every session — from any folder on your machine:**
+
+```zsh
+loom wrap claude
+```
+
+Shows the Loom banner + blueprint path, then launches **Claude Code with cwd = the blueprint**. Pre-starts the dashboard, then **`--agent loom-start`** + first message **`Use loom-start`**. Skip with `LOOM_WRAP_NO_START=1`.
+
+<p align="center">
+  <img src="assets/loom-wrap-claude-demo.gif" alt="loom wrap claude — LOOM banner and blueprint path in the terminal, Claude Code opens with Use loom-start auto-sent, loom where shows status, then the agent dashboard at localhost:19000" width="820">
+</p>
+
+<p align="center">
+  <em><code>loom wrap claude</code> → Claude auto-starts <code>loom-start</code> · <code>loom where</code> for blueprint status · dashboard at <code>http://localhost:19000</code></em>
+</p>
+
+### Watch the dashboard
+
+`loom wrap claude` starts the central board in the background. Re-open anytime:
+
+```zsh
+loom where          # blueprint path + active project
+loom dash serve     # open http://localhost:19000
+```
+
+<p align="center">
+  <picture>
+    <source srcset="assets/loom-dashboard-show.gif" type="image/gif">
+    <img src="assets/loom-dashboard-show.png" alt="Loom status dashboard — pixel office with live agent activity feed" width="820">
+  </picture>
+</p>
+
+<p align="center">
+  <em>Live board — pixel office + Loop Activity panel. Office UI from <a href="https://github.com/ringhyacinth/Star-Office-UI">Star-Office-UI</a>.</em>
+</p>
+
+> **Warp terminal:** Agent Mode may autodetect this line as an AI prompt and rewrite it as `/agent loom …` (hitting Warp credits instead of running the CLI). Force a shell command with a `!` prefix, or press **`Cmd+I`** to switch to Terminal mode first:
+>
+> ```zsh
+> !loom wrap claude
+> ```
+>
+> Optional: **Settings → Agents → Warp Agent → Input** — disable autodetect, or add `loom` to the natural-language denylist.
+
+In the Claude Code chat (normally **no typing needed** — `loom wrap claude` already invokes `loom-start`):
+
+```
+Use loom-start
+```
+
+Walk through Steps 0–4 (dashboard · base folder · control folder · lock target). Then hand off:
+
+```
+Use loom-orch at L1: <describe the feature or bug>
+```
+
+No `cd` into your project required — `loom-orch` reads `.active-project` from the blueprint when cwd has no `loop.config.json`.
+
+| Command | What it does |
+| ------- | ------------ |
+| `loom where` | Blueprint path, active project, `loom wrap claude` → `Use loom-start` (auto) |
+| `loom start` | Terminal wizard — same flow as `Use loom-start` |
+| `loom dash serve` | Central agent dashboard (`:19000`) |
+
+**Already installed?** After `git pull`, re-run `zsh tools/deploy.sh` from the repo to refresh the CLI and hooks.
+
+→ Full platform matrix, skills, and Cursor/Hermes paths: [Getting started](#getting-started)
+
 ---
 
 ## Three-layer architecture
@@ -877,10 +957,7 @@ Every project/session reports here; each log line is tagged with the project nam
 ### Show dashboard
 
 <p align="center">
-  <picture>
-    <source srcset="assets/loom-dashboard-show.gif" type="image/gif">
-    <img src="assets/loom-dashboard-show.png" alt="Loom status dashboard — pixel office with live agent activity feed, role status cards, and TypeScript file diffs" width="820">
-  </picture>
+  <img src="assets/loom-dashboard-show.png" alt="Loom status dashboard — pixel office with live agent activity feed, role status cards, and TypeScript file diffs" width="820">
 </p>
 
 <p align="center">

@@ -36,9 +36,9 @@ ensure_dashboard() {
     return 0
   fi
   local yn
-  yn="$(ask "เปิด dashboard ดู agent ทำงานไหม? [Y/n]" "Y")"
-  case "${(L)yn}" in n|no|ไม่)
-    echo "  (ข้าม — เปิดทีหลัง: zsh \"$ROOT/tools/dash.sh\" serve)"
+  yn="$(ask "Open the dashboard to watch agents? [Y/n]" "Y")"
+  case "${(L)yn}" in n|no)
+    echo "  (skipped — open later: zsh \"$ROOT/tools/dash.sh\" serve)"
     return 0
     ;;
   esac
