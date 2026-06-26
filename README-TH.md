@@ -877,7 +877,7 @@ feed เก็บ 400 บรรทัด (rolling) · archive รายวัน
 เปิดอัตโนมัติตอน `deploy.sh` · ตอนเริ่ม `loop-orch` จะถาม **「เปิด dashboard ดู agent ทำงานไหม? [Y/n]」** (default Y) แล้วเปิด browser ที่ `http://localhost:19000` — เรียกซ้ำได้ปลอดภัย
 
 **Star-Office dashboard** (`agent-dashboard/star-office/`) — vendored จาก
-**[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** โดย [ringhyacinth](https://github.com/ringhyacinth)
+**[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** โดย [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo)
 โค้ด **MIT**; **asset ศิลปะใช้เรียนรู้แบบไม่เชิงพาณิชย์เท่านั้น** (ดู LICENSE ต้นทาง)
 Loom เพิ่ม: `star-office-bridge.js`, panel Loop Activity, `dash-bridge.js` / `cc-dash-bridge.js` (Claude Code + Cursor → กระดาน), และคำสั่ง feed ใน `agent-status.js` (`file`, `report`, `wait`, …)
 - `star-office-bridge.js` สะท้อน loop `status.json` → office + `activity.json` (`GET /activity`)
@@ -925,9 +925,23 @@ zsh tools/dash.sh serve               # open board
 
 ### Dashboard
 
+<p align="center">
+  <a href="https://github.com/ringhyacinth/Star-Office-UI">
+    <img src="assets/star-office-ui-credit.png" alt="Star Office UI — ออฟฟิศพิกเซลโดย Ring Hyacinth และ Simon Lee" width="560">
+  </a>
+</p>
+
+<p align="center">
+  <strong><a href="https://github.com/ringhyacinth/Star-Office-UI">Star-Office-UI</a></strong>
+  โดย <a href="https://github.com/ringhyacinth">Ring Hyacinth</a>
+  (<a href="https://x.com/ring_hyacinth">@ring_hyacinth</a>)
+  และ <a href="https://x.com/simonxxoo">Simon Lee</a>
+  (<a href="https://x.com/simonxxoo">@simonxxoo</a>)
+</p>
+
 | ส่วน | เครดิต |
 | ---- | ------ |
-| Pixel office UI | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [ringhyacinth](https://github.com/ringhyacinth) โค้ด MIT; asset ศิลปะ **ใช้เรียนรู้แบบไม่เชิงพาณิชย์เท่านั้น** |
+| Pixel office UI | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo) โค้ด MIT; asset ศิลปะ **ใช้เรียนรู้แบบไม่เชิงพาณิชย์เท่านั้น** |
 | การเชื่อมกับ Loop | `star-office-bridge.js`, `agent-status.js`, `dash-bridge.js`, `cc-dash-bridge.js`, `l3-permission-hook.js` — อยู่ใน repo นี้ |
 
 ### Skills ที่มากับ Loom (`hermes-skills/`)

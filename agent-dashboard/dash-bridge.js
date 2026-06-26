@@ -10,17 +10,24 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { cleanProject, resolveProject, resolveControlDir, resolveDisplayPath } = require(path.join(__dirname, '../tools/resolve-project.js'));
+const { cleanProject, resolveDisplayPath } = require(path.join(__dirname, '../tools/resolve-project.js'));
 const { cmdLabel } = require('./capability-labels');
 
 const IDS = new Set(['orch', 'pm', 'design', 'be', 'besr', 'fe', 'feanim', 'qa']);
+const LOOM_AGENTS = new Set([
+  'loop-start', 'loop-orch', 'tech-loop-orchestrator', 'orch',
+  'pm', 'pm-agent', 'design', 'designer-agent',
+  'be', 'be-sr', 'besr', 'backend-agent', 'backend-senior-agent',
+  'fe', 'fe-anim', 'feanim', 'frontend-agent', 'frontend-animation-agent',
+  'qa', 'qa-agent',
+]);
+const LOOM_INVOKE_RE = /\b(?:use\s+|\/)(?:loop-start|loop-orch|LOOP)\b|\buse\s+(?:pm|design|fe(?:-anim)?|be(?:-sr)?|qa)\b/i;
 const AGENT_MAP = {
   be: 'be', 'be-sr': 'besr', besr: 'besr', 'backend-agent': 'be', 'backend-senior-agent': 'besr',
   fe: 'fe', 'fe-anim': 'feanim', feanim: 'feanim', 'frontend-agent': 'fe', 'frontend-animation-agent': 'feanim',
   qa: 'qa', 'qa-agent': 'qa', pm: 'pm', 'pm-agent': 'pm',
   design: 'design', 'designer-agent': 'design',
   'loop-orch': 'orch', orch: 'orch', 'tech-loop-orchestrator': 'orch', 'loop-start': 'orch',
-  explore: 'orch', shell: 'orch', generalpurpose: 'orch',
 };
 const STATE_DIR = path.join(os.homedir(), '.loop-dash');
 const DEDUPE_MS = 4000;
@@ -122,10 +129,82 @@ function resolveCwd(input) {
   return process.cwd();
 }
 
-function findControl(cwd) {
-  const dir = resolveControlDir(cwd);
-  const project = resolveProject(cwd);
-  return { dir, project };
+function loopBase() {
+  try {
+    const b = fs.readFileSync(path.join(os.homedir(), '.loop-base'), 'utf8').trim();
+    if (b && fs.existsSync(b)) return b;
+  } catch (e) { /* ok */ }
+  return '';
+}
+
+function readProjectFromDir(dir) {
+  try {
+    const raw = fs.readFileSync(path.join(dir, 'loop.config.json'), 'utf8');
+    return cleanProject(JSON.parse(raw).project);
+  } catch (e) {
+    return '';
+  }
+}
+
+/** Hooks: cwd walk only; .active-project fallback only after explicit Loom session start. */
+function resolveHookContext(cwd, loomActive) {
+  let d = path.resolve(cwd || process.cwd());
+  for (let i = 0; i < 16 && d && d !== path.dirname(d); i++) {
+    if (fs.existsSync(path.join(d, 'loop.config.json'))) {
+      return { controlDir: d, project: readProjectFromDir(d) };
+    }
+    d = path.dirname(d);
+  }
+  if (!loomActive) return { controlDir: null, project: '' };
+  const base = loopBase();
+  if (!base) return { controlDir: null, project: '' };
+  try {
+    const active = fs.readFileSync(path.join(base, '.active-project'), 'utf8').trim();
+    if (active && fs.existsSync(path.join(active, 'loop.config.json'))) {
+      return { controlDir: active, project: readProjectFromDir(active) };
+    }
+  } catch (e) { /* ok */ }
+  return { controlDir: null, project: '' };
+}
+
+function normAgentKey(v) {
+  return String(v || '').toLowerCase().replace(/_/g, '-');
+}
+
+function isLoomAgentType(agentType) {
+  const k = normAgentKey(agentType);
+  return LOOM_AGENTS.has(k);
+}
+
+function promptText(input) {
+  return pickField(input, ['prompt', 'user_message', 'userMessage', 'user_prompt', 'userPrompt', 'message', 'content']);
+}
+
+function maybeActivateLoom(st, input, event) {
+  if (st.loomActive) return true;
+  if (event === 'beforeSubmitPrompt' && LOOM_INVOKE_RE.test(promptText(input))) {
+    st.loomActive = true;
+    return true;
+  }
+  if (event === 'subagentStart') {
+    const ex = extra(input);
+    const agent = ex.child_role || input.agent_type || input.subagent_type;
+    if (isLoomAgentType(agent)) {
+      st.loomActive = true;
+      return true;
+    }
+  }
+  if (event === 'postToolUse') {
+    const tool = String(input.tool_name || input.tool || '').trim();
+    if (tool === 'Task') {
+      const ti = toolInput(input);
+      if (isLoomAgentType(ti.subagent_type || ti.agent_type)) {
+        st.loomActive = true;
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function mapWho(agentType) {
@@ -164,6 +243,8 @@ function normalizeEvent(input) {
     subagent_stop: 'subagentStop',
     subagent_start: 'subagentStart',
     post_llm_call: 'afterAgentResponse',
+    beforesubmitprompt: 'beforeSubmitPrompt',
+    userpromptsubmit: 'beforeSubmitPrompt',
     afteragentresponse: 'afterAgentResponse',
     afterfileedit: 'afterFileEdit',
     aftertabfileedit: 'afterFileEdit',
@@ -479,8 +560,20 @@ function main() {
 
   const sid = sessionId(input);
   const cwd = resolveCwd(input);
-  const { dir: controlDir, project } = findControl(cwd);
   const st = loadState(sid);
+  const activated = maybeActivateLoom(st, input, event);
+  if (activated) saveState(sid, st);
+
+  if (event === 'beforeSubmitPrompt') {
+    if (isHermes(input)) hermesOk();
+    else cursorOk();
+    process.exit(0);
+  }
+
+  if (!st.loomActive) exitBridge(input);
+
+  const { controlDir, project } = resolveHookContext(cwd, st.loomActive);
+  if (!controlDir) exitBridge(input);
 
   if (event === 'subagentStart') {
     const ex = extra(input);
@@ -551,8 +644,7 @@ function main() {
   }
 
   if (event === 'afterAgentResponse') {
-    const ex = extra(input);
-    reportMessage(st, sid, 'orch', input.text || ex.assistant_response || '', project, controlDir);
+    // ponytail: skip root-chat mirroring — subagentStop/stop carry loop summaries
     if (isHermes(input)) hermesOk();
     else cursorOk();
     process.exit(0);
@@ -576,6 +668,10 @@ if (process.argv.includes('--self-check')) {
   console.assert(!shouldSkipShell('npm test'), 'keep npm test');
   console.assert(normalizeEvent({ hook_event_name: 'post_tool_call' }) === 'postToolUse', 'hermes post_tool_call');
   console.assert(normalizeEvent({ hook_event_name: 'subagent_stop' }) === 'subagentStop', 'hermes subagent_stop');
+  console.assert(!maybeActivateLoom({ loomActive: false }, { prompt: 'fix this bug' }, 'beforeSubmitPrompt'), 'no activate casual chat');
+  console.assert(maybeActivateLoom({ loomActive: false }, { prompt: 'Use loop-start' }, 'beforeSubmitPrompt'), 'activate loop-start');
+  console.assert(isLoomAgentType('loop-orch'), 'loom agent');
+  console.assert(!isLoomAgentType('explore'), 'not loom explore');
   console.assert(cmdLabel('npm test'), 'label npm test');
   console.assert(splitDetail('x'.repeat(9000)).length >= 2, 'split long detail');
   console.assert(resolveDisplayPath('/tmp/proj/src/a.ts', '/tmp/proj') === 'src/a.ts', 'display path rel');

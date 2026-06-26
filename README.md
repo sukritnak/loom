@@ -907,7 +907,7 @@ Feed keeps 400 lines (rolling) · daily archive in `agent-dashboard/log-archive/
 Opens on `deploy.sh` · at `loop-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
 
 **Star-Office dashboard** (`agent-dashboard/star-office/`) — vendored from
-**[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** by [ringhyacinth](https://github.com/ringhyacinth).
+**[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** by [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo).
 Code is **MIT**; **art assets are for non-commercial learning use only** (see upstream LICENSE).
 Loom layers: `star-office-bridge.js`, Loop Activity panel, `dash-bridge.js` / `cc-dash-bridge.js` (Claude Code + Cursor → board), and `agent-status.js` feed commands (`file`, `report`, `wait`, …).
 
@@ -956,10 +956,24 @@ zsh tools/dash.sh serve               # open board
 
 ### Dashboard
 
+<p align="center">
+  <a href="https://github.com/ringhyacinth/Star-Office-UI">
+    <img src="assets/star-office-ui-credit.png" alt="Star Office UI — pixel office dashboard by Ring Hyacinth and Simon Lee" width="560">
+  </a>
+</p>
+
+<p align="center">
+  <strong><a href="https://github.com/ringhyacinth/Star-Office-UI">Star-Office-UI</a></strong>
+  by <a href="https://github.com/ringhyacinth">Ring Hyacinth</a>
+  (<a href="https://x.com/ring_hyacinth">@ring_hyacinth</a>)
+  &amp; <a href="https://x.com/simonxxoo">Simon Lee</a>
+  (<a href="https://x.com/simonxxoo">@simonxxoo</a>)
+</p>
+
 
 | Component        | Credit                                                                                                                                                                             |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pixel office UI  | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [ringhyacinth](https://github.com/ringhyacinth). MIT code; art assets **non-commercial learning use only**. |
+| Pixel office UI  | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo). MIT code; art assets **non-commercial learning use only**. |
 | Loop integration | `star-office-bridge.js`, `agent-status.js`, `dash-bridge.js`, `cc-dash-bridge.js`, `l3-permission-hook.js` — part of this repo |
 
 

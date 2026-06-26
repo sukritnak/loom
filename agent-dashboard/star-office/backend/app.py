@@ -4,6 +4,8 @@
 from flask import Flask, jsonify, send_from_directory, make_response, request, session
 from datetime import datetime, timedelta
 import json
+import hashlib
+import base64
 import os
 import random
 import math
@@ -27,6 +29,7 @@ from store_utils import (
     load_join_keys as _store_load_join_keys,
     save_join_keys as _store_save_join_keys,
 )
+from room_gen import build_room_gen_prompt
 
 try:
     from PIL import Image
@@ -48,6 +51,7 @@ AGENTS_STATE_FILE = os.path.join(ROOT_DIR, "agents-state.json")
 JOIN_KEYS_FILE = os.path.join(ROOT_DIR, "join-keys.json")
 FRONTEND_PATH = Path(FRONTEND_DIR)
 ASSET_ALLOWED_EXTS = {".png", ".webp", ".jpg", ".jpeg", ".gif", ".svg", ".avif"}
+GUEST_AVATARS = [f"guest_role_{i}" for i in range(1, 8)]
 ASSET_TEMPLATE_ZIP = os.path.join(ROOT_DIR, "assets-replace-template.zip")
 WORKSPACE_DIR = os.path.dirname(ROOT_DIR)
 OPENCLAW_WORKSPACE = os.environ.get("OPENCLAW_WORKSPACE") or os.path.join(os.path.expanduser("~"), ".openclaw", "workspace")
@@ -60,8 +64,12 @@ ROOM_REFERENCE_IMAGE = (
     else os.path.join(ROOT_DIR, "assets", "room-reference.png")
 )
 BG_HISTORY_DIR = os.path.join(ROOT_DIR, "assets", "bg-history")
-HOME_FAVORITES_DIR = os.path.join(ROOT_DIR, "assets", "home-favorites")
-HOME_FAVORITES_INDEX_FILE = os.path.join(HOME_FAVORITES_DIR, "index.json")
+ROOM_GALLERY_PUBLIC_DIR = os.path.join(ROOT_DIR, "assets", "room-gallery")
+ROOM_GALLERY_MANIFEST_FILE = os.path.join(ROOM_GALLERY_PUBLIC_DIR, "manifest.json")
+ROOM_GALLERY_PUBLIC_EXTS = {".webp", ".png", ".jpg", ".jpeg"}
+BG_HISTORY_PREFIX = "office_"
+LEGACY_HOME_FAVORITES_INDEX_FILE = os.path.join(ROOT_DIR, "assets", "home-favorites", "index.json")
+HOME_FAVORITES_INDEX_FILE = os.path.join(BG_HISTORY_DIR, "index.json")
 HOME_FAVORITES_MAX = 30
 ASSET_POSITIONS_FILE = os.path.join(ROOT_DIR, "asset-positions.json")
 
@@ -72,15 +80,20 @@ _last_home_rotate_at = 0
 ASSET_DEFAULTS_FILE = os.path.join(ROOT_DIR, "asset-defaults.json")
 RUNTIME_CONFIG_FILE = os.path.join(ROOT_DIR, "runtime-config.json")
 
+GEMINI_SKILL_MISSING_MSG = (
+    "Image generation skill not installed (agent-dashboard/skills/gemini-image-generate). "
+    "See star-office/SKILL.md section 4.1."
+)
+
 # Canonical agent states: single source of truth for validation and mapping
 VALID_AGENT_STATES = frozenset({"idle", "writing", "researching", "executing", "syncing", "error"})
 WORKING_STATES = frozenset({"writing", "researching", "executing"})  # subset used for auto-idle TTL
 STATE_TO_AREA_MAP = {
-    "idle": "breakroom",
-    "writing": "writing",
-    "researching": "writing",
-    "executing": "writing",
-    "syncing": "writing",
+    "idle": "center_room",
+    "writing": "cat_room",
+    "researching": "cat_room",
+    "executing": "cat_room",
+    "syncing": "cat_room",
     "error": "error",
 }
 
@@ -253,17 +266,39 @@ _INDEX_HTML_CACHE = None
 _INDEX_HTML_MTIME = None
 
 
+def _frontend_assets_mtime() -> float:
+    """Highest mtime across frontend static assets — used as a cache-bust version
+    so editing any asset invalidates the browser cache without a server restart."""
+    latest = 0.0
+    for entry in os.scandir(FRONTEND_DIR):
+        if entry.is_file() and entry.name.rsplit(".", 1)[-1].lower() in {
+            "webp", "png", "jpg", "jpeg", "gif", "svg", "js", "css", "html"
+        }:
+            m = entry.stat().st_mtime
+            if m > latest:
+                latest = m
+    return latest
+
+
 def _index_html_response():
-    """Serve index.html; reload from disk when the file changes (dev-friendly)."""
+    """Serve index.html; reload from disk when the file or any asset changes."""
     global _INDEX_HTML_CACHE, _INDEX_HTML_MTIME
-    mtime = os.path.getmtime(FRONTEND_INDEX_FILE)
-    if _INDEX_HTML_CACHE is None or _INDEX_HTML_MTIME != mtime:
+    html_mtime = os.path.getmtime(FRONTEND_INDEX_FILE)
+    assets_mtime = _frontend_assets_mtime()
+    sig = (html_mtime, assets_mtime)
+    if _INDEX_HTML_CACHE is None or _INDEX_HTML_MTIME != sig:
+        version = datetime.fromtimestamp(max(html_mtime, assets_mtime)).strftime("%Y%m%d_%H%M%S")
         with open(FRONTEND_INDEX_FILE, "r", encoding="utf-8") as f:
-            _INDEX_HTML_CACHE = f.read().replace("{{VERSION_TIMESTAMP}}", VERSION_TIMESTAMP)
-        _INDEX_HTML_MTIME = mtime
+            _INDEX_HTML_CACHE = f.read().replace("{{VERSION_TIMESTAMP}}", version)
+        _INDEX_HTML_MTIME = sig
     resp = make_response(_INDEX_HTML_CACHE)
     resp.headers["Content-Type"] = "text/html; charset=utf-8"
     return resp
+
+
+@app.route("/favicon.ico", methods=["GET"])
+def favicon():
+    return send_from_directory(FRONTEND_DIR, "favicon.ico", mimetype="image/vnd.microsoft.icon")
 
 
 @app.route("/", methods=["GET"])
@@ -321,7 +356,7 @@ DEFAULT_AGENTS = [
         "state": "idle",
         "detail": "待命中，随时准备为你服务",
         "updated_at": datetime.now().isoformat(),
-        "area": "breakroom",
+        "area": "center_room",
         "source": "local",
         "joinKey": None,
         "authStatus": "approved",
@@ -363,8 +398,52 @@ def save_runtime_config(data):
     _store_save_runtime_config(RUNTIME_CONFIG_FILE, data)
 
 
+def _home_fav_thumb_url(rel_path: str) -> str:
+    fn = _safe_history_filename(os.path.basename((rel_path or "").strip()))
+    return f"/assets/bg-history/file/{fn}" if fn else ""
+
+
+def _migrate_legacy_home_favorites_index():
+    """One-time: move index from assets/home-favorites/ → assets/bg-history/, fix paths."""
+    if os.path.exists(HOME_FAVORITES_INDEX_FILE) or not os.path.exists(LEGACY_HOME_FAVORITES_INDEX_FILE):
+        return
+    try:
+        with open(LEGACY_HOME_FAVORITES_INDEX_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return
+    items = []
+    for it in data.get("items") or []:
+        rel = (it.get("path") or "").strip()
+        if not rel:
+            continue
+        abs_path = os.path.join(ROOT_DIR, rel)
+        new_rel = None
+        if rel.startswith("assets/bg-history/") and os.path.exists(abs_path):
+            new_rel = rel
+        elif os.path.exists(abs_path):
+            try:
+                hist = _history_path_for_digest(_file_md5(abs_path))
+                if hist:
+                    new_rel = os.path.relpath(hist, ROOT_DIR)
+            except Exception:
+                pass
+        if not new_rel:
+            continue
+        fn = os.path.basename(new_rel)
+        items.append({
+            "id": (it.get("id") or fn.replace(".webp", "")),
+            "path": new_rel,
+            "created_at": it.get("created_at") or "",
+        })
+    os.makedirs(BG_HISTORY_DIR, exist_ok=True)
+    with open(HOME_FAVORITES_INDEX_FILE, "w", encoding="utf-8") as f:
+        json.dump({"items": items}, f, ensure_ascii=False, indent=2)
+
+
 def _ensure_home_favorites_index():
-    os.makedirs(HOME_FAVORITES_DIR, exist_ok=True)
+    os.makedirs(BG_HISTORY_DIR, exist_ok=True)
+    _migrate_legacy_home_favorites_index()
     if not os.path.exists(HOME_FAVORITES_INDEX_FILE):
         with open(HOME_FAVORITES_INDEX_FILE, "w", encoding="utf-8") as f:
             json.dump({"items": []}, f, ensure_ascii=False, indent=2)
@@ -386,6 +465,20 @@ def _save_home_favorites_index(data):
     _ensure_home_favorites_index()
     with open(HOME_FAVORITES_INDEX_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _resolve_bg_history_rel_for_active_room() -> str | None:
+    """Return bg-history rel path for the active room; archive once if missing from gallery."""
+    target = FRONTEND_PATH / "office_bg_small.webp"
+    if not target.exists():
+        return None
+    existing = _history_path_for_digest(_file_md5(str(target)))
+    if existing:
+        return os.path.relpath(existing, ROOT_DIR)
+    if _should_skip_archive(target):
+        return None
+    archived = _archive_background_to_history(target, slug=f"saved-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+    return archived
 
 
 def _maybe_apply_random_home_favorite():
@@ -483,7 +576,7 @@ def _animated_to_spritesheet(
     """Convert animated GIF/WEBP to spritesheet, return (out_path, columns, rows, frames, out_frame_w, out_frame_h)."""
     backend = _ensure_magick_or_ffmpeg_available()
     if not backend:
-        raise RuntimeError("未检测到 ImageMagick/ffmpeg，无法自动转换动图")
+        raise RuntimeError("ImageMagick or ffmpeg required for animated image conversion")
 
     ext = (out_ext or ".webp").lower()
     if ext not in {".webp", ".png"}:
@@ -516,11 +609,11 @@ def _animated_to_spritesheet(
         if frames <= 0:
             cmd1 = f"ffmpeg -y -i '{upload_path}' '{td}/f_%04d.png' >/dev/null 2>&1"
             if os.system(cmd1) != 0:
-                raise RuntimeError("动图抽帧失败（Pillow/ffmpeg 都失败）")
+                raise RuntimeError("Failed to extract animation frames (Pillow and ffmpeg both failed)")
             files = sorted([x for x in os.listdir(td) if x.startswith("f_") and x.endswith(".png")])
             frames = len(files)
             if frames <= 0:
-                raise RuntimeError("动图无有效帧")
+                raise RuntimeError("Animation has no valid frames")
 
         if backend == "magick":
             # 像素风动图转精灵表默认无损，避免颜色/边缘被压缩糊掉
@@ -544,7 +637,7 @@ def _animated_to_spritesheet(
             )
             rc = os.system(cmd)
             if rc != 0:
-                raise RuntimeError("ImageMagick 拼图失败")
+                raise RuntimeError("ImageMagick montage failed")
             return out_path, cols_eff, rows_eff, frames, out_fw, out_fh
 
         ffmpeg_quality = "-lossless 1 -compression_level 6 -q:v 100" if ext == ".webp" else ""
@@ -565,7 +658,7 @@ def _animated_to_spritesheet(
             f"{ffmpeg_quality} '{out_path}' >/dev/null 2>&1"
         )
         if os.system(cmd2) != 0:
-            raise RuntimeError("ffmpeg 拼图失败")
+            raise RuntimeError("ffmpeg montage failed")
         return out_path, frames, 1, frames, out_fw, out_fh
 
 
@@ -625,7 +718,21 @@ def _provider_model_candidates(user_model: str):
     return list(USER_MODEL_TO_PROVIDER_MODELS.get(normalized, USER_MODEL_TO_PROVIDER_MODELS["nanobanana-pro"]))
 
 
-def _generate_rpg_background_to_webp(out_webp_path: str, width: int = 1280, height: int = 720, custom_prompt: str = "", speed_mode: str = "fast"):
+def _request_http_referer() -> str:
+    """Browser page origin — satisfies API keys locked to HTTP referrers."""
+    cfg = load_runtime_config()
+    ref = (cfg.get("gemini_http_referer") or "").strip()
+    if not ref:
+        ref = (request.headers.get("Referer") or request.headers.get("Origin") or "").strip()
+    if not ref:
+        port = os.environ.get("STAR_BACKEND_PORT", "19000")
+        ref = f"http://127.0.0.1:{port}/"
+    if ref and not ref.endswith("/"):
+        ref += "/"
+    return ref
+
+
+def _generate_rpg_background_to_webp(out_webp_path: str, width: int = 1280, height: int = 720, custom_prompt: str = "", speed_mode: str = "fast", http_referer: str = ""):
     """Generate RPG-style room background and save as webp.
 
     speed_mode:
@@ -649,7 +756,7 @@ def _generate_rpg_background_to_webp(out_webp_path: str, width: int = 1280, heig
     theme = random.choice(themes)
 
     if not (os.path.exists(GEMINI_PYTHON) and os.path.exists(GEMINI_SCRIPT)):
-        raise RuntimeError("生图脚本环境缺失：gemini-image-generate 未安装")
+        raise RuntimeError(GEMINI_SKILL_MISSING_MSG)
 
     style_hint = (custom_prompt or "").strip()
     if not style_hint:
@@ -675,13 +782,7 @@ def _generate_rpg_background_to_webp(out_webp_path: str, width: int = 1280, heig
     # 仅 nanobanana-2 走 aspect-ratio，nanobanana-pro 交给模型默认比例（后续再标准化到 1280x720）
     allow_aspect_ratio = (preferred_user_model == "nanobanana-2")
 
-    prompt = (
-        "Use a top-down pixel room composition compatible with an office game scene. "
-        "STRICTLY preserve the same room geometry, camera angle, wall/floor boundaries and major object placement as the provided reference image. "
-        "Keep region layout stable (left work area, center lounge, right error area). "
-        "Only change visual style/theme/material/lighting according to: " + style_hint + ". "
-        "Do not add text or watermark. Retro 8-bit RPG style."
-    )
+    prompt = build_room_gen_prompt(style_hint)
 
     tmp_dir = tempfile.mkdtemp(prefix="rpg-bg-")
     cmd = [
@@ -716,6 +817,11 @@ def _generate_rpg_background_to_webp(out_webp_path: str, width: int = 1280, heig
     # 运行时配置优先：只保留 GEMINI_API_KEY，避免脚本因双 key 报错
     env.pop("GOOGLE_API_KEY", None)
     env["GEMINI_API_KEY"] = api_key
+    ref = (http_referer or "").strip() or (runtime_cfg.get("gemini_http_referer") or "").strip()
+    if ref:
+        if not ref.endswith("/"):
+            ref += "/"
+        env["GEMINI_HTTP_REFERER"] = ref
 
     def _run_cmd(cmd_args):
         return subprocess.run(cmd_args, capture_output=True, text=True, env=env, timeout=240)
@@ -766,40 +872,43 @@ def _generate_rpg_background_to_webp(out_webp_path: str, width: int = 1280, heig
         err_text = (proc.stderr or proc.stdout or "").strip()
         last_err_text = err_text
 
-        # key 失效/泄漏：立即终止，不继续尝试
         low = err_text.lower()
-        if "your api key was reported as leaked" in low or "permission_denied" in low:
+        if "your api key was reported as leaked" in low:
             raise RuntimeError("API_KEY_REVOKED_OR_LEAKED")
+        if "api_key_http_referrer_blocked" in low or "referer <empty> are blocked" in low:
+            raise RuntimeError("API_KEY_REFERRER_BLOCKED")
+        if "api_key_invalid" in low or "api key not valid" in low:
+            raise RuntimeError("API_KEY_INVALID")
 
         if _is_model_unavailable_error(err_text):
             model_unavailable_count += 1
             continue
 
         # 非模型不可用错误，直接返回真实错误
-        raise RuntimeError(f"生图失败: {err_text}")
+        raise RuntimeError(f"Image generation failed: {err_text}")
 
     if proc is None or proc.returncode != 0:
         err_text = (last_err_text or "").strip()
         if model_unavailable_count >= len(model_candidates) or _is_model_unavailable_error(err_text):
             brief = (err_text or "").replace("\n", " ")[:240]
             raise RuntimeError(f"MODEL_NOT_AVAILABLE::{brief}")
-        raise RuntimeError(f"生图失败: {err_text}")
+        raise RuntimeError(f"Image generation failed: {err_text}")
 
     try:
         result = json.loads(proc.stdout.strip().splitlines()[-1])
     except Exception:
-        raise RuntimeError("生图结果解析失败")
+        raise RuntimeError("Failed to parse generation result")
 
     files = result.get("files") or []
     if not files:
-        raise RuntimeError("生图未返回文件")
+        raise RuntimeError("Generation returned no files")
 
     gen_path = files[0]
     if not os.path.exists(gen_path):
-        raise RuntimeError("生图文件不存在")
+        raise RuntimeError("Generated file not found")
 
     if Image is None:
-        raise RuntimeError("Pillow 不可用，无法做尺寸标准化")
+        raise RuntimeError("Pillow required for image resize")
 
     with Image.open(gen_path) as im:
         im = im.convert("RGBA")
@@ -816,10 +925,12 @@ def _generate_rpg_background_to_webp(out_webp_path: str, width: int = 1280, heig
                 im = im.resize((width, height), Image.Resampling.LANCZOS)
             im.save(out_webp_path, "WEBP", lossless=True, quality=100, method=6)
 
+    return style_hint
+
 
 def state_to_area(state):
-    """Map agent state to office area (breakroom / writing / error)."""
-    return STATE_TO_AREA_MAP.get(state, "breakroom")
+    """Map agent state to office area (center_room / cat_room / error)."""
+    return STATE_TO_AREA_MAP.get(state, "center_room")
 
 
 # Ensure files exist
@@ -904,12 +1015,12 @@ def agent_approve():
         data = request.get_json()
         agent_id = (data.get("agentId") or "").strip()
         if not agent_id:
-            return jsonify({"ok": False, "msg": "缺少 agentId"}), 400
+            return jsonify({"ok": False, "msg": "missing agentId"}), 400
 
         agents = load_agents_state()
         target = next((a for a in agents if a.get("agentId") == agent_id and not a.get("isMain")), None)
         if not target:
-            return jsonify({"ok": False, "msg": "未找到 agent"}), 404
+            return jsonify({"ok": False, "msg": "agent not found"}), 404
 
         target["authStatus"] = "approved"
         target["authApprovedAt"] = datetime.now().isoformat()
@@ -928,12 +1039,12 @@ def agent_reject():
         data = request.get_json()
         agent_id = (data.get("agentId") or "").strip()
         if not agent_id:
-            return jsonify({"ok": False, "msg": "缺少 agentId"}), 400
+            return jsonify({"ok": False, "msg": "missing agentId"}), 400
 
         agents = load_agents_state()
         target = next((a for a in agents if a.get("agentId") == agent_id and not a.get("isMain")), None)
         if not target:
-            return jsonify({"ok": False, "msg": "未找到 agent"}), 404
+            return jsonify({"ok": False, "msg": "agent not found"}), 404
 
         target["authStatus"] = "rejected"
         target["authRejectedAt"] = datetime.now().isoformat()
@@ -965,7 +1076,7 @@ def join_agent():
     try:
         data = request.get_json()
         if not isinstance(data, dict) or not data.get("name"):
-            return jsonify({"ok": False, "msg": "请提供名字"}), 400
+            return jsonify({"ok": False, "msg": "name required"}), 400
 
         name = data["name"].strip()
         state = data.get("state", "idle")
@@ -976,12 +1087,12 @@ def join_agent():
         state = normalize_agent_state(state)
 
         if not join_key:
-            return jsonify({"ok": False, "msg": "请提供接入密钥"}), 400
+            return jsonify({"ok": False, "msg": "join key required"}), 400
 
         keys_data = load_join_keys()
         key_item = next((k for k in keys_data.get("keys", []) if k.get("key") == join_key), None)
         if not key_item:
-            return jsonify({"ok": False, "msg": "接入密钥无效"}), 403
+            return jsonify({"ok": False, "msg": "invalid join key"}), 403
         # key 可复用：不再因为 used=true 拒绝
 
         with join_lock:
@@ -989,7 +1100,7 @@ def join_agent():
             keys_data = load_join_keys()
             key_item = next((k for k in keys_data.get("keys", []) if k.get("key") == join_key), None)
             if not key_item:
-                return jsonify({"ok": False, "msg": "接入密钥无效"}), 403
+                return jsonify({"ok": False, "msg": "invalid join key"}), 403
 
             # Key-level expiration check
             key_expires_at_str = key_item.get("expiresAt")
@@ -997,7 +1108,7 @@ def join_agent():
                 try:
                     key_expires_at = datetime.fromisoformat(key_expires_at_str)
                     if datetime.now() > key_expires_at:
-                        return jsonify({"ok": False, "msg": "该接入密钥已过期，活动已结束 🎉"}), 403
+                        return jsonify({"ok": False, "msg": "join key expired — event ended 🎉"}), 403
                 except Exception:
                     pass
 
@@ -1049,7 +1160,7 @@ def join_agent():
 
             if active_count >= max_concurrent:
                 save_agents_state(agents)
-                return jsonify({"ok": False, "msg": f"该接入密钥当前并发已达上限（{max_concurrent}），请稍后或换另一个 key"}), 429
+                return jsonify({"ok": False, "msg": f"join key concurrent limit reached ({max_concurrent}) — try later or use another key"}), 429
 
             if existing:
                 existing["state"] = state
@@ -1064,7 +1175,7 @@ def join_agent():
                 existing["lastPushAt"] = datetime.now().isoformat()  # join 视为上线，纳入并发/离线判定
                 if not existing.get("avatar"):
                     import random
-                    existing["avatar"] = random.choice(["guest_role_1", "guest_role_2", "guest_role_3", "guest_role_4", "guest_role_5", "guest_role_6"])
+                    existing["avatar"] = random.choice(GUEST_AVATARS)
                 agent_id = existing.get("agentId")
             else:
                 # Use ms + random suffix to avoid collisions under concurrent joins
@@ -1085,7 +1196,7 @@ def join_agent():
                     "authApprovedAt": datetime.now().isoformat(),
                     "authExpiresAt": (datetime.now() + timedelta(hours=24)).isoformat(),
                     "lastPushAt": datetime.now().isoformat(),
-                    "avatar": random.choice(["guest_role_1", "guest_role_2", "guest_role_3", "guest_role_4", "guest_role_5", "guest_role_6"])
+                    "avatar": random.choice(GUEST_AVATARS)
                 })
 
             key_item["used"] = True
@@ -1099,7 +1210,7 @@ def join_agent():
             save_agents_state(agents)
             save_join_keys(keys_data)
 
-        return jsonify({"ok": True, "agentId": agent_id, "authStatus": "approved", "nextStep": "已自动批准，立即开始推送状态"})
+        return jsonify({"ok": True, "agentId": agent_id, "authStatus": "approved", "nextStep": "Auto-approved — start pushing status"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -1118,7 +1229,7 @@ def leave_agent():
         agent_id = (data.get("agentId") or "").strip()
         name = (data.get("name") or "").strip()
         if not agent_id and not name:
-            return jsonify({"ok": False, "msg": "请提供 agentId 或名字"}), 400
+            return jsonify({"ok": False, "msg": "agentId or name required"}), 400
 
         agents = load_agents_state()
 
@@ -1130,7 +1241,7 @@ def leave_agent():
             target = next((a for a in agents if a.get("name") == name and not a.get("isMain")), None)
 
         if not target:
-            return jsonify({"ok": False, "msg": "没有找到要离开的 agent"}), 404
+            return jsonify({"ok": False, "msg": "no agent found to remove"}), 404
 
         join_key = target.get("joinKey")
         new_agents = [a for a in agents if a.get("isMain") or a.get("agentId") != target.get("agentId")]
@@ -1282,14 +1393,14 @@ def agent_push():
         name = (data.get("name") or "").strip()
 
         if not agent_id or not join_key or not state:
-            return jsonify({"ok": False, "msg": "缺少 agentId/joinKey/state"}), 400
+            return jsonify({"ok": False, "msg": "missing agentId/joinKey/state"}), 400
 
         state = normalize_agent_state(state)
 
         keys_data = load_join_keys()
         key_item = next((k for k in keys_data.get("keys", []) if k.get("key") == join_key), None)
         if not key_item:
-            return jsonify({"ok": False, "msg": "joinKey 无效"}), 403
+            return jsonify({"ok": False, "msg": "invalid joinKey"}), 403
 
         # Key-level expiration check
         key_expires_at_str = key_item.get("expiresAt")
@@ -1297,7 +1408,7 @@ def agent_push():
             try:
                 key_expires_at = datetime.fromisoformat(key_expires_at_str)
                 if datetime.now() > key_expires_at:
-                    return jsonify({"ok": False, "msg": "该接入密钥已过期，活动已结束 🎉"}), 403
+                    return jsonify({"ok": False, "msg": "join key expired — event ended 🎉"}), 403
             except Exception:
                 pass
 
@@ -1305,21 +1416,21 @@ def agent_push():
         agents = load_agents_state()
         target = next((a for a in agents if a.get("agentId") == agent_id and not a.get("isMain")), None)
         if not target:
-            return jsonify({"ok": False, "msg": "agent 未注册，请先 join"}), 404
+            return jsonify({"ok": False, "msg": "agent not registered — join first"}), 404
 
         # Auth check: only approved agents can push.
         # Note: "offline" is a presence state (stale), not a revoked authorization.
         # Allow offline agents to resume pushing and auto-promote them back to approved.
         auth_status = target.get("authStatus", "pending")
         if auth_status not in {"approved", "offline"}:
-            return jsonify({"ok": False, "msg": "agent 未获授权，请等待主人批准"}), 403
+            return jsonify({"ok": False, "msg": "agent not authorized — wait for approval"}), 403
         if auth_status == "offline":
             target["authStatus"] = "approved"
             target["authApprovedAt"] = datetime.now().isoformat()
             target["authExpiresAt"] = (datetime.now() + timedelta(hours=24)).isoformat()
 
         if target.get("joinKey") != join_key:
-            return jsonify({"ok": False, "msg": "joinKey 不匹配"}), 403
+            return jsonify({"ok": False, "msg": "joinKey mismatch"}), 403
 
         target["state"] = state
         target["detail"] = detail
@@ -1383,7 +1494,7 @@ def get_yesterday_memo():
         else:
             return jsonify({
                 "success": False,
-                "msg": "没有找到昨日日记"
+                "msg": "No memo found for yesterday"
             })
     except Exception as e:
         return jsonify({
@@ -1416,7 +1527,7 @@ def set_state_endpoint():
 @app.route("/assets/template.zip", methods=["GET"])
 def assets_template_download():
     if not os.path.exists(ASSET_TEMPLATE_ZIP):
-        return jsonify({"ok": False, "msg": "模板包不存在，请先生成"}), 404
+        return jsonify({"ok": False, "msg": "template package not found — generate it first"}), 404
     return send_from_directory(ROOT_DIR, "assets-replace-template.zip", as_attachment=True)
 
 
@@ -1428,6 +1539,12 @@ def assets_list():
             continue
         rel = p.relative_to(FRONTEND_PATH).as_posix()
         if rel.startswith("fonts/"):
+            continue
+        # Dev/scratch files (e.g. _tmp-coffee-0.png) are not DIY assets
+        name = p.name.lower()
+        if name.startswith("_") or name.startswith("."):
+            continue
+        if name.endswith(".bak") or name.endswith(".default") or name.endswith(".tmp"):
             continue
         if p.suffix.lower() not in ASSET_ALLOWED_EXTS:
             continue
@@ -1452,28 +1569,303 @@ def assets_list():
     return jsonify({"ok": True, "count": len(items), "items": items})
 
 
-def _bg_generate_worker(task_id: str, custom_prompt: str, speed_mode: str):
+def _slugify_room_name(text: str, fallback: str = "room") -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", (text or "").lower().strip())
+    s = s.strip("-")[:48]
+    return s or fallback
+
+
+def _unique_history_filepath(slug: str) -> str:
+    os.makedirs(BG_HISTORY_DIR, exist_ok=True)
+    safe = _slugify_room_name(slug)
+    base = f"{BG_HISTORY_PREFIX}{safe}"
+    path = os.path.join(BG_HISTORY_DIR, f"{base}.webp")
+    if not os.path.exists(path):
+        return path
+    n = 2
+    while True:
+        path = os.path.join(BG_HISTORY_DIR, f"{base}-{n}.webp")
+        if not os.path.exists(path):
+            return path
+        n += 1
+
+
+def _history_path_for_digest(digest: str) -> str | None:
+    if not digest or not os.path.isdir(BG_HISTORY_DIR):
+        return None
+    for fn in os.listdir(BG_HISTORY_DIR):
+        if not _safe_history_filename(fn):
+            continue
+        path = os.path.join(BG_HISTORY_DIR, fn)
+        try:
+            if _file_md5(path) == digest:
+                return path
+        except Exception:
+            continue
+    return None
+
+
+def _should_skip_archive(path: Path) -> bool:
+    """Skip gallery copy when active room already exists in history or is factory default."""
+    if not path.exists():
+        return True
+    digest = _file_md5(str(path))
+    if _history_path_for_digest(digest):
+        return True
+    ref_digest = _reference_normalized_digest()
+    return bool(ref_digest and digest == ref_digest)
+
+
+def _archive_background_to_history(target: Path, *, slug: str | None = None) -> str | None:
+    """Copy current active background into bg-history before it is replaced."""
+    if _should_skip_archive(target):
+        return None
+    name = slug or f"archived-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    hist_file = _unique_history_filepath(name)
+    shutil.copy2(target, hist_file)
+    return os.path.relpath(hist_file, ROOT_DIR)
+
+
+def _save_generated_to_history(target: Path, style_label: str, custom_prompt: str) -> str | None:
+    """Register a freshly generated room in the gallery under a unique slug."""
+    if not target.exists():
+        return None
+    digest = _file_md5(str(target))
+    existing = _history_path_for_digest(digest)
+    if existing:
+        return os.path.relpath(existing, ROOT_DIR)
+    slug = _slugify_room_name(custom_prompt, "custom-style") if (custom_prompt or "").strip() else _slugify_room_name(style_label, "new-home")
+    hist_file = _unique_history_filepath(slug)
+    shutil.copy2(target, hist_file)
+    return os.path.relpath(hist_file, ROOT_DIR)
+
+
+def _file_md5(path: str) -> str:
+    h = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _safe_history_filename(name: str) -> str | None:
+    base = os.path.basename((name or "").strip())
+    if not base or base != (name or "").strip():
+        return None
+    if base == "office_bg_small.webp":
+        return None
+    if base.endswith(".webp") and (
+        base.startswith(BG_HISTORY_PREFIX) or base.startswith("office_bg_small-")
+    ):
+        return base
+    return None
+
+
+def _history_label_from_filename(fn: str) -> str:
+    label = fn
+    if label.startswith("office_bg_small-"):
+        label = label[len("office_bg_small-"):]
+    elif label.startswith(BG_HISTORY_PREFIX):
+        label = label[len(BG_HISTORY_PREFIX):]
+    return label.replace(".webp", "")
+
+
+def _safe_public_gallery_filename(name: str) -> str | None:
+    base = os.path.basename((name or "").strip())
+    if not base or base != (name or "").strip():
+        return None
+    if base in {"manifest.json", "index.json", ".gitkeep"}:
+        return None
+    ext = os.path.splitext(base)[1].lower()
+    if ext not in ROOM_GALLERY_PUBLIC_EXTS:
+        return None
+    return base
+
+
+def _public_gallery_label(fn: str, labels: dict[str, str]) -> str:
+    if labels.get(fn):
+        return labels[fn]
+    stem = os.path.splitext(fn)[0]
+    return stem.replace("-", " ").replace("_", " ").strip() or fn
+
+
+def _load_public_gallery_manifest() -> tuple[list[str], dict[str, str]]:
+    order: list[str] = []
+    labels: dict[str, str] = {}
+    if not os.path.exists(ROOM_GALLERY_MANIFEST_FILE):
+        return order, labels
+    try:
+        with open(ROOM_GALLERY_MANIFEST_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        for it in data.get("items") or []:
+            if not isinstance(it, dict):
+                continue
+            fn = _safe_public_gallery_filename((it.get("file") or "").strip())
+            if not fn:
+                continue
+            order.append(fn)
+            label = (it.get("label") or "").strip()
+            if label:
+                labels[fn] = label
+    except Exception:
+        pass
+    return order, labels
+
+
+def _list_public_gallery_items() -> list[dict]:
+    os.makedirs(ROOM_GALLERY_PUBLIC_DIR, exist_ok=True)
+    manifest_order, labels = _load_public_gallery_manifest()
+    if manifest_order:
+        files = [
+            fn for fn in manifest_order
+            if os.path.isfile(os.path.join(ROOM_GALLERY_PUBLIC_DIR, fn))
+        ]
+    else:
+        files = sorted(
+            x for x in os.listdir(ROOM_GALLERY_PUBLIC_DIR)
+            if _safe_public_gallery_filename(x)
+        )
+    items = []
+    for fn in files:
+        abs_path = os.path.join(ROOM_GALLERY_PUBLIC_DIR, fn)
+        items.append({
+            "id": f"public:{fn}",
+            "kind": "public",
+            "label": _public_gallery_label(fn, labels),
+            "thumb_url": f"/assets/room-gallery/file/{fn}",
+            "created_at": "",
+            "digest": _file_md5(abs_path),
+            "is_active": False,
+        })
+    return items
+
+
+def _reference_normalized_digest() -> str | None:
+    if not os.path.exists(ROOM_REFERENCE_IMAGE) or Image is None:
+        return None
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".webp", delete=False) as tmp:
+            tmp_path = tmp.name
+        with Image.open(ROOM_REFERENCE_IMAGE) as im:
+            im = im.convert("RGBA").resize((1280, 720), Image.Resampling.LANCZOS)
+            im.save(tmp_path, "WEBP", quality=92, method=6)
+        return _file_md5(tmp_path)
+    except Exception:
+        return None
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
+def _activate_background_from_path(src_abs: str, *, archive_current: bool = True, from_reference: bool = False) -> dict:
+    """Swap active room background without generating a new image."""
+    target = FRONTEND_PATH / "office_bg_small.webp"
+    if not os.path.exists(src_abs):
+        raise FileNotFoundError(f"source not found: {src_abs}")
+
+    archived = None
+    if archive_current and target.exists():
+        archived = _archive_background_to_history(target)
+        shutil.copy2(target, target.with_suffix(target.suffix + ".bak"))
+
+    if from_reference:
+        ref_ext = os.path.splitext(src_abs)[1].lower()
+        fast_copied = False
+        if ref_ext == ".webp":
+            try:
+                with Image.open(src_abs) as rim:
+                    if rim.size == (1280, 720):
+                        shutil.copy2(src_abs, target)
+                        fast_copied = True
+            except Exception:
+                fast_copied = False
+        if not fast_copied:
+            if Image is None:
+                raise RuntimeError("Pillow is not installed — run: pip install pillow (in star-office/.venv)")
+            with Image.open(src_abs) as im:
+                im = im.convert("RGBA").resize((1280, 720), Image.Resampling.LANCZOS)
+                im.save(target, "WEBP", quality=92, method=6)
+    else:
+        shutil.copy2(src_abs, target)
+
+    st = target.stat()
+    return {
+        "archived": archived,
+        "size": st.st_size,
+        "from": os.path.relpath(src_abs, ROOT_DIR) if src_abs.startswith(ROOT_DIR) else src_abs,
+    }
+
+
+def _list_room_background_items():
+    target = FRONTEND_PATH / "office_bg_small.webp"
+    active_md5 = _file_md5(str(target)) if target.exists() else None
+    ref_digest = _reference_normalized_digest()
+    items = []
+    active_id = None
+
+    if os.path.exists(ROOM_REFERENCE_IMAGE):
+        items.append({
+            "id": "__default__",
+            "kind": "default",
+            "label": "Factory Default",
+            "thumb_url": "/assets/room-backgrounds/thumb/__default__",
+            "created_at": "",
+            "digest": ref_digest,
+            "is_active": False,
+        })
+
+    items.extend(_list_public_gallery_items())
+
+    if os.path.isdir(BG_HISTORY_DIR):
+        files = [x for x in os.listdir(BG_HISTORY_DIR) if _safe_history_filename(x)]
+        files.sort(key=lambda x: os.path.getmtime(os.path.join(BG_HISTORY_DIR, x)), reverse=True)
+        for fn in files:
+            abs_path = os.path.join(BG_HISTORY_DIR, fn)
+            digest = _file_md5(abs_path)
+            items.append({
+                "id": fn,
+                "kind": "history",
+                "label": _history_label_from_filename(fn),
+                "thumb_url": f"/assets/bg-history/file/{fn}",
+                "created_at": datetime.fromtimestamp(os.path.getmtime(abs_path)).isoformat(timespec="seconds"),
+                "digest": digest,
+                "is_active": False,
+            })
+
+    if active_md5:
+        for it in items:
+            if it.get("digest") and it["digest"] == active_md5:
+                it["is_active"] = True
+                active_id = it["id"]
+                break
+
+    return items, active_id
+
+
+def _bg_generate_worker(task_id: str, custom_prompt: str, speed_mode: str, http_referer: str = ""):
     """Background worker for RPG background generation."""
     try:
         target = FRONTEND_PATH / "office_bg_small.webp"
 
-        # 覆盖前保留最近一次备份
+        # Archive + quick backup before overwrite (history keeps every previous room)
+        archived = _archive_background_to_history(target)
         bak = target.with_suffix(target.suffix + ".bak")
         shutil.copy2(target, bak)
 
-        _generate_rpg_background_to_webp(
+        style_label = _generate_rpg_background_to_webp(
             str(target),
             width=1280,
             height=720,
             custom_prompt=custom_prompt,
             speed_mode=speed_mode,
+            http_referer=http_referer,
         )
 
-        # 每次生成都归档一份历史底图（可回溯风格演化）
-        os.makedirs(BG_HISTORY_DIR, exist_ok=True)
-        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-        hist_file = os.path.join(BG_HISTORY_DIR, f"office_bg_small-{ts}.webp")
-        shutil.copy2(target, hist_file)
+        saved = _save_generated_to_history(target, style_label, custom_prompt)
 
         st = target.stat()
         with _bg_tasks_lock:
@@ -1483,9 +1875,10 @@ def _bg_generate_worker(task_id: str, custom_prompt: str, speed_mode: str):
                     "ok": True,
                     "path": "office_bg_small.webp",
                     "size": st.st_size,
-                    "history": os.path.relpath(hist_file, ROOT_DIR),
+                    "archived": archived,
+                    "saved": saved,
                     "speed_mode": speed_mode,
-                    "msg": "已生成并替换 RPG 房间底图（已自动归档）",
+                    "msg": "Room background generated and added to gallery",
                 },
             }
     except Exception as e:
@@ -1497,13 +1890,79 @@ def _bg_generate_worker(task_id: str, custom_prompt: str, speed_mode: str):
         elif msg == "API_KEY_REVOKED_OR_LEAKED":
             error_result["code"] = "API_KEY_REVOKED_OR_LEAKED"
             error_result["msg"] = "API key is revoked or flagged as leaked. Please rotate to a new key."
+        elif msg == "API_KEY_REFERRER_BLOCKED":
+            error_result["code"] = "API_KEY_REFERRER_BLOCKED"
+            error_result["msg"] = (
+                "API key is restricted to HTTP referrers (browser only). "
+                "In Google Cloud Console → Credentials → your key → set Application restrictions to None or IP addresses, then retry."
+            )
+        elif msg == "API_KEY_INVALID":
+            error_result["code"] = "API_KEY_INVALID"
+            error_result["msg"] = "API key is invalid. Create a new key in Google AI Studio and save it in the drawer."
         elif msg.startswith("MODEL_NOT_AVAILABLE"):
             error_result["code"] = "MODEL_NOT_AVAILABLE"
             error_result["msg"] = "Configured model is not available for this API key/channel."
             if "::" in msg:
                 error_result["detail"] = msg.split("::", 1)[1]
+        elif msg == GEMINI_SKILL_MISSING_MSG or "gemini-image-generate" in msg:
+            error_result["code"] = "GEMINI_SKILL_MISSING"
+            error_result["msg"] = GEMINI_SKILL_MISSING_MSG
         with _bg_tasks_lock:
             _bg_tasks[task_id] = {"status": "error", "result": error_result}
+
+
+def _apply_generated_image_bytes(image_bytes: bytes, style_label: str, custom_prompt: str) -> dict:
+    target = FRONTEND_PATH / "office_bg_small.webp"
+    if not target.exists():
+        raise FileNotFoundError("office_bg_small.webp not found")
+
+    archived = _archive_background_to_history(target)
+    shutil.copy2(target, target.with_suffix(target.suffix + ".bak"))
+
+    if Image is None:
+        raise RuntimeError("Pillow is not installed — run: pip install pillow (in star-office/.venv)")
+
+    import io
+    with Image.open(io.BytesIO(image_bytes)) as im:
+        im = im.convert("RGBA").resize((1280, 720), Image.Resampling.LANCZOS)
+        im.save(target, "WEBP", quality=96, method=6)
+
+    saved = _save_generated_to_history(target, style_label, custom_prompt)
+    st = target.stat()
+    return {"archived": archived, "saved": saved, "size": st.st_size}
+
+
+@app.route("/assets/apply-generated-image", methods=["POST"])
+def assets_apply_generated_image():
+    """Save browser-generated image (referrer-safe path) to active room + gallery."""
+    guard = _require_asset_editor_auth()
+    if guard:
+        return guard
+    try:
+        data = request.get_json(silent=True) or {}
+        image_b64 = (data.get("image_b64") or "").strip()
+        if not image_b64:
+            return jsonify({"ok": False, "msg": "missing image_b64"}), 400
+        custom_prompt = (data.get("custom_prompt") or "").strip()
+        style_label = (data.get("style_label") or custom_prompt or "generated").strip()
+        try:
+            raw = base64.b64decode(image_b64, validate=True)
+        except Exception:
+            return jsonify({"ok": False, "msg": "invalid image_b64"}), 400
+        if len(raw) < 64:
+            return jsonify({"ok": False, "msg": "image payload too small"}), 400
+
+        result = _apply_generated_image_bytes(raw, style_label, custom_prompt)
+        return jsonify({
+            "ok": True,
+            "path": "office_bg_small.webp",
+            "size": result["size"],
+            "archived": result.get("archived"),
+            "saved": result.get("saved"),
+            "msg": "Room background applied from browser generation",
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
 
 
 @app.route("/assets/generate-rpg-background", methods=["POST"])
@@ -1521,7 +1980,7 @@ def assets_generate_rpg_background():
 
         target = FRONTEND_PATH / "office_bg_small.webp"
         if not target.exists():
-            return jsonify({"ok": False, "msg": "office_bg_small.webp 不存在"}), 404
+            return jsonify({"ok": False, "msg": "office_bg_small.webp not found"}), 404
 
         # Pre-flight checks that can fail fast (before spawning thread)
         runtime_cfg = load_runtime_config()
@@ -1529,13 +1988,13 @@ def assets_generate_rpg_background():
         if not api_key:
             return jsonify({"ok": False, "code": "MISSING_API_KEY", "msg": "Missing GEMINI_API_KEY or GOOGLE_API_KEY"}), 400
         if not (os.path.exists(GEMINI_PYTHON) and os.path.exists(GEMINI_SCRIPT)):
-            return jsonify({"ok": False, "msg": "生图脚本环境缺失：gemini-image-generate 未安装"}), 500
+            return jsonify({"ok": False, "msg": GEMINI_SKILL_MISSING_MSG}), 500
 
         # Check if another generation is already running
         with _bg_tasks_lock:
             for tid, task in _bg_tasks.items():
                 if task.get("status") == "pending":
-                    return jsonify({"ok": True, "async": True, "task_id": tid, "msg": "已有生图任务进行中，请等待完成"}), 200
+                    return jsonify({"ok": True, "async": True, "task_id": tid, "msg": "Generation already in progress — please wait"}), 200
 
         # Create async task
         import string as _string
@@ -1543,10 +2002,14 @@ def assets_generate_rpg_background():
         with _bg_tasks_lock:
             _bg_tasks[task_id] = {"status": "pending", "created_at": datetime.now().isoformat()}
 
-        t = threading.Thread(target=_bg_generate_worker, args=(task_id, custom_prompt, speed_mode), daemon=True)
+        t = threading.Thread(
+            target=_bg_generate_worker,
+            args=(task_id, custom_prompt, speed_mode, _request_http_referer()),
+            daemon=True,
+        )
         t.start()
 
-        return jsonify({"ok": True, "async": True, "task_id": task_id, "msg": "生图任务已启动，请通过 task_id 轮询结果"})
+        return jsonify({"ok": True, "async": True, "task_id": task_id, "msg": "Generation started — poll with task_id"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -1559,14 +2022,14 @@ def assets_generate_rpg_background_poll():
         return guard
     task_id = (request.args.get("task_id") or "").strip()
     if not task_id:
-        return jsonify({"ok": False, "msg": "缺少 task_id"}), 400
+        return jsonify({"ok": False, "msg": "missing task_id"}), 400
     with _bg_tasks_lock:
         task = _bg_tasks.get(task_id)
     if not task:
-        return jsonify({"ok": False, "msg": "任务不存在"}), 404
+        return jsonify({"ok": False, "msg": "task not found"}), 404
     status = task.get("status", "pending")
     if status == "pending":
-        return jsonify({"ok": True, "status": "pending", "msg": "生图进行中..."})
+        return jsonify({"ok": True, "status": "pending", "msg": "Generating image…"})
     elif status == "done":
         # Clean up task after delivering result
         with _bg_tasks_lock:
@@ -1578,6 +2041,16 @@ def assets_generate_rpg_background_poll():
         result = task.get("result", {})
         code = 400 if result.get("code") else 500
         return jsonify({"ok": False, "status": "error", **result}), code
+
+
+@app.route("/assets/room-reference", methods=["GET"])
+def assets_room_reference():
+    """Layout blueprint image for New Home / Custom Style generation."""
+    if not os.path.exists(ROOM_REFERENCE_IMAGE):
+        return jsonify({"ok": False, "msg": "room reference not found"}), 404
+    ref_dir = os.path.dirname(ROOM_REFERENCE_IMAGE)
+    ref_name = os.path.basename(ROOM_REFERENCE_IMAGE)
+    return send_from_directory(ref_dir, ref_name)
 
 
 @app.route("/assets/restore-reference-background", methods=["POST"])
@@ -1593,35 +2066,12 @@ def assets_restore_reference_background():
         if not os.path.exists(ROOM_REFERENCE_IMAGE):
             return jsonify({"ok": False, "msg": "Reference room image not found"}), 404
 
-        # 备份当前底图
-        bak = target.with_suffix(target.suffix + ".bak")
-        shutil.copy2(target, bak)
-
-        # 快速路径：若参考图已是 1280x720 的 webp，直接拷贝（秒级）
-        ref_ext = os.path.splitext(ROOM_REFERENCE_IMAGE)[1].lower()
-        fast_copied = False
-        if ref_ext == '.webp':
-            try:
-                with Image.open(ROOM_REFERENCE_IMAGE) as rim:
-                    if rim.size == (1280, 720):
-                        shutil.copy2(ROOM_REFERENCE_IMAGE, target)
-                        fast_copied = True
-            except Exception:
-                fast_copied = False
-
-        # 慢路径：仅在必要时重编码
-        if not fast_copied:
-            if Image is None:
-                return jsonify({"ok": False, "msg": "Pillow is not installed — run: pip install pillow (in star-office/.venv)"}), 500
-            with Image.open(ROOM_REFERENCE_IMAGE) as im:
-                im = im.convert("RGBA").resize((1280, 720), Image.Resampling.LANCZOS)
-                im.save(target, "WEBP", quality=92, method=6)
-
-        st = target.stat()
+        result = _activate_background_from_path(ROOM_REFERENCE_IMAGE, archive_current=True, from_reference=True)
         return jsonify({
             "ok": True,
             "path": "office_bg_small.webp",
-            "size": st.st_size,
+            "size": result["size"],
+            "archived": result.get("archived"),
             "msg": "Original background restored",
         })
     except Exception as e:
@@ -1637,35 +2087,153 @@ def assets_restore_last_generated_background():
     try:
         target = FRONTEND_PATH / "office_bg_small.webp"
         if not target.exists():
-            return jsonify({"ok": False, "msg": "office_bg_small.webp 不存在"}), 404
+            return jsonify({"ok": False, "msg": "office_bg_small.webp not found"}), 404
 
         if not os.path.isdir(BG_HISTORY_DIR):
-            return jsonify({"ok": False, "msg": "暂无历史底图"}), 404
+            return jsonify({"ok": False, "msg": "No background history yet"}), 404
 
         files = [
             os.path.join(BG_HISTORY_DIR, x)
             for x in os.listdir(BG_HISTORY_DIR)
-            if x.startswith("office_bg_small-") and x.endswith(".webp")
+            if _safe_history_filename(x)
         ]
         if not files:
-            return jsonify({"ok": False, "msg": "暂无历史底图"}), 404
+            return jsonify({"ok": False, "msg": "No background history yet"}), 404
 
         latest = max(files, key=lambda p: os.path.getmtime(p))
+        result = _activate_background_from_path(latest, archive_current=True, from_reference=False)
 
-        bak = target.with_suffix(target.suffix + ".bak")
-        shutil.copy2(target, bak)
-        shutil.copy2(latest, target)
-
-        st = target.stat()
         return jsonify({
             "ok": True,
             "path": "office_bg_small.webp",
-            "size": st.st_size,
+            "size": result["size"],
             "from": os.path.relpath(latest, ROOT_DIR),
-            "msg": "已回退到最近一次生成底图",
+            "archived": result.get("archived"),
+            "msg": "Restored last generated background",
         })
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/assets/room-backgrounds/list", methods=["GET"])
+def assets_room_backgrounds_list():
+    guard = _require_asset_editor_auth()
+    if guard:
+        return guard
+    try:
+        items, active_id = _list_room_background_items()
+        return jsonify({"ok": True, "items": items, "active_id": active_id, "count": len(items)})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/assets/room-backgrounds/thumb/<path:item_id>", methods=["GET"])
+def assets_room_backgrounds_thumb(item_id):
+    guard = _require_asset_editor_auth()
+    if guard:
+        return guard
+    if item_id != "__default__":
+        return jsonify({"ok": False, "msg": "not found"}), 404
+    if not os.path.exists(ROOM_REFERENCE_IMAGE):
+        return jsonify({"ok": False, "msg": "Reference room image not found"}), 404
+    return send_from_directory(os.path.dirname(ROOM_REFERENCE_IMAGE), os.path.basename(ROOM_REFERENCE_IMAGE))
+
+
+@app.route("/assets/room-backgrounds/apply", methods=["POST"])
+def assets_room_backgrounds_apply():
+    """Switch active background from gallery (default, public presets, or bg-history)."""
+    guard = _require_asset_editor_auth()
+    if guard:
+        return guard
+    try:
+        data = request.get_json(silent=True) or {}
+        item_id = (data.get("id") or "").strip()
+        if not item_id:
+            return jsonify({"ok": False, "msg": "missing id"}), 400
+
+        target = FRONTEND_PATH / "office_bg_small.webp"
+        if not target.exists():
+            return jsonify({"ok": False, "msg": "office_bg_small.webp not found"}), 404
+
+        _, active_id = _list_room_background_items()
+        if item_id == active_id:
+            return jsonify({"ok": True, "id": item_id, "msg": "Already active", "already_active": True})
+
+        if item_id == "__default__":
+            if not os.path.exists(ROOM_REFERENCE_IMAGE):
+                return jsonify({"ok": False, "msg": "Reference room image not found"}), 404
+            result = _activate_background_from_path(ROOM_REFERENCE_IMAGE, archive_current=True, from_reference=True)
+            return jsonify({
+                "ok": True,
+                "id": item_id,
+                "path": "office_bg_small.webp",
+                "size": result["size"],
+                "archived": result.get("archived"),
+                "msg": "Factory default applied",
+            })
+
+        if item_id.startswith("public:"):
+            fn = _safe_public_gallery_filename(item_id[7:])
+            if not fn:
+                return jsonify({"ok": False, "msg": "invalid public gallery id"}), 400
+            src = os.path.join(ROOM_GALLERY_PUBLIC_DIR, fn)
+            if not os.path.exists(src):
+                return jsonify({"ok": False, "msg": "public room background not found"}), 404
+            from_reference = os.path.splitext(fn)[1].lower() in {".png", ".jpg", ".jpeg"}
+            result = _activate_background_from_path(src, archive_current=True, from_reference=from_reference)
+            return jsonify({
+                "ok": True,
+                "id": item_id,
+                "path": "office_bg_small.webp",
+                "size": result["size"],
+                "from": os.path.relpath(src, ROOT_DIR),
+                "archived": result.get("archived"),
+                "msg": "Public room background applied",
+            })
+
+        fn = _safe_history_filename(item_id)
+        if not fn:
+            return jsonify({"ok": False, "msg": "invalid background id"}), 400
+        src = os.path.join(BG_HISTORY_DIR, fn)
+        if not os.path.exists(src):
+            return jsonify({"ok": False, "msg": "background not found"}), 404
+
+        result = _activate_background_from_path(src, archive_current=True, from_reference=False)
+        return jsonify({
+            "ok": True,
+            "id": fn,
+            "path": "office_bg_small.webp",
+            "size": result["size"],
+            "from": os.path.relpath(src, ROOT_DIR),
+            "archived": result.get("archived"),
+            "msg": "Room background applied",
+        })
+    except RuntimeError as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/assets/room-gallery/file/<path:filename>", methods=["GET"])
+def assets_room_gallery_public_file(filename):
+    guard = _require_asset_editor_auth()
+    if guard:
+        return guard
+    fn = _safe_public_gallery_filename(filename)
+    if not fn:
+        return jsonify({"ok": False, "msg": "not found"}), 404
+    return send_from_directory(ROOM_GALLERY_PUBLIC_DIR, fn)
+
+
+@app.route("/assets/bg-history/file/<path:filename>", methods=["GET"])
+def assets_bg_history_file(filename):
+    guard = _require_asset_editor_auth()
+    if guard:
+        return guard
+    fn = _safe_history_filename(filename)
+    if not fn:
+        return jsonify({"ok": False, "msg": "not found"}), 404
+    return send_from_directory(BG_HISTORY_DIR, fn)
 
 
 @app.route("/assets/home-favorites/list", methods=["GET"])
@@ -1685,11 +2253,13 @@ def assets_home_favorites_list():
             if not os.path.exists(abs_path):
                 continue
             fn = os.path.basename(rel)
+            thumb = _home_fav_thumb_url(rel)
             out.append({
                 "id": it.get("id"),
                 "path": rel,
-                "url": f"/assets/home-favorites/file/{fn}",
-                "thumb_url": f"/assets/home-favorites/file/{fn}",
+                "url": thumb,
+                "thumb_url": thumb,
+                "label": _history_label_from_filename(fn) if _safe_history_filename(fn) else fn,
                 "created_at": it.get("created_at") or "",
             })
         out.sort(key=lambda x: x.get("created_at") or "", reverse=True)
@@ -1698,54 +2268,46 @@ def assets_home_favorites_list():
         return jsonify({"ok": False, "msg": str(e)}), 500
 
 
-@app.route("/assets/home-favorites/file/<path:filename>", methods=["GET"])
-def assets_home_favorites_file(filename):
-    guard = _require_asset_editor_auth()
-    if guard:
-        return guard
-    return send_from_directory(HOME_FAVORITES_DIR, filename)
-
-
 @app.route("/assets/home-favorites/save-current", methods=["POST"])
 def assets_home_favorites_save_current():
     guard = _require_asset_editor_auth()
     if guard:
         return guard
     try:
-        src = FRONTEND_PATH / "office_bg_small.webp"
-        if not src.exists():
-            return jsonify({"ok": False, "msg": "office_bg_small.webp 不存在"}), 404
+        rel = _resolve_bg_history_rel_for_active_room()
+        if not rel:
+            return jsonify({
+                "ok": False,
+                "msg": "current room is not in gallery (e.g. factory default) — generate or switch rooms first",
+            }), 400
 
-        _ensure_home_favorites_index()
-        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-        item_id = f"home-{ts}"
-        fn = f"{item_id}.webp"
-        dst = os.path.join(HOME_FAVORITES_DIR, fn)
-        shutil.copy2(str(src), dst)
+        fn = os.path.basename(rel)
+        item_id = fn.replace(".webp", "")
 
         idx = _load_home_favorites_index()
         items = idx.get("items") or []
+        hit = next((x for x in items if (x.get("path") or "") == rel), None)
+        if hit:
+            return jsonify({
+                "ok": True,
+                "id": hit.get("id") or item_id,
+                "path": rel,
+                "msg": "Already in favorites",
+            })
+
         items.insert(0, {
             "id": item_id,
-            "path": os.path.relpath(dst, ROOT_DIR),
+            "path": rel,
             "created_at": datetime.now().isoformat(timespec="seconds"),
         })
 
-        # 控制收藏数量上限，清理最旧项
+        # ponytail: trim index only — bg-history files stay (shared with room gallery)
         if len(items) > HOME_FAVORITES_MAX:
-            extra = items[HOME_FAVORITES_MAX:]
             items = items[:HOME_FAVORITES_MAX]
-            for it in extra:
-                try:
-                    p = os.path.join(ROOT_DIR, it.get("path") or "")
-                    if os.path.exists(p):
-                        os.remove(p)
-                except Exception:
-                    pass
 
         idx["items"] = items
         _save_home_favorites_index(idx)
-        return jsonify({"ok": True, "id": item_id, "path": os.path.relpath(dst, ROOT_DIR), "msg": "已收藏当前地图"})
+        return jsonify({"ok": True, "id": item_id, "path": rel, "msg": "Current map saved to favorites"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -1759,25 +2321,17 @@ def assets_home_favorites_delete():
         data = request.get_json(silent=True) or {}
         item_id = (data.get("id") or "").strip()
         if not item_id:
-            return jsonify({"ok": False, "msg": "缺少 id"}), 400
+            return jsonify({"ok": False, "msg": "missing id"}), 400
 
         idx = _load_home_favorites_index()
         items = idx.get("items") or []
         hit = next((x for x in items if (x.get("id") or "") == item_id), None)
         if not hit:
-            return jsonify({"ok": False, "msg": "收藏项不存在"}), 404
-
-        rel = hit.get("path") or ""
-        abs_path = os.path.join(ROOT_DIR, rel)
-        if os.path.exists(abs_path):
-            try:
-                os.remove(abs_path)
-            except Exception:
-                pass
+            return jsonify({"ok": False, "msg": "favorite not found"}), 404
 
         idx["items"] = [x for x in items if (x.get("id") or "") != item_id]
         _save_home_favorites_index(idx)
-        return jsonify({"ok": True, "id": item_id, "msg": "已删除收藏"})
+        return jsonify({"ok": True, "id": item_id, "msg": "Favorite removed (room file kept in gallery)"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -1791,28 +2345,31 @@ def assets_home_favorites_apply():
         data = request.get_json(silent=True) or {}
         item_id = (data.get("id") or "").strip()
         if not item_id:
-            return jsonify({"ok": False, "msg": "缺少 id"}), 400
+            return jsonify({"ok": False, "msg": "missing id"}), 400
 
         idx = _load_home_favorites_index()
         items = idx.get("items") or []
         hit = next((x for x in items if (x.get("id") or "") == item_id), None)
         if not hit:
-            return jsonify({"ok": False, "msg": "收藏项不存在"}), 404
+            return jsonify({"ok": False, "msg": "favorite not found"}), 404
 
         src = os.path.join(ROOT_DIR, hit.get("path") or "")
         if not os.path.exists(src):
-            return jsonify({"ok": False, "msg": "收藏文件不存在"}), 404
+            return jsonify({"ok": False, "msg": "favorite file not found"}), 404
 
         target = FRONTEND_PATH / "office_bg_small.webp"
         if not target.exists():
-            return jsonify({"ok": False, "msg": "office_bg_small.webp 不存在"}), 404
+            return jsonify({"ok": False, "msg": "office_bg_small.webp not found"}), 404
 
-        bak = target.with_suffix(target.suffix + ".bak")
-        shutil.copy2(str(target), str(bak))
-        shutil.copy2(src, str(target))
-
-        st = target.stat()
-        return jsonify({"ok": True, "path": "office_bg_small.webp", "size": st.st_size, "from": hit.get("path"), "msg": "已应用收藏地图"})
+        result = _activate_background_from_path(src, archive_current=True, from_reference=False)
+        return jsonify({
+            "ok": True,
+            "path": "office_bg_small.webp",
+            "size": result["size"],
+            "from": hit.get("path"),
+            "archived": result.get("archived"),
+            "msg": "Favorite map applied",
+        })
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -1824,8 +2381,8 @@ def assets_auth():
         pwd = (data.get("password") or "").strip()
         if pwd and pwd == ASSET_DRAWER_PASS_DEFAULT:
             session["asset_editor_authed"] = True
-            return jsonify({"ok": True, "msg": "认证成功"})
-        return jsonify({"ok": False, "msg": "验证码错误"}), 401
+            return jsonify({"ok": True, "msg": "Authenticated"})
+        return jsonify({"ok": False, "msg": "Wrong passcode"}), 401
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -1862,9 +2419,9 @@ def assets_positions_set():
         y = data.get("y")
         scale = data.get("scale")
         if not key:
-            return jsonify({"ok": False, "msg": "缺少 key"}), 400
+            return jsonify({"ok": False, "msg": "missing key"}), 400
         if x is None or y is None:
-            return jsonify({"ok": False, "msg": "缺少 x/y"}), 400
+            return jsonify({"ok": False, "msg": "missing x/y"}), 400
         x = float(x)
         y = float(y)
         if scale is None:
@@ -1902,9 +2459,9 @@ def assets_defaults_set():
         y = data.get("y")
         scale = data.get("scale")
         if not key:
-            return jsonify({"ok": False, "msg": "缺少 key"}), 400
+            return jsonify({"ok": False, "msg": "missing key"}), 400
         if x is None or y is None:
-            return jsonify({"ok": False, "msg": "缺少 x/y"}), 400
+            return jsonify({"ok": False, "msg": "missing x/y"}), 400
         x = float(x)
         y = float(y)
         if scale is None:
@@ -1915,6 +2472,26 @@ def assets_defaults_set():
         all_defaults[key] = {"x": x, "y": y, "scale": scale, "updated_at": datetime.now().isoformat()}
         save_asset_defaults(all_defaults)
         return jsonify({"ok": True, "key": key, "x": x, "y": y, "scale": scale})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)}), 500
+
+
+@app.route("/config/gemini/full", methods=["GET"])
+def gemini_config_full():
+    """Return full API key for in-browser generation (drawer auth required)."""
+    guard = _require_asset_editor_auth()
+    if guard:
+        return guard
+    try:
+        cfg = load_runtime_config()
+        key = (cfg.get("gemini_api_key") or "").strip()
+        if not key:
+            return jsonify({"ok": False, "code": "MISSING_API_KEY", "msg": "Missing GEMINI_API_KEY"}), 400
+        return jsonify({
+            "ok": True,
+            "api_key": key,
+            "gemini_model": _normalize_user_model(cfg.get("gemini_model") or "nanobanana-pro"),
+        })
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -1951,7 +2528,7 @@ def gemini_config_set():
         if api_key:
             payload["gemini_api_key"] = api_key
         save_runtime_config(payload)
-        return jsonify({"ok": True, "msg": "Gemini 配置已保存"})
+        return jsonify({"ok": True, "msg": "Gemini config saved"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -1965,21 +2542,21 @@ def assets_restore_default():
         data = request.get_json(silent=True) or {}
         rel_path = (data.get("path") or "").strip().lstrip("/")
         if not rel_path:
-            return jsonify({"ok": False, "msg": "缺少 path"}), 400
+            return jsonify({"ok": False, "msg": "missing path"}), 400
 
         target = (FRONTEND_PATH / rel_path).resolve()
         try:
             target.relative_to(FRONTEND_PATH.resolve())
         except Exception:
-            return jsonify({"ok": False, "msg": "非法 path"}), 400
+            return jsonify({"ok": False, "msg": "invalid path"}), 400
 
         if not target.exists():
-            return jsonify({"ok": False, "msg": "目标文件不存在"}), 404
+            return jsonify({"ok": False, "msg": "target file not found"}), 404
 
         root, ext = os.path.splitext(str(target))
         default_path = root + ext + ".default"
         if not os.path.exists(default_path):
-            return jsonify({"ok": False, "msg": "未找到默认资产快照"}), 404
+            return jsonify({"ok": False, "msg": "default asset snapshot not found"}), 404
 
         # 回滚前保留上一版
         bak = str(target) + ".bak"
@@ -1988,7 +2565,7 @@ def assets_restore_default():
 
         shutil.copy2(default_path, str(target))
         st = os.stat(str(target))
-        return jsonify({"ok": True, "path": rel_path, "size": st.st_size, "msg": "已重置为默认资产"})
+        return jsonify({"ok": True, "path": rel_path, "size": st.st_size, "msg": "Reset to default asset"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -2002,22 +2579,22 @@ def assets_restore_prev():
         data = request.get_json(silent=True) or {}
         rel_path = (data.get("path") or "").strip().lstrip("/")
         if not rel_path:
-            return jsonify({"ok": False, "msg": "缺少 path"}), 400
+            return jsonify({"ok": False, "msg": "missing path"}), 400
 
         target = (FRONTEND_PATH / rel_path).resolve()
         try:
             target.relative_to(FRONTEND_PATH.resolve())
         except Exception:
-            return jsonify({"ok": False, "msg": "非法 path"}), 400
+            return jsonify({"ok": False, "msg": "invalid path"}), 400
 
         bak = str(target) + ".bak"
         if not os.path.exists(bak):
-            return jsonify({"ok": False, "msg": "未找到上一版备份"}), 404
+            return jsonify({"ok": False, "msg": "previous version backup not found"}), 404
 
         shutil.copy2(str(target), bak + ".tmp") if os.path.exists(str(target)) else None
         shutil.copy2(bak, str(target))
         st = os.stat(str(target))
-        return jsonify({"ok": True, "path": rel_path, "size": st.st_size, "msg": "已回退到上一版"})
+        return jsonify({"ok": True, "path": rel_path, "size": st.st_size, "msg": "Restored previous version"})
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)}), 500
 
@@ -2033,19 +2610,19 @@ def assets_upload():
         f = request.files.get("file")
 
         if not rel_path or f is None:
-            return jsonify({"ok": False, "msg": "缺少 path 或 file"}), 400
+            return jsonify({"ok": False, "msg": "missing path or file"}), 400
 
         target = (FRONTEND_PATH / rel_path).resolve()
         try:
             target.relative_to(FRONTEND_PATH.resolve())
         except Exception:
-            return jsonify({"ok": False, "msg": "非法 path"}), 400
+            return jsonify({"ok": False, "msg": "invalid path"}), 400
 
         if target.suffix.lower() not in ASSET_ALLOWED_EXTS:
-            return jsonify({"ok": False, "msg": "仅允许上传图片/美术资源类型"}), 400
+            return jsonify({"ok": False, "msg": "only image/asset uploads allowed"}), 400
 
         if not target.exists():
-            return jsonify({"ok": False, "msg": "目标文件不存在，请先从 /assets/list 选择 path"}), 404
+            return jsonify({"ok": False, "msg": "target not found — pick a path from /assets/list first"}), 404
 
         target.parent.mkdir(parents=True, exist_ok=True)
 
@@ -2086,7 +2663,7 @@ def assets_upload():
                             sheet_w = cols * frame_w
                             sheet_h = rows * frame_h
                             if sheet_w <= 0 or sheet_h <= 0:
-                                raise RuntimeError("静态图尺寸与帧规格不匹配")
+                                raise RuntimeError("Static image size does not match frame grid")
 
                             cropped = sim.crop((0, 0, sheet_w, sheet_h))
                             # 目标是 webp 仍按无损保存，避免像素损失

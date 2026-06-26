@@ -16,10 +16,9 @@ const LAYOUT = {
   // === 各区域坐标 ===
   areas: {
     door:        { x: 640, y: 550 },
-    writing:     { x: 320, y: 360 },
-    researching: { x: 320, y: 360 },
+    cat_room:    { x: 320, y: 360 },
     error:       { x: 1066, y: 180 },
-    breakroom:   { x: 640, y: 360 }
+    center_room: { x: 640, y: 360 }
   },
 
   // === 装饰与家具：坐标 + 原点 + depth ===
@@ -68,16 +67,18 @@ const LAYOUT = {
     // 海报
     poster: {
       x: 252,
-      y: 66,
-      depth: 4
+      y: 84,
+      depth: 4,
+      scale: 0.75
     },
 
-    // 咖啡机
-    coffeeMachine: {
+    // โต๊ะประชุมทีม (center lounge)
+    meetingDesk: {
       x: 659,
-      y: 397,
+      y: 384,
       origin: { x: 0.5, y: 0.5 },
-      depth: 99
+      depth: 99,
+      shadowDepth: 98
     },
 
     // 服务器区

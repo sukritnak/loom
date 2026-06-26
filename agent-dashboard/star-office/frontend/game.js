@@ -100,11 +100,11 @@ function hideLoadingOverlay() {
 }
 
 const STATES = {
-  idle: { name: '待命', area: 'breakroom' },
-  writing: { name: '整理文档', area: 'writing' },
-  researching: { name: '搜索信息', area: 'researching' },
-  executing: { name: '执行任务', area: 'writing' },
-  syncing: { name: '同步备份', area: 'writing' },
+  idle: { name: '待命', area: 'center_room' },
+  writing: { name: '整理文档', area: 'cat_room' },
+  researching: { name: '搜索信息', area: 'cat_room' },
+  executing: { name: '执行任务', area: 'cat_room' },
+  syncing: { name: '同步备份', area: 'cat_room' },
   error: { name: '出错了', area: 'error' }
 };
 
@@ -191,8 +191,6 @@ let game, star, sofa, serverroom, areas = {}, currentState = 'idle', pendingDesi
 let isMoving = false;
 let waypoints = [];
 let lastWanderAt = 0;
-let coordsOverlay, coordsDisplay, coordsToggle;
-let showCoords = false;
 const FETCH_INTERVAL = 2000;
 const BLINK_INTERVAL = 2500;
 const BUBBLE_INTERVAL = 8000;
@@ -220,9 +218,9 @@ const NAME_TAG_COLORS = {
   default: 0x1f2937
 };
 
-// breakroom / writing / error 区域的 agent 分布位置（多 agent 时错开）
+// center_room / cat_room / error 区域的 agent 分布位置（多 agent 时错开）
 const AREA_POSITIONS = {
-  breakroom: [
+  center_room: [
     { x: 620, y: 180 },
     { x: 560, y: 220 },
     { x: 680, y: 210 },
@@ -232,7 +230,7 @@ const AREA_POSITIONS = {
     { x: 650, y: 160 },
     { x: 580, y: 200 }
   ],
-  writing: [
+  cat_room: [
     { x: 760, y: 320 },
     { x: 830, y: 280 },
     { x: 690, y: 350 },
@@ -307,7 +305,8 @@ function preload() {
 
   this.load.spritesheet('plants', '/static/plants-spritesheet' + getExt('plants-spritesheet.png'), { frameWidth: 160, frameHeight: 160 });
   this.load.spritesheet('posters', '/static/posters-spritesheet' + getExt('posters-spritesheet.png'), { frameWidth: 160, frameHeight: 160 });
-  this.load.spritesheet('coffee_machine', '/static/coffee-machine-spritesheet' + getExt('coffee-machine-spritesheet.png'), { frameWidth: 230, frameHeight: 230 });
+  this.load.spritesheet('meeting_desk', '/static/meeting-desk-v1-grid.webp', { frameWidth: 230, frameHeight: 230 });
+  this.load.image('meeting_desk_shadow', '/static/meeting-desk-shadow-v1.png');
   this.load.spritesheet('serverroom', '/static/serverroom-spritesheet' + getExt('serverroom-spritesheet.png'), { frameWidth: 180, frameHeight: 251 });
 
   this.load.spritesheet('error_bug', '/static/error-bug-spritesheet-grid' + (supportsWebP ? '.webp' : '.png'), { frameWidth: 180, frameHeight: 180 });
@@ -315,7 +314,6 @@ function preload() {
   this.load.image('desk', '/static/desk' + getExt('desk.png'));
   this.load.spritesheet('star_working', '/static/star-working-spritesheet-grid' + (supportsWebP ? '.webp' : '.png'), { frameWidth: 230, frameHeight: 144 });
   this.load.spritesheet('sync_anim', '/static/sync-animation-spritesheet-grid' + (supportsWebP ? '.webp' : '.png'), { frameWidth: 256, frameHeight: 256 });
-  this.load.image('memo_bg', '/static/memo-bg' + (supportsWebP ? '.webp' : '.png'));
 
   // 新办公桌：强制 PNG（透明）
   this.load.image('desk_v2', '/static/desk-v2.png');
@@ -356,7 +354,7 @@ function create() {
     repeat: -1
   });
 
-  star = game.physics.add.sprite(areas.breakroom.x, areas.breakroom.y, 'star_idle');
+  star = game.physics.add.sprite(areas.center_room.x, areas.center_room.y, 'star_idle');
   star.setOrigin(0.5);
   star.setScale(1.4);
   star.setAlpha(0.95);
@@ -404,6 +402,7 @@ function create() {
   const postersFrameCount = 32;
   const randomPosterFrame = Math.floor(Math.random() * postersFrameCount);
   const poster = game.add.sprite(LAYOUT.furniture.poster.x, LAYOUT.furniture.poster.y, 'posters', randomPosterFrame).setOrigin(0.5);
+  poster.setScale(LAYOUT.furniture.poster.scale || 1);
   poster.setDepth(LAYOUT.furniture.poster.depth);
   poster.setInteractive({ useHandCursor: true });
   window.posterSprite = poster;
@@ -426,20 +425,26 @@ function create() {
     window.catSprite.setFrame(next);
   });
 
-  // === 咖啡机（来自 LAYOUT）===
+  // === Meeting desk (center lounge) ===
   this.anims.create({
-    key: 'coffee_machine',
-    frames: this.anims.generateFrameNumbers('coffee_machine', { start: 0, end: 95 }),
+    key: 'meeting_desk',
+    frames: this.anims.generateFrameNumbers('meeting_desk', { start: 0, end: 95 }),
     frameRate: 12.5,
     repeat: -1
   });
-  const coffeeMachine = this.add.sprite(
-    LAYOUT.furniture.coffeeMachine.x,
-    LAYOUT.furniture.coffeeMachine.y,
-    'coffee_machine'
-  ).setOrigin(LAYOUT.furniture.coffeeMachine.origin.x, LAYOUT.furniture.coffeeMachine.origin.y);
-  coffeeMachine.setDepth(LAYOUT.furniture.coffeeMachine.depth);
-  coffeeMachine.anims.play('coffee_machine', true);
+  this.add.image(
+    LAYOUT.furniture.meetingDesk.x,
+    LAYOUT.furniture.meetingDesk.y,
+    'meeting_desk_shadow'
+  ).setOrigin(LAYOUT.furniture.meetingDesk.origin.x, LAYOUT.furniture.meetingDesk.origin.y)
+    .setDepth(LAYOUT.furniture.meetingDesk.shadowDepth);
+  const meetingDesk = this.add.sprite(
+    LAYOUT.furniture.meetingDesk.x,
+    LAYOUT.furniture.meetingDesk.y,
+    'meeting_desk'
+  ).setOrigin(LAYOUT.furniture.meetingDesk.origin.x, LAYOUT.furniture.meetingDesk.origin.y);
+  meetingDesk.setDepth(LAYOUT.furniture.meetingDesk.depth);
+  meetingDesk.anims.play('meeting_desk', true);
 
   // === 服务器区（来自 LAYOUT）===
   this.anims.create({
@@ -544,25 +549,6 @@ function create() {
   window.starSprite = star;
 
   statusText = document.getElementById('status-text');
-  coordsOverlay = document.getElementById('coords-overlay');
-  coordsDisplay = document.getElementById('coords-display');
-  coordsToggle = document.getElementById('coords-toggle');
-
-  coordsToggle.addEventListener('click', () => {
-    showCoords = !showCoords;
-    coordsOverlay.style.display = showCoords ? 'block' : 'none';
-    coordsToggle.textContent = showCoords ? '隐藏坐标' : '显示坐标';
-    coordsToggle.style.background = showCoords ? '#e94560' : '#333';
-  });
-
-  game.input.on('pointermove', (pointer) => {
-    if (!showCoords) return;
-    const x = Math.max(0, Math.min(config.width - 1, Math.round(pointer.x)));
-    const y = Math.max(0, Math.min(config.height - 1, Math.round(pointer.y)));
-    coordsDisplay.textContent = `${x}, ${y}`;
-    coordsOverlay.style.left = (pointer.x + 18) + 'px';
-    coordsOverlay.style.top = (pointer.y + 18) + 'px';
-  });
 
   loadMemo();
   fetchStatus();
@@ -592,7 +578,7 @@ function create() {
       isMain: false,
       state: 'writing',
       detail: '在画像素画...',
-      area: 'writing',
+      area: 'cat_room',
       authStatus: 'approved',
       updated_at: new Date().toISOString()
     };
@@ -601,7 +587,7 @@ function create() {
     window.testNikaState = 'writing';
     window.testNikaTimer = setInterval(() => {
       const states = ['idle', 'writing', 'researching', 'executing'];
-      const areas = { idle: 'breakroom', writing: 'writing', researching: 'writing', executing: 'writing' };
+      const areas = { idle: 'center_room', writing: 'cat_room', researching: 'cat_room', executing: 'cat_room' };
       window.testNikaState = states[Math.floor(Math.random() * states.length)];
       const testAgent = {
         agentId: 'agent_nika',
@@ -793,7 +779,7 @@ function fetchStatus() {
 function moveStar(time) {
   const effectiveState = pendingDesiredState || currentState;
   const stateInfo = STATES[effectiveState] || STATES.idle;
-  const baseTarget = areas[stateInfo.area] || areas.breakroom;
+  const baseTarget = areas[stateInfo.area] || areas.center_room;
 
   const dx = targetX - star.x;
   const dy = targetY - star.y;
@@ -918,9 +904,9 @@ function fetchAgents() {
       if (!Array.isArray(data)) return;
       // 重置位置计数器
       // 按区域分配不同位置索引，避免重叠
-      const areaSlots = { breakroom: 0, writing: 0, error: 0 };
+      const areaSlots = { center_room: 0, cat_room: 0, error: 0 };
       for (let agent of data) {
-        const area = agent.area || 'breakroom';
+        const area = agent.area || 'center_room';
         agent._slotIndex = areaSlots[area] || 0;
         areaSlots[area] = (areaSlots[area] || 0) + 1;
         renderAgent(agent);
@@ -942,7 +928,7 @@ function fetchAgents() {
 }
 
 function getAreaPosition(area, slotIndex) {
-  const positions = AREA_POSITIONS[area] || AREA_POSITIONS.breakroom;
+  const positions = AREA_POSITIONS[area] || AREA_POSITIONS.center_room;
   const idx = (slotIndex || 0) % positions.length;
   return positions[idx];
 }
@@ -950,7 +936,7 @@ function getAreaPosition(area, slotIndex) {
 function renderAgent(agent) {
   const agentId = agent.agentId;
   const name = agent.name || 'Agent';
-  const area = agent.area || 'breakroom';
+  const area = agent.area || 'center_room';
   const authStatus = agent.authStatus || 'pending';
   const isMain = !!agent.isMain;
 

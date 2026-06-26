@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 213" width="320" height="213" role="img" aria-label="Loom logo">
+  <defs>
+    <linearGradient id="thread" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- warp -->
+  <rect x="52" y="28" width="14" height="157" rx="7" fill="url(#thread)"/>
+  <rect x="92" y="28" width="14" height="157" rx="7" fill="url(#thread)"/>
+  <rect x="132" y="28" width="14" height="157" rx="7" fill="url(#thread)"/>
+  <rect x="172" y="28" width="14" height="157" rx="7" fill="url(#thread)"/>
+  <rect x="212" y="28" width="14" height="157" rx="7" fill="url(#thread)"/>
+  <rect x="252" y="28" width="14" height="157" rx="7" fill="url(#thread)"/>
+  <!-- weft (under) -->
+  <rect x="40" y="68" width="240" height="14" rx="7" fill="#4f46e5" opacity=".55"/>
+  <rect x="40" y="118" width="240" height="14" rx="7" fill="#4f46e5" opacity=".55"/>
+  <rect x="40" y="168" width="240" height="14" rx="7" fill="#4f46e5" opacity=".55"/>
+  <!-- weft (over) -->
+  <rect x="40" y="68" width="240" height="14" rx="7" fill="url(#thread)"/>
+  <rect x="40" y="118" width="240" height="14" rx="7" fill="url(#thread)"/>
+  <rect x="40" y="168" width="240" height="14" rx="7" fill="url(#thread)"/>
+  <!-- intersection glow -->
+  <circle cx="59" cy="75" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+  <circle cx="139" cy="75" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+  <circle cx="219" cy="75" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+  <circle cx="99" cy="125" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+  <circle cx="179" cy="125" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+  <circle cx="259" cy="125" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+  <circle cx="59" cy="175" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+  <circle cx="139" cy="175" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+  <circle cx="219" cy="175" r="6" fill="#c7d2fe" filter="url(#glow)" opacity=".9"/>
+</svg>

@@ -26,6 +26,7 @@ const entry = (ev, matcher) => {
   return o;
 };
 const loomHooks = {
+  beforeSubmitPrompt: [entry('beforeSubmitPrompt', 'UserPromptSubmit')],
   subagentStart: [entry('subagentStart')],
   subagentStop: [entry('subagentStop')],
   postToolUse: [entry('postToolUse', 'Shell|Write|StrReplace|Delete|Edit|Bash')],
@@ -61,4 +62,5 @@ mkdir -p "$HOME/.loop-dash"
 echo "  ✓ state dir ~/.loop-dash"
 echo ""
 echo "Restart Cursor (or reload hooks) so ~/.cursor/hooks.json is picked up."
-echo "Dashboard still needs loop.config.json in cwd or a parent folder for project tags."
+echo "Hooks bridge only after Use loop-start / loop-orch (or a Loom sub-agent starts)."
+echo "Dashboard needs loop.config.json in cwd or a parent folder (or active project once session started)."
