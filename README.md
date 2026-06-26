@@ -874,6 +874,20 @@ Then `Use loom-start` as usual — control folders + `STATE.md` remain on disk a
 One central board at Base (`agent-dashboard/`) — **never copied to destinations**
 Every project/session reports here; each log line is tagged with the project name.
 
+### Show dashboard
+
+<p align="center">
+  <picture>
+    <source srcset="assets/loom-dashboard-show.gif" type="image/gif">
+    <img src="assets/loom-dashboard-show.png" alt="Loom status dashboard — pixel office with live agent activity feed, role status cards, and TypeScript file diffs" width="820">
+  </picture>
+</p>
+
+<p align="center">
+  <em>Live board at <code>http://localhost:19000</code> — pixel office + Loop Activity panel (file diffs, reports, archived history).</em><br>
+  Office UI customized from <a href="https://github.com/ringhyacinth/Star-Office-UI">Star-Office-UI</a> — see <a href="#credits--acknowledgments">Credits &amp; acknowledgments</a>.
+</p>
+
 ```zsh
 # Open board (from anywhere)
 zsh tools/dash.sh serve          # Star-Office pixel office → http://localhost:19000
@@ -973,7 +987,7 @@ zsh tools/dash.sh serve               # open board
 
 | Component        | Credit                                                                                                                                                                             |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pixel office UI  | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo). MIT code; art assets **non-commercial learning use only**. |
+| Pixel office UI  | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo). MIT code; art assets **non-commercial learning use only**. Loom **vendors and customizes** it under `agent-dashboard/star-office/` (Loop Activity panel, agent roles, `status.json` bridge, archived logs — see [Show dashboard](#show-dashboard)). |
 | Loop integration | `star-office-bridge.js`, `agent-status.js`, `dash-bridge.js`, `cc-dash-bridge.js`, `l3-permission-hook.js` — part of this repo |
 
 

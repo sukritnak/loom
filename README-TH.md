@@ -846,6 +846,20 @@ zsh tools/deploy.sh    # register ~/.loop-base
 กระดานกลางที่ Base (`agent-dashboard/`) — **ไม่คัดลอกไปปลายทาง**
 ทุกโปรเจกต์/session รายงานที่นี่ แต่ละบรรทัด log มี tag ชื่อโปรเจกต์
 
+### Show dashboard
+
+<p align="center">
+  <picture>
+    <source srcset="assets/loom-dashboard-show.gif" type="image/gif">
+    <img src="assets/loom-dashboard-show.png" alt="Loom status dashboard — ออฟฟิศพิกเซล พร้อม activity feed สด การ์ดสถานะ agent และ diff ไฟล์ TypeScript" width="820">
+  </picture>
+</p>
+
+<p align="center">
+  <em>กระดานสดที่ <code>http://localhost:19000</code> — ออฟฟิศพิกเซล + panel Loop Activity (diff ไฟล์, รายงาน, ประวัติ archive).</em><br>
+  UI ออฟฟิศดัดแปลงจาก <a href="https://github.com/ringhyacinth/Star-Office-UI">Star-Office-UI</a> — ดู <a href="#เครดิตและขอบคุณ">เครดิตและขอบคุณ</a>
+</p>
+
 ```zsh
 # Open board (from anywhere)
 zsh tools/dash.sh serve          # Star-Office pixel office → http://localhost:19000
@@ -943,7 +957,7 @@ zsh tools/dash.sh serve               # open board
 
 | ส่วน | เครดิต |
 | ---- | ------ |
-| Pixel office UI | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo) โค้ด MIT; asset ศิลปะ **ใช้เรียนรู้แบบไม่เชิงพาณิชย์เท่านั้น** |
+| Pixel office UI | **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** — [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo) โค้ด MIT; asset ศิลปะ **ใช้เรียนรู้แบบไม่เชิงพาณิชย์เท่านั้น** Loom **นำมา vendored และดัดแปลง** ที่ `agent-dashboard/star-office/` (panel Loop Activity, บทบาท agent, bridge `status.json`, archive log — ดู [Show dashboard](#show-dashboard)) |
 | การเชื่อมกับ Loop | `star-office-bridge.js`, `agent-status.js`, `dash-bridge.js`, `cc-dash-bridge.js`, `l3-permission-hook.js` — อยู่ใน repo นี้ |
 
 ### Skills ที่มากับ Loom (`hermes-skills/`)
