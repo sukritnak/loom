@@ -88,8 +88,8 @@ zsh "$B/tools/scaffold-all.sh" api      # scaffold one service by id
 | `loom-ux-ui` | UX/UI spec before any FE build · **ui-ux-pro-max** |
 | `loom-fe` | Frontend/UI implementation |
 | `loom-motion` | Animation, Three.js/WebGL |
-| `loom-be` | Backend/API/data layer |
-| `loom-full-stack` | Fullstack (BE specialist) — DB, security, escalation |
+| `loom-be` | Backend/API/data layer — **Hexagonal (Ports & Adapters, ECC)** |
+| `loom-full-stack` | Fullstack (BE specialist) — DB, security, **hexagonal outbound ports**, escalation |
 | `loom-qa` | Tests against AC, decides PASS/FAIL (checker — stays separate from makers) |
 
 Agent definitions live in `.claude/agents/` (source of truth). `sync-agents.sh` pushes them to `~/.claude/agents/` (Claude Code global) and `~/.hermes/skills/` (Hermes).
@@ -99,7 +99,7 @@ Agent definitions live in `.claude/agents/` (source of truth). `sync-agents.sh` 
 ```
 load STATE.md + loop.config.json
   → dashboard gate (ask to open http://localhost:19000)
-  → legacy orient (mode:existing — explore in-scope services, /ponytail-review on touched areas)
+  → legacy orient (mode:existing — explore in-scope services, mirror existing code style, /ponytail-review on touched areas)
   → clarify (PM) → design (if UI)
   → build in parallel worktrees (be + fe makers)
   → verify (QA: tests + qa-browser for FE/UI AC against dev server)
@@ -118,6 +118,7 @@ Never hand-write this in Base — `loom-start` or `zsh tools/init-config.sh` (fr
   "project": "my-app",
   "mode": "new",
   "autonomy": "L1",
+  "improvement_policy": "guided",
   "services": [
     { "id": "web", "side": "fe", "path": "web",   "stack": "nextjs" },
     { "id": "api", "side": "be", "path": "api",   "stack": "nestjs" }
@@ -125,7 +126,8 @@ Never hand-write this in Base — `loom-start` or `zsh tools/init-config.sh` (fr
 }
 ```
 
-- `mode`: `new` = scaffold fresh folders; `existing` = operate on folders already there (no scaffold)
+- `mode`: `new` = scaffold fresh folders; `existing` = operate on folders already there (no scaffold) — makers **match** existing naming, layering, and formatting in the main AC diff
+- `improvement_policy`: `conform` = สไตล์เดิม แนะนำอย่างเดียว · `guided` = แนะนำแล้ว user เลือกข้อ · `auto` = แก้ตาม recommendation ทั้งหมดอัตโนมัติ (orch ถามตอน start ถ้ายังไม่ตั้ง)
 - `autonomy`: L1 = report only · L2 = makers write code, you merge · L3 = unattended
 - `path`: relative → under the control folder; absolute/`~` → anywhere on disk
 - `side`: `fe` → owned by fe/loom-motion · `be` → owned by be/loom-full-stack

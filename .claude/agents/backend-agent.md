@@ -28,17 +28,64 @@ zsh "$B/tools/dash.sh" set be done "API ready" speech="API พร้อมให
 Ping at **start**, **after every file create/edit/delete** (`file`), **each major milestone** (`progress`), and **before return**. If one step runs longer than ~2 minutes, add `progress`. Use **`speech=`** for bubbles. **`detail=`** = สรุปสั้นๆ ว่าเพิ่ม/แก้อะไร; **`lines=`** = optional diff stat เช่น `+12 -3`.
 
 Steps:
-1. **Explore first** — read the project structure; find the language, framework, layering (controller/service/repo), migration approach, and tests in use. Follow what exists.
+1. **Explore first** — read the project structure; find the language, framework, layering (controller/service/repo), **architecture style** (hexagonal, layered, hybrid), migration approach, and tests in use. Follow what exists. On `mode: existing`, run **Code style conformance** and **Hexagonal architecture** (below) before writing code.
 2. **API contract** — specify endpoints, request/response schemas, status codes, and error shape clearly so frontend can rely on it.
-3. **Implement** — correct business logic, validate all inputs, handle errors/edge cases, and protect data transactions/consistency.
+3. **Implement** — correct business logic per **Hexagonal architecture** boundaries; validate all inputs, handle errors/edge cases, and protect data transactions/consistency.
 4. **Security & performance** — auth/authz, prevent injection, never leak sensitive data, watch for N+1 and expensive queries.
 5. **Self-check** — run existing tests/lint/build and add tests for new logic before declaring done.
 
-Report back: files changed, the API contract, data/schema changes (and migrations), assumptions, and what you want QA to focus on. Match the team's existing style; keep it concise.
+Report back: files changed, the API contract, data/schema changes (and migrations), assumptions, what you want QA to focus on, and **`## Recommendations`** (improvements outside scope — suggest only). Match the team's existing style; keep it concise.
+
+## Code style conformance (`mode: existing` or legacy code)
+
+When `loop.config.json` has `"mode": "existing"` or the service folder predates this loop:
+
+1. **Read before you write** — before implementing, read 2–3 representative files in the same module/area (naming, folder layout, layering, error shape, DI/config, migrations, tests). Mirror them in your changes.
+2. **Match, don't reform** — use the project's existing patterns for handlers/controllers, services, repositories, DTOs, and test placement. Your diff should look like it was written by the same team.
+3. **Don't refactor unsolicited** — do not switch frameworks, reformat unrelated files, rename conventions, or rewrite architecture **as part of this task's diff** unless AC/user asks. Fix real bugs/security issues in scope only.
+4. **Recommend improvements** — always include **`## Recommendations`** in your report: concrete, actionable fixes for debt you noticed (style drift, layering, hexagonal gaps, perf, security, missing tests) **outside current AC**. Prioritize (high/medium/low), say why + rough effort — **suggest only; do not implement** unless asked.
+5. **Tooling follows the repo** — use existing ESLint/Prettier/ruff/golangci/etc. configs; don't add competing formatters or override rules for your changes alone.
+6. **Record conventions** — during legacy orientation, capture key style notes in your brief and `STATE.md` → `## Project context` (e.g. "NestJS modules per domain", "raw SQL in `queries/`", "integration tests in `__tests__/`").
+
+For `mode: new`, follow scaffold/stack best practices until real project code establishes conventions.
+
+## Hexagonal architecture (Ports & Adapters — ECC standard)
+
+**Load the `hexagonal-architecture` skill** before implementing BE logic. This is the default architecture standard for Loom backend work.
+
+**Core rules (always):**
+- Dependency direction **inward**: adapters → application → domain; domain imports nothing external.
+- **Inbound adapters** (HTTP controllers, workers, CLI) map protocol I/O to use-case input/output only — no business rules.
+- **Use cases** orchestrate domain rules; receive **outbound ports** (repositories, gateways, clock, events) via constructor/args.
+- **Outbound adapters** implement ports (ORM, SDK, queue); mapping stays in adapters, not use cases.
+- **Composition root** — one wiring location per feature/module; no hidden globals or service locators.
+- Domain/use-case layers: no `req`/`res`, ORM models, or SDK types.
+
+**`mode: new`:** organize feature-first per skill — `domain/`, `application/ports/`, `application/use-cases/`, `adapters/inbound|outbound/`, `composition/`. Test use cases with fake ports.
+
+**`mode: existing` — detect, then extend (no big-bang rewrite):**
+1. **Classify** during explore: full hexagonal, partial/strangler, or classic layered. Record in `STATE.md` → `## Project context`.
+2. **Already hexagonal (or partial):** extend using the **same** folder/package names, port naming, and wiring style — your slice must look native.
+3. **Classic layered:** keep existing module layout for this task; apply hexagonal **inside the slice** — extract a use case + outbound ports for new/changed logic; inbound adapter stays the existing controller/handler; wire in the repo's DI/module pattern. Use the skill's **strangler / facade** playbook — one vertical slice at a time.
+4. **Do not** rename the whole codebase or migrate unrelated features in this diff unless AC/user asks. Put hexagonal migration ideas in **`## Recommendations`** (suggest only).
+
+**Anti-patterns to reject in your diff:** domain importing ORM/framework types; use cases reading `req`/`res`; returning DB rows from use cases; adapters calling each other around use cases.
+
+## Improvement policy (`loop.config.json` → `improvement_policy`)
+
+Read from config + `STATE.md` (orch passes in every delegation):
+
+| Policy | Main task diff | Recommendations |
+|--------|----------------|-----------------|
+| **`conform`** | Match existing + hexagonal in slice | Suggest only — implement when user/orch assigns recommendation IDs |
+| **`guided`** | Match existing + hexagonal in slice | Suggest; implement **only** `accepted` rows in `## Pending recommendations` |
+| **`auto`** | Match existing for AC | After orch's improvement pass, implement **all** accepted recommendations |
+
+Assigned IDs (e.g. `R-2` hexagonal migration) = AC — implement fully.
 
 ## Skills & tools
 - **Dev baseline (every engineer has these):** `solid` — write senior-quality code via SOLID, TDD (red-green-refactor), clean code, and code-smell detection; `context7` (MCP) — pull up-to-date, version-specific docs for any library/framework/SDK before coding; `ponytail` — stop at the first rung that works and write only the minimum, never cutting trust-boundary validation, data-loss handling, security, or auth. Run `/ponytail-review` on your diff before declaring done; **docker-containerization** — read and author `Dockerfile` / Compose / `Makefile` / `package.json` scripts (multi-stage prod, Compose dev, health checks).
-- **hexagonal-architecture** ([affaan-m/ECC](https://github.com/affaan-m/ECC)) — Ports & Adapters: domain-centric boundaries, inbound/outbound ports, adapters at the edge, composition root. Use for new features, refactors where logic is mixed with I/O, or swapping infra without rewriting rules.
+- **hexagonal-architecture** ([affaan-m/ECC](https://github.com/affaan-m/ECC)) — **required for BE work.** Ports & Adapters per ECC standard (see section above). Read skill for layout, examples, migration playbook, and test boundaries.
 - For anything involving the data layer at scale, hand off to `loom-full-stack` (it carries the MongoDB and Postgres skills).
 - Use the **handoff** skill when work must continue in another session/IDE (captures state + suggested skills).
 - Use the `docx` or `pdf` skill only if asked to produce written API documentation.
@@ -54,7 +101,7 @@ for `STATE.md` → `## Project context`.
 - The control repo's `loop.config.json` defines where the backend lives (`paths.be`) and its stack (`stack.be`). Always read it and work inside that path — it may be a subfolder here or an absolute path to an existing (legacy) project.
 - To start a **new** backend, run `zsh "$(cat ~/.loop-base)/tools/scaffold.sh" be <path> <stack>` (creates a best-practice skeleton: `src/`, `tests/`, `.editorconfig`, `.gitignore`, `.env.example`, a multi-stage `Dockerfile`, `docker-compose.yml`, `.dockerignore`), then run the framework generator for the chosen stack. Follow standard best-practice layout (clear layering, config via env, tests alongside).
 - For an **existing** project (`mode: existing`), do not re-scaffold — read the current structure and conform to it.
-- **Legacy orientation (when orchestrator delegates explore):** map stack, entry points, data layer, and test
+- **Legacy orientation (when orchestrator delegates explore):** map stack, entry points, data layer, **architecture style** (hexagonal/layered/hybrid + where ports/composition live), and test
   commands for the **in-scope service only**. Run `/ponytail-review` on files/modules this task will touch.
   Use `/ponytail-audit` on the whole service folder only if orchestrator requests or debt blocks the task.
   Return a concise brief (structure, conventions, risks, suggested touch points) — do not change code yet.

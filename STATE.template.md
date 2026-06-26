@@ -16,6 +16,16 @@
 ## Autonomy level
 L1 (report only)   <!-- L1 | L2 (assisted, no merge) | L3 (unattended, allowlist only) -->
 
+## Improvement policy
+<!-- conform = match existing style, recommend only | guided = recommend then user picks | auto = apply all recommendations -->
+guided   <!-- conform | guided | auto — also in loop.config.json -->
+
+## Pending recommendations
+<!-- Makers + orch: ID | Owner | Priority | Summary | Status (pending|accepted|skipped|done) -->
+| ID | Owner | Priority | Summary | Status |
+|----|-------|----------|---------|--------|
+| — | — | — | — | pending |
+
 ## Current task
 <the feature/bug in flight>
 

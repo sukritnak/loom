@@ -9,6 +9,12 @@ echo "== loom-start Step 2b — loop.config.json (writes into $(pwd)) =="
 PROJECT=$(ask "Project name" "$(basename "$(pwd)")")
 MODE=$(ask "Mode (new = scaffold fresh folders / existing = use what's here)" "new")
 AUTO=$(ask "Autonomy (L1 report / L2 assisted / L3 unattended)" "L1")
+echo
+echo "Improvement policy — existing code vs team recommendations:"
+echo "  conform = match existing style, recommend only"
+echo "  guided  = recommend, you pick which to implement (default)"
+echo "  auto    = apply all recommendations automatically"
+IMPROVEMENT=$(ask "Improvement policy (conform / guided / auto)" "guided")
 
 echo
 echo "Each service can sit in its OWN base path:"
@@ -32,7 +38,7 @@ while true; do
   echo
 done
 
-PROJECT="$PROJECT" MODE="$MODE" AUTO="$AUTO" SVCS="$SVC_LINES" node <<'NODE'
+PROJECT="$PROJECT" MODE="$MODE" AUTO="$AUTO" IMPROVEMENT="$IMPROVEMENT" SVCS="$SVC_LINES" node <<'NODE'
 const fs = require('fs');
 const svcs = (process.env.SVCS || '').split('\n').filter(Boolean).map(l => {
   const [id, side, path, stack] = l.split('|');
@@ -42,7 +48,8 @@ const cfg = {
   project: process.env.PROJECT,
   mode: process.env.MODE,
   services: svcs,
-  autonomy: process.env.AUTO
+  autonomy: process.env.AUTO,
+  improvement_policy: process.env.IMPROVEMENT || 'guided'
 };
 fs.writeFileSync('loop.config.json', JSON.stringify(cfg, null, 2) + '\n');
 console.log('\nWrote loop.config.json with ' + svcs.length + ' service(s).');

@@ -117,7 +117,12 @@ Print `Step 2b — create new control folder + loop.config.json + STATE.md`.
 2. Mode: `new` (the loop scaffolds fresh folders under the project) or `existing` (drive code that
    already lives somewhere — give absolute paths in step 4, nothing gets moved/copied).
 3. Autonomy: L1 (report only, default) / L2 (assisted) / L3 (unattended).
-4. Services — repeat until the user is done: `id`, `side` (fe/be), `path`, `stack`. Capture every
+4. **Improvement policy** — how to handle existing code vs team recommendations (ask always; especially
+   important for `mode: existing`):
+   > **(1) สไตล์เดิม** (`conform`) — ทำตาม convention เดิม แนะนำอย่างเดียว
+   > **(2) แนะนำแล้วเลือก** (`guided`, default) — เสนอจุดแก้ คุณเลือกข้อที่จะทำ
+   > **(3) auto** (`auto`) — แก้ตามที่ทีมแนะนำทั้งหมดโดยอัตโนมัติ
+5. Services — repeat until the user is done: `id`, `side` (fe/be), `path`, `stack`. Capture every
    FE and BE folder. For `path`:
    - **relative** (`web`, `apps/api`) → a subfolder under THIS project root (typical for `mode: new`).
    - **absolute or `~/…`** (`~/Documents/coding/legacy/old-api`) → existing code anywhere on disk; each
@@ -174,6 +179,7 @@ New project that scaffolds fresh folders:
   "project": "<name>",
   "mode": "new",
   "autonomy": "L1",
+  "improvement_policy": "guided",
   "services": [
     { "id": "web", "side": "fe", "path": "web", "stack": "nextjs" },
     { "id": "api", "side": "be", "path": "api", "stack": "nestjs" }
@@ -186,6 +192,7 @@ Wrapping existing code that lives elsewhere (note `mode: existing` + absolute pa
   "project": "<name>",
   "mode": "existing",
   "autonomy": "L1",
+  "improvement_policy": "guided",
   "services": [
     { "id": "frontend", "side": "fe", "path": "~/Documents/coding/legacy/shop-frontend", "stack": "" },
     { "id": "core",     "side": "be", "path": "~/Documents/coding/legacy/shop-core",     "stack": "" }
