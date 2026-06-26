@@ -33,19 +33,19 @@ DEPLOY_SKIP_EXTERNAL_SKILLS=1 zsh tools/deploy.sh  # skip external skill downloa
 
 ### Start/resume a project (chat — preferred)
 ```
-Use loop-start       # Claude Code / Cursor
-/loop-start          # Hermes
+Use loom-start       # Claude Code / Cursor
+/loom-start          # Hermes
 ```
 
 ### Start/resume a project (terminal)
 ```zsh
-zsh tools/loop-start.sh                    # full wizard Steps 1–4
+zsh tools/loom-start.sh                    # full wizard Steps 1–4
 zsh tools/new-project.sh my-app            # shortcut: create new control folder
 ```
 
 ### Work on a project
 ```
-Use loop-orch at L1: <describe feature or bug>
+Use loom-orch at L1: <describe feature or bug>
 ```
 
 ### Sync agent definitions after editing `.claude/agents/*.md`
@@ -75,15 +75,15 @@ zsh "$B/tools/scaffold-all.sh" api      # scaffold one service by id
 
 | Agent | Role |
 |-------|------|
-| `loop-start` | Bootstrap: pick/create project → write `loop.config.json` → hand off |
-| `loop-orch` | Orchestrator: reads `STATE.md` + config, delegates team, runs loop |
-| `pm` | Requirements, acceptance criteria, QA triage lead |
-| `design` | UX/UI spec before any FE build |
-| `fe` | Frontend/UI implementation |
-| `fe-anim` | Animation, Three.js/WebGL |
-| `be` | Backend/API/data layer |
-| `be-sr` | Senior backend — DB design, security review, escalation point |
-| `qa` | Tests against AC, decides PASS/FAIL (checker — stays separate from makers) |
+| `loom-start` | Bootstrap: pick/create project → write `loop.config.json` → hand off |
+| `loom-orch` | Orchestrator: reads `STATE.md` + config, delegates team, runs loop |
+| `loom-pm` | Requirements, acceptance criteria, QA triage lead · **loom-me** for workflow grilling |
+| `loom-ux-ui` | UX/UI spec before any FE build · **ui-ux-pro-max** |
+| `loom-fe` | Frontend/UI implementation |
+| `loom-motion` | Animation, Three.js/WebGL |
+| `loom-be` | Backend/API/data layer |
+| `loom-full-stack` | Fullstack (BE specialist) — DB, security, escalation |
+| `loom-qa` | Tests against AC, decides PASS/FAIL (checker — stays separate from makers) |
 
 Agent definitions live in `.claude/agents/` (source of truth). `sync-agents.sh` pushes them to `~/.claude/agents/` (Claude Code global) and `~/.hermes/skills/` (Hermes).
 
@@ -100,11 +100,11 @@ load STATE.md + loop.config.json
   → FAIL → PM triage → feedback packet per owner → fix → re-test (max 3 rounds)
 ```
 
-**`STATE.md`** is the durable loop memory. `loop-orch` reads it first and writes it last every iteration. Keep it under ~150 lines; compact old feedback rounds into Lessons.
+**`STATE.md`** is the durable loop memory. `loom-orch` reads it first and writes it last every iteration. Keep it under ~150 lines; compact old feedback rounds into Lessons.
 
 ## `loop.config.json`
 
-Never hand-write this in Base — `loop-start` or `zsh tools/init-config.sh` (from control folder) creates it.
+Never hand-write this in Base — `loom-start` or `zsh tools/init-config.sh` (from control folder) creates it.
 
 ```json
 {
@@ -121,7 +121,7 @@ Never hand-write this in Base — `loop-start` or `zsh tools/init-config.sh` (fr
 - `mode`: `new` = scaffold fresh folders; `existing` = operate on folders already there (no scaffold)
 - `autonomy`: L1 = report only · L2 = makers write code, you merge · L3 = unattended
 - `path`: relative → under the control folder; absolute/`~` → anywhere on disk
-- `side`: `fe` → owned by fe/fe-anim · `be` → owned by be/be-sr
+- `side`: `fe` → owned by fe/loom-motion · `be` → owned by be/loom-full-stack
 
 ## Path resolution
 
@@ -132,7 +132,7 @@ B="$(cat ~/.loop-base)"    # resolve Base once
 # then call: node "$B/tools/cfg.js" ...  / zsh "$B/tools/..."
 ```
 
-`loop-orch` finds the active project by: cwd `loop.config.json` → `.active-project` pointer → asks user.
+`loom-orch` finds the active project by: cwd `loop.config.json` → `.active-project` pointer → asks user.
 
 ## Autonomy levels
 
@@ -148,7 +148,7 @@ B="$(cat ~/.loop-base)"    # resolve Base once
 
 - **Claude Code** — `deploy.sh` copies agents to `~/.claude/agents/` (global, every project)
 - **Cursor** — reads `.claude/agents/` directly from this repo; optional Custom Modes per agent
-- **Hermes** — `deploy.sh` installs skills to `~/.hermes/skills/`; use `/loop-start`, `/loop-orch`, `/be`, `/qa` etc.
+- **Hermes** — `deploy.sh` installs skills to `~/.hermes/skills/`; use `/loom-start`, `/loom-orch`, `/loom-be`, `/loom-qa` etc.
 
 ## Dashboard status calls
 
@@ -161,4 +161,4 @@ zsh "$B/tools/dash.sh" file be edit "src/api.ts" detail="add handler"
 zsh "$B/tools/dash.sh" loop 2          # increment round
 ```
 
-Agent ids: `orch pm design be besr fe feanim qa`. States: `idle | work | fix | done`.
+Agent ids: `orch pm ux-ui be fullstack fe fe-mo qa`. States: `idle | work | fix | done`.

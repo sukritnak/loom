@@ -7,7 +7,7 @@ decides what to do next, iterating until the goal is met or it hands back to you
 
 ## Pattern (this team)
 
-**Orchestrator–Workers** + **Evaluator–Optimizer**: `loop-orch` delegates makers (`fe`/`be`/…)
+**Orchestrator–Workers** + **Evaluator–Optimizer**: `loom-orch` delegates makers (`fe`/`be`/…)
 in isolated worktrees; `qa` evaluates against AC; on FAIL, `pm` triages and the cycle repeats.
 Feedback history in `STATE.md` is **Reflexion-style episodic memory** — lessons from failed
 rounds that makers read before retrying.
@@ -16,7 +16,7 @@ rounds that makers read before retrying.
 | Primitive | In this team |
 |-----------|--------------|
 | State / Memory | `STATE.md` — durable spine; orchestrator reads first, writes last |
-| Project map | `loop.config.json` — which FE/BE folders to work in (many services). **Not hand-written first** — the `loop-start` skill (or `loop-orch`) creates it on first run |
+| Project map | `loop.config.json` — which FE/BE folders to work in (many services). **Not hand-written first** — the `loom-start` skill (or `loom-orch`) creates it on first run |
 | Sub-agents (maker / checker) | makers = frontend-agent, backend-agent · checker = qa-agent |
 | Worktrees | makers run in isolated git worktrees for safe parallel work |
 | Skills & connectors | pm-skills, ui-ux-pro-max, context7, ponytail (+ ponytail-review, ponytail-audit on legacy), browser-use qa |
@@ -25,15 +25,15 @@ rounds that makers read before retrying.
 
 ## Anatomy of one iteration
 ```
-load STATE.md + loop.config.json (create config first if missing — use loop-start or zsh "$(cat ~/.loop-base)/tools/init-config.sh")
+load STATE.md + loop.config.json (create config first if missing — use loom-start or zsh "$(cat ~/.loop-base)/tools/init-config.sh")
    → dashboard gate — ask «เปิด dashboard ดู agent ทำงานไหม? [Y/n]» (default Y); if yes → dash.sh serve (opens browser)
    → legacy sync (mode: existing) — explore in-scope services, /ponytail-review on task-relevant code,
      /ponytail-audit only if needed; write ## Project context to STATE.md
-   → clarify (PM) → design (Designer, if UI)
+   → clarify (PM) → design (UX/UI, if UI)
    → build in parallel worktrees (Backend + Frontend, makers)
    → verify (QA: unit/API tests + qa-browser for every FE/UI AC against dev server)
    → PASS? ── yes → persist STATE.md → human gate → done
-              └─ no → PM lead triage → feedback packet per owner (fe/be/…)
+              └─ no → PM lead triage → feedback packet per owner (fe/loom-be/…)
                         → makers fix tagged items → QA re-test → loop++ (≤3 rounds)
 ```
 FE/UI acceptance criteria are verified with **browser-use** (`qa-browser` skill) — real browser, not code review alone.
@@ -69,20 +69,20 @@ credentials · change access controls · publish/deploy · any payment. These al
 stop at the human gate.
 
 ## Run it
-No `loop.config.json` yet? Start anyway — `loop-orch` asks project/mode/folders and writes the file before work.
+No `loop.config.json` yet? Start anyway — `loom-orch` asks project/mode/folders and writes the file before work.
 
 ```
 # one-off, report only
-Use loop-orch at L1: add email-based password reset
+Use loom-orch at L1: add email-based password reset
 
 # assisted, makers may code in a worktree, you merge
-Use loop-orch at L2: fix the flaky checkout total
+Use loom-orch at L2: fix the flaky checkout total
 ```
 
 ## Automate (optional)
 Turn the loop into a cadence — e.g. a daily triage that reads open issues, runs one
 L1 iteration, and updates `STATE.md` + the dashboard:
-> "Every weekday at 9am, run loop-orch at L1 on the top untriaged
+> "Every weekday at 9am, run loom-orch at L1 on the top untriaged
 > issue, update STATE.md, and post a one-line summary. No code changes."
 
 ## Caveats (from the source)

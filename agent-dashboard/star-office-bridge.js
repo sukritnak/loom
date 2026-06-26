@@ -16,11 +16,11 @@ const ACTIVITY_FILE = path.join(STAR, 'activity.json');
 const TEAM = [
   { id: 'orch',   name: 'Orchestrator',  main: true },
   { id: 'pm',     name: 'PM',             avatar: 'guest_role_1' },
-  { id: 'design', name: 'Designer',       avatar: 'guest_role_2' },
+  { id: 'ux-ui', name: 'UX/UI',       avatar: 'guest_role_2' },
   { id: 'be',     name: 'Backend',        avatar: 'guest_role_3' },
-  { id: 'besr',   name: 'Backend Sr.',    avatar: 'guest_role_4' },
+  { id: 'fullstack', name: 'Fullstack',    avatar: 'guest_role_4' },
   { id: 'fe',     name: 'Frontend',       avatar: 'guest_role_5' },
-  { id: 'feanim', name: 'Frontend Anim',  avatar: 'guest_role_6' },
+  { id: 'fe-mo', name: 'Frontend Motion',  avatar: 'guest_role_6' },
   { id: 'qa',     name: 'QA',             avatar: 'guest_role_1' },
 ];
 const MAP = { work: 'writing', fix: 'error', done: 'idle', idle: 'idle' };

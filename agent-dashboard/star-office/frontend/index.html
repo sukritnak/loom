@@ -2664,7 +2664,7 @@
                     <canvas class="activity-feed-empty-cat" id="activity-feed-empty-cat" width="240" height="216" aria-hidden="true"></canvas>
                     <div class="activity-feed-empty-msg">
                         <div class="activity-feed-empty-title">No activity yet</div>
-                        <div class="activity-feed-empty-hint">Use <code>loop-start</code> or <code>/loop-start</code>, then <code>loop-orch</code> — Claude Code · Cursor · Hermes</div>
+                        <div class="activity-feed-empty-hint">Use <code>loom-start</code> or <code>/loom-start</code>, then <code>loom-orch</code> — Claude Code · Cursor · Hermes</div>
                     </div>
                 </div>
             </div>
@@ -2862,7 +2862,7 @@
                 guestRejected: 'Visitor rejected', guestRejectFail: 'Reject failed: {msg}',
                 loadingOffice: 'Loading "Loom" Office...',
                 activityEmptyTitle: 'No activity yet',
-                activityEmptyHint: 'Use <code>loop-start</code> or <code>/loop-start</code>, then <code>loop-orch</code> — Claude Code · Cursor · Hermes'
+                activityEmptyHint: 'Use <code>loom-start</code> or <code>/loom-start</code>, then <code>loom-orch</code> — Claude Code · Cursor · Hermes'
         };
 
         function t(key) { return I18N[key] || key; }
@@ -5765,7 +5765,7 @@ function toggleBrokerPanel() {
             window.addEventListener('resize', hideGuestCardTip, { passive: true });
         }
 
-        const GUEST_AREA_SLOT = { pm: 0, design: 1, be: 2, besr: 3, fe: 4, feanim: 5, qa: 6 };
+        const GUEST_AREA_SLOT = { pm: 0, 'ux-ui': 1, be: 2, fullstack: 3, fe: 4, 'fe-mo': 5, qa: 6 };
 
         function fitGameCanvas() {
             const box = document.getElementById('game-container');

@@ -4,6 +4,7 @@
 # Base board, and each line is tagged with the project name so you can tell work apart.
 #
 #   zsh tools/dash.sh serve              # open the central dashboard (Star-Office)
+#   zsh tools/dash.sh up                 # exit 0 if dashboard is listening (prints URL)
 #   zsh tools/dash.sh <status-cmd...>    # forward to agent-status.js, auto-tagged with project
 #                                         #   set · log · say · report · wait · delegate · skill · cmd · progress · file · event · loop · reset
 #   zsh tools/dash.sh where              # print the resolved Base dashboard path
@@ -31,7 +32,16 @@ project="${project//$'\n'/}"
 cmd="${1:-}"
 case "$cmd" in
   serve)        shift; exec zsh "$DASH/serve.sh" "$@" ;;
+  up)
+    PORT="${STAR_BACKEND_PORT:-19000}"
+    URL="http://localhost:$PORT"
+    if nc -z 127.0.0.1 "$PORT" 2>/dev/null || lsof -iTCP:"$PORT" -sTCP:LISTEN -P -n >/dev/null 2>&1; then
+      echo "$URL"
+      exit 0
+    fi
+    exit 1
+    ;;
   where)        echo "$DASH"; exit 0 ;;
-  "" )          echo "usage: dash.sh serve|where| <status-cmd...>" >&2; exit 1 ;;
+  "" )          echo "usage: dash.sh serve|up|where| <status-cmd...>" >&2; exit 1 ;;
   *)            exec env LOOP_PROJECT="$project" node "$DASH/agent-status.js" "$@" ;;
 esac

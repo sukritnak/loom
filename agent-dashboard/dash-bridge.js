@@ -13,21 +13,25 @@ const { spawnSync } = require('child_process');
 const { cleanProject, resolveDisplayPath } = require(path.join(__dirname, '../tools/resolve-project.js'));
 const { cmdLabel } = require('./capability-labels');
 
-const IDS = new Set(['orch', 'pm', 'design', 'be', 'besr', 'fe', 'feanim', 'qa']);
+const IDS = new Set(['orch', 'pm', 'ux-ui', 'be', 'fullstack', 'fe', 'fe-mo', 'qa']);
 const LOOM_AGENTS = new Set([
-  'loop-start', 'loop-orch', 'tech-loop-orchestrator', 'orch',
-  'pm', 'pm-agent', 'design', 'designer-agent',
-  'be', 'be-sr', 'besr', 'backend-agent', 'backend-senior-agent',
-  'fe', 'fe-anim', 'feanim', 'frontend-agent', 'frontend-animation-agent',
-  'qa', 'qa-agent',
+  'loom-start', 'loom-orch', 'loom-orchestrator', 'orch',
+  'loom-pm', 'pm', 'pm-agent', 'loom-ux-ui', 'ux-ui', 'ux-ui-agent',
+  'loom-be', 'be', 'loom-full-stack', 'fullstack', 'backend-agent', 'fullstack-agent',
+  'loom-fe', 'fe', 'loom-motion', 'fe-mo', 'frontend-agent', 'fe-mo-agent',
+  'loom-qa', 'qa', 'qa-agent',
 ]);
-const LOOM_INVOKE_RE = /\b(?:use\s+|\/)(?:loop-start|loop-orch|LOOP)\b|\buse\s+(?:pm|design|fe(?:-anim)?|be(?:-sr)?|qa)\b/i;
+const LOOM_INVOKE_RE = /\b(?:use\s+)?loom(?:-(?:start|orch|pm|ux-ui|fe|motion|be|full-stack|qa))?\b|\buse\s+loom\s+(?:pm|ux-ui|fe|motion|be|full-stack|qa)\b|\/(?:loom-(?:start|orch|pm|ux-ui|fe|motion|be|full-stack|qa))\b/i;
 const AGENT_MAP = {
-  be: 'be', 'be-sr': 'besr', besr: 'besr', 'backend-agent': 'be', 'backend-senior-agent': 'besr',
-  fe: 'fe', 'fe-anim': 'feanim', feanim: 'feanim', 'frontend-agent': 'fe', 'frontend-animation-agent': 'feanim',
-  qa: 'qa', 'qa-agent': 'qa', pm: 'pm', 'pm-agent': 'pm',
-  design: 'design', 'designer-agent': 'design',
-  'loop-orch': 'orch', orch: 'orch', 'tech-loop-orchestrator': 'orch', 'loop-start': 'orch',
+  be: 'be', 'loom-be': 'be', 'backend-agent': 'be',
+  'loom-full-stack': 'fullstack', fullstack: 'fullstack', 'be-sr': 'fullstack', besr: 'fullstack', 'backend-senior-agent': 'fullstack', 'fullstack-agent': 'fullstack',
+  fe: 'fe', 'loom-fe': 'fe', 'frontend-agent': 'fe',
+  'loom-motion': 'fe-mo', 'fe-mo': 'fe-mo', 'fe-anim': 'fe-mo', feanim: 'fe-mo', 'frontend-animation-agent': 'fe-mo', 'fe-mo-agent': 'fe-mo',
+  qa: 'qa', 'loom-qa': 'qa', 'qa-agent': 'qa',
+  pm: 'pm', 'loom-pm': 'pm', 'pm-agent': 'pm',
+  'loom-ux-ui': 'ux-ui', 'ux-ui': 'ux-ui', design: 'ux-ui', 'designer-agent': 'ux-ui', 'ux-ui-agent': 'ux-ui',
+  'loom-orch': 'orch', orch: 'orch', 'loom-orchestrator': 'orch', 'tech-loop-orchestrator': 'orch',
+  'loom-start': 'orch',
 };
 const STATE_DIR = path.join(os.homedir(), '.loop-dash');
 const DEDUPE_MS = 4000;
@@ -669,8 +673,8 @@ if (process.argv.includes('--self-check')) {
   console.assert(normalizeEvent({ hook_event_name: 'post_tool_call' }) === 'postToolUse', 'hermes post_tool_call');
   console.assert(normalizeEvent({ hook_event_name: 'subagent_stop' }) === 'subagentStop', 'hermes subagent_stop');
   console.assert(!maybeActivateLoom({ loomActive: false }, { prompt: 'fix this bug' }, 'beforeSubmitPrompt'), 'no activate casual chat');
-  console.assert(maybeActivateLoom({ loomActive: false }, { prompt: 'Use loop-start' }, 'beforeSubmitPrompt'), 'activate loop-start');
-  console.assert(isLoomAgentType('loop-orch'), 'loom agent');
+  console.assert(maybeActivateLoom({ loomActive: false }, { prompt: 'Use loom-start' }, 'beforeSubmitPrompt'), 'activate loop-start');
+  console.assert(isLoomAgentType('loom-orch'), 'loom agent');
   console.assert(!isLoomAgentType('explore'), 'not loom explore');
   console.assert(cmdLabel('npm test'), 'label npm test');
   console.assert(splitDetail('x'.repeat(9000)).length >= 2, 'split long detail');

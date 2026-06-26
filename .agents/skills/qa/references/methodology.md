@@ -33,11 +33,11 @@ command -v cloudflared                         # fallback that needs no account/
 
 ```zsh
 # dev server is on, say, http://localhost:3000
-ngrok http 3000 --host-header=rewrite --log=stdout > /tmp/qa-ngrok.log 2>&1 &
+ngrok http 3000 --host-header=rewrite --log=stdout > /tmp/loom-qa-ngrok.log 2>&1 &
 sleep 3
 PUBLIC_URL=$(curl -s http://localhost:4040/api/tunnels \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["tunnels"][0]["public_url"])')
-echo "$PUBLIC_URL" | tee /tmp/qa-public-url.txt
+echo "$PUBLIC_URL" | tee /tmp/loom-qa-public-url.txt
 # Verify the tunnel reaches the APP, not a 403/interstitial, before spending a cloud browser:
 curl -s -H "ngrok-skip-browser-warning: true" "$PUBLIC_URL" | head -c 200
 # cloudflared alternative (no account, no interstitial): cloudflared tunnel --url http://localhost:3000
@@ -52,7 +52,7 @@ browser-harness <<'PY'
 start_remote_daemon("qa", proxyCountryCode=None)   # proxy off — required for ngrok TLS to work
 PY
 
-PUBLIC_URL=$(cat /tmp/qa-public-url.txt)
+PUBLIC_URL=$(cat /tmp/loom-qa-public-url.txt)
 BU_NAME=qa browser-harness <<PY
 new_tab("about:blank")
 # ngrok FREE shows a one-time interstitial; skip it by sending this header before navigating.
@@ -92,7 +92,7 @@ Run every `browser-harness` call below against the cloud browser you started abo
 browser-harness <<'PY'
 new_tab("https://example.com/signup")
 wait_for_load()
-capture_screenshot("/tmp/qa-01-landing.png", max_dim=1800)
+capture_screenshot("/tmp/loom-qa-01-landing.png", max_dim=1800)
 
 # ... interact: click_at_xy, type_text, press_key("Enter") ...
 
@@ -139,11 +139,11 @@ What worked:
 
 Issues:
 - [blocker?] no — "Email already in use" error rendered as raw "[object Object]" (saw it on retry).
-- [console]  TypeError in analytics.js on every page (Runtime.exceptionThrown, see /tmp/qa-03.png).
+- [console]  TypeError in analytics.js on every page (Runtime.exceptionThrown, see /tmp/loom-qa-03.png).
 - [ux]       no loading indicator on submit; looked frozen for ~4s.
 
 Edge cases tried: empty email (handled, inline error ✓), 8s submit latency (no spinner ✗).
-Evidence: /tmp/qa-01-landing.png, /tmp/qa-03-error.png
+Evidence: /tmp/loom-qa-01-landing.png, /tmp/loom-qa-03-error.png
 ```
 
 Keep it honest and specific — "the submit button at the bottom of the form did nothing and logged a 500" beats "signup is broken". Cite screenshots and the actual error text so the score is defensible.

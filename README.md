@@ -54,9 +54,9 @@ A team of **9 AI agents** working in a **loop** (plan → build → verify → i
 - Agents install machine-wide (`~/.claude/agents`, `~/.hermes/skills`) → usable from any project
 - tools + dashboard resolve Base via `~/.loop-base` (written by `deploy.sh` or `new-project.sh`)
 - 1 job = 1 control folder = 1 separable session
-- `.active-project` in Base stores the active control folder path (`loop-start` writes it)
+- `.active-project` in Base stores the active control folder path (`loom-start` writes it)
 
-**Custom base folder** via `loop-start` or env `BASE_DIR=/path`
+**Custom base folder** via `loom-start` or env `BASE_DIR=/path`
 Resolution order: arg > `BASE_DIR` > `.base-dir` file in Base > default `~/Documents/coding/agent-build`
 Must be an absolute path outside Base.
 
@@ -73,7 +73,7 @@ Must be an absolute path outside Base.
 
 
 ```
-Use loop-start / /loop-start
+Use loom-start / /loom-start
 
 Step 1 — base folder (job shelf)
   Ask path → mkdir -p if it doesn't exist yet
@@ -90,7 +90,7 @@ Step 3 — lock target (.active-project in Loom) — no new folder
 ```
 
 
-| `loop-start` step         | What gets created?                                   | Example                                         |
+| `loom-start` step         | What gets created?                                   | Example                                         |
 | ------------------------- | ---------------------------------------------------- | ----------------------------------------------- |
 | **Step 1**                | **base folder** (if missing)                         | `mkdir -p ~/Documents/coding/agent-build`       |
 | **Step 2a** open existing | Nothing — pick a control that already has config     | select `shop/` from the list                    |
@@ -98,7 +98,7 @@ Step 3 — lock target (.active-project in Loom) — no new folder
 | **Step 3**                | `.active-project` in Loom (Blueprint) only           | no job folder created                           |
 
 
-> **Blueprint (Base = this Loom repo)** is NOT created by `loop-start` — clone the repo and run `deploy.sh` once.
+> **Blueprint (Base = this Loom repo)** is NOT created by `loom-start` — clone the repo and run `deploy.sh` once.
 
 **How base affects control**
 
@@ -106,7 +106,7 @@ Step 3 — lock target (.active-project in Loom) — no new folder
 | Topic                       | Base matters?                                                  |
 | --------------------------- | -------------------------------------------------------------- |
 | Create new control folder   | Yes — always `<base>/<job-name>/`                              |
-| List jobs in `loop-start`   | Yes — scans `base/*/loop.config.json`                          |
+| List jobs in `loom-start`   | Yes — scans `base/*/loop.config.json`                          |
 | `loop.config.json` contents | No — services / mode / paths live in control, not tied to base |
 | **relative** service paths  | No — resolved from **control folder**, not base                |
 | **absolute** service paths  | No — can point anywhere on disk                                |
@@ -139,8 +139,8 @@ flowchart TB
     be["Backend repo(s)"]
   end
 
-  you(["You"]) -->|loop-start| job
-  job -->|loop-orch delegates| agents
+  you(["You"]) -->|loom-start| job
+  job -->|loom-orch delegates| agents
   agents -->|edit| fe
   agents -->|edit| be
   agents -->|dash.sh / hooks| dash
@@ -155,10 +155,10 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-  A([New task]) --> B[loop-orch loads STATE + config]
+  A([New task]) --> B[loom-orch loads STATE + config]
   B --> C[PM: acceptance criteria]
   C --> D{UI work?}
-  D -->|yes| E[Designer: flows + states]
+  D -->|yes| E[UX/UI: flows + states]
   D -->|no| F
   E --> F[BE / FE build in parallel]
   F --> G[QA: tests + browser AC]
@@ -176,7 +176,7 @@ The pixel office is **[Star-Office-UI](https://github.com/ringhyacinth/Star-Offi
 
 ```mermaid
 flowchart LR
-  orch["loop-orch / makers"]
+  orch["loom-orch / makers"]
   cli["zsh tools/dash.sh"]
   hook["Claude Code hooks<br/>cc-dash-bridge.js"]
   json["status.json"]
@@ -242,7 +242,7 @@ Job `portal` is another control — three services point at `portal-*` under `le
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | control = same folder as code (`legacy/loop.config.json`) | **One job only** — write config yourself + `cd` there                                |
 | Multiple jobs in one folder                               | **Not supported** — only one `loop.config.json` + `STATE.md` (config/memory collide) |
-| Separate controls under base (recommended)                | Parallel sessions; switch `shop` / `portal` via `cd` or `loop-start`                 |
+| Separate controls under base (recommended)                | Parallel sessions; switch `shop` / `portal` via `cd` or `loom-start`                 |
 
 
 ---
@@ -314,11 +314,11 @@ zsh tools/install-external-skills.sh && zsh tools/install-hermes-skills.sh
 | `solid`                   | fe, be     | SOLID, TDD, clean code                                                                                         |
 | `ponytail`                | fe, be     | Minimum code that works                                                                                        |
 | `ponytail-review`         | fe, be     | Review over-engineering / legacy orient                                                                        |
-| `ponytail-audit`          | loop-orch  | Whole-service tech debt scan (when needed)                                                                     |
-| `postgres-best-practices` | be-sr      | DB / Postgres                                                                                                  |
+| `ponytail-audit`          | loom-orch  | Whole-service tech debt scan (when needed)                                                                     |
+| `postgres-best-practices` | loom-full-stack      | DB / Postgres                                                                                                  |
 | `docker-containerization` | all agents | [ailabs-393/ai-labs-claude-skills](https://skills.sh/ailabs-393/ai-labs-claude-skills/docker-containerization) |
-| `hexagonal-architecture`  | be, be-sr  | Ports & Adapters — [affaan-m/ECC](https://github.com/affaan-m/ECC)                                             |
-| `threejs-animation`       | fe-anim    | 3D / motion                                                                                                    |
+| `hexagonal-architecture`  | be, loom-full-stack  | Ports & Adapters — [affaan-m/ECC](https://github.com/affaan-m/ECC)                                             |
+| `threejs-animation`       | loom-motion    | 3D / motion                                                                                                    |
 | `perf-lighthouse`         | qa, fe     | Web performance audits                                                                                         |
 | `qa-browser`              | qa         | Real-browser FE/UI testing                                                                                     |
 
@@ -362,20 +362,20 @@ zsh tools/sync-agents.sh    # source = .claude/agents/
 **New job or resume an existing project** — same command; no manual `cd` if you're in Base:
 
 ```
-Use loop-start      ← Claude Code / Cursor
-/loop-start         ← Hermes
+Use loom-start      ← Claude Code / Cursor
+/loom-start         ← Hermes
 ```
 
-`loop-start` / `/loop-start` walks you through (see [base vs control](#base-folder-vs-control-folder)):
+`loom-start` / `/loom-start` walks you through (see [base vs control](#base-folder-vs-control-folder)):
 
 
 | Step   | Command                                            | What gets created                                                                  |
 | ------ | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| **1**  | `Use loop-start` / `/loop-start` → ask path        | **base folder** — `mkdir -p` if missing (default `~/Documents/coding/agent-build`) |
+| **1**  | `Use loom-start` / `/loom-start` → ask path        | **base folder** — `mkdir -p` if missing (default `~/Documents/coding/agent-build`) |
 | **2a** | pick **(1) open existing**                         | **Nothing** — select a control folder that already has `loop.config.json`          |
 | **2b** | pick **(2) create new** → job name, mode, services | **control folder** at `<base>/<job-name>/` + `loop.config.json` + `STATE.md`       |
 | **3**  | lock target                                        | write `.active-project` in Loom — no folder created                                |
-| **4**  | hand off                                           | pass to `loop-orch`                                                                |
+| **4**  | hand off                                           | pass to `loom-orch`                                                                |
 
 
 Summary:
@@ -383,28 +383,28 @@ Summary:
 1. **Step 1** — base folder (shelf) — creates the shelf folder **if missing**
 2. **Step 2** — control folder — **2a** reopen existing (no create) · **2b** create new → `<base>/<job-name>/`
 3. **(2b only)** mode (`new` / `existing`), autonomy (L1/L2/L3), services (id / side / path / stack)
-4. Write/confirm `loop.config.json` + `STATE.md` at the control folder, then hand off to `loop-orch`
+4. Write/confirm `loop.config.json` + `STATE.md` at the control folder, then hand off to `loom-orch`
 
-> `loop-start` always picks the right project before work begins.
-> `loop-orch` checks `loop.config.json` in cwd first; if missing, reads `.active-project` (wrong-project guard).
+> `loom-start` always picks the right project before work begins.
+> `loom-orch` checks `loop.config.json` in cwd first; if missing, reads `.active-project` (wrong-project guard).
 
 Resume an existing session in detail → [Resume a session](#resume-a-session--reopen-a-project-you-already-set-up)
 
 Then assign work:
 
 ```
-Use loop-orch at L1: <describe feature or bug>
+Use loom-orch at L1: <describe feature or bug>
 ```
 
-Hermes: `/loop-orch run at L1: <task>`
+Hermes: `/loom-orch run at L1: <task>`
 
-`loop-orch` asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) before delegating to any agent — answer Y or Enter to open the browser at `http://localhost:19000`.
+`loom-orch` asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) before delegating to any agent — answer Y or Enter to open the browser at `http://localhost:19000`.
 
 ### 3) Terminal alternatives
 
 ```zsh
 zsh tools/deploy.sh                  # install team (once per machine)
-zsh tools/loop-start.sh              # wizard Steps 1–4 (base → control → lock → hand off)
+zsh tools/loom-start.sh              # wizard Steps 1–4 (base → control → lock → hand off)
 zsh tools/new-project.sh my-app      # shortcut: Step 1 + 2b (--new)
 zsh tools/dash.sh serve              # open central board (Star-Office)
 ```
@@ -419,7 +419,7 @@ Resume details → [Resume a session](#resume-a-session--reopen-a-project-you-al
 
 | Action                                    | OK from Base?     | Notes                                                 |
 | ----------------------------------------- | ----------------- | ----------------------------------------------------- |
-| `Use loop-start` / `Use loop-orch`        | Yes               | Uses `.active-project` or skill pins target           |
+| `Use loom-start` / `Use loom-orch`        | Yes               | Uses `.active-project` or skill pins target           |
 | `node cfg.js`, `verify-paths`, `scaffold` | No                | Must `cd` into control folder (tools read cwd config) |
 | `dash.sh serve` / `where`                 | Yes               | Central board; cwd-independent                        |
 | `dash.sh set/reset/log`                   | Yes               | From Base — resolves project via `.active-project` (no `(unknown)` tag) |
@@ -432,15 +432,15 @@ Resume details → [Resume a session](#resume-a-session--reopen-a-project-you-al
 
 | Name         | Role                 | Does                                                                               |
 | ------------ | -------------------- | ---------------------------------------------------------------------------------- |
-| `loop-start` | Bootstrap            | Start here — pick/create project + write `loop.config.json`, hand off to loop-orch |
-| `loop-orch`  | Orchestrator         | Read `STATE.md` + `loop.config.json`, delegate team, run loop                      |
-| `pm`         | Product              | Break down AC · **lead triage** on QA FAIL                                         |
-| `design`     | Designer             | UX/UI flow, all states before FE                                                   |
-| `fe`         | Frontend             | UI against API, all states                                                         |
-| `fe-anim`    | Frontend (motion/3D) | animation, Three.js/WebGL                                                          |
-| `be`         | Backend              | API, business logic, data layer                                                    |
-| `be-sr`      | Senior Backend       | DB design + security review                                                        |
-| `qa`         | QA                   | AC → PASS/FAIL · FE/UI via `**qa-browser`** (browser-use)                          |
+| `loom-start` | Bootstrap            | Start here — pick/create project + write `loop.config.json`, hand off to loom-orch |
+| `loom-orch`  | Orchestrator         | Read `STATE.md` + `loop.config.json`, delegate team, run loop                      |
+| `loom-pm`    | Product              | Break down AC · **lead triage** on QA FAIL · workflow grilling via **loom-me**     |
+| `loom-ux-ui` | UX/UI                | UX/UI flow, all states before FE · **ui-ux-pro-max** design intelligence           |
+| `loom-fe`    | Frontend             | UI against API, all states                                                         |
+| `loom-motion`| Frontend Motion      | animation, Three.js/WebGL                                                          |
+| `loom-be`    | Backend              | API, business logic, data layer                                                    |
+| `loom-full-stack` | Fullstack (BE specialist) | DB design, security, deep backend escalation                              |
+| `loom-qa`    | QA                   | AC → PASS/FAIL · FE/UI via `**qa-browser`** (browser-use)                          |
 
 
 **Feedback loop:** QA FAIL → PM triage → feedback packet to `fe`/`be`/… → fix → QA re-test (max 3 rounds) — logged in `STATE.md` → `## Feedback history`
@@ -458,8 +458,8 @@ Full loop spec → [LOOP.md](LOOP.md) · Reference: [Loop Engineering Guide 2026
 | --------------- | --------------------- | ------------------------------- | --------------------- |
 | Team shape      | subagents             | `.claude/agents` + Custom Modes | SKILL.md (slash)      |
 | Install         | `zsh tools/deploy.sh` | open folder                     | `zsh tools/deploy.sh` |
-| Start           | `Use loop-start`      | `Use loop-start`                | `/loop-start`         |
-| Call agent      | `Use be to ...`       | chat / Custom Mode              | `/be`, `/qa`, …       |
+| Start           | `Use loom-start`      | `Use loom-start`                | `/loom-start`         |
+| Call agent      | `Use loom be to ...`       | chat / Custom Mode              | `/loom-be`, `/loom-qa`, …       |
 | Parallel work   | full (worktree)       | limited                         | yes (subagents)       |
 | Automation/cron | via loop              | —                               | built-in              |
 | Strength        | full loop             | hands-on edit/review            | headless + scheduling |
@@ -495,10 +495,10 @@ After install → **restart** the IDE or Hermes. Hermes gateway/cron: `hermes --
 `deploy.sh` copies subagents to `~/.claude/agents/` when Claude is detected — usable in every project immediately.
 
 ```
-Use loop-start
-Use loop-orch at L1: ...
-Use be to ...
-Use qa to ...
+Use loom-start
+Use loom-orch at L1: ...
+Use loom be to ...
+Use loom qa to ...
 ```
 
 **Capabilities:** native subagents — parallel worktrees, context handoff, L1–L3 autonomy. Best full-loop experience.
@@ -508,40 +508,40 @@ Use qa to ...
 Open the folder — Cursor reads `.claude/agents/` automatically.
 Optional personas: Settings → Custom Modes → paste each `.claude/agents/*.md`.
 
-Chat like Claude Code (`Use loop-orch at L1: ...`) or switch Custom Modes.
+Chat like Claude Code (`Use loom-orch at L1: ...`) or switch Custom Modes.
 
 **Capabilities:** great for interactive edits; less parallel fan-out than Claude Code. Good for hands-on fix/review.
 
 ### Hermes
 
-When Hermes is detected, `deploy.sh` installs team skills (`loop-start loop-orch pm design fe fe-anim be be-sr qa LOOP`)
+When Hermes is detected, `deploy.sh` installs team skills (`loom-start loom-orch loom-pm loom-ux-ui loom-fe loom-motion loom-be loom-full-stack loom-qa LOOM`)
 to `~/.hermes/skills/` with external skill symlinks.
 
 ```
-/loop-start
-/loop-orch
-/be
-/qa
+/loom-start
+/loom-orch
+/loom-be
+/loom-qa
 ```
 
 Bundle skills:
 
 ```zsh
-hermes bundles create backend-dev -s be -s be-sr -s postgres-best-practices
-hermes bundles create frontend-dev -s fe -s fe-anim -s solid
+hermes bundles create backend-dev -s be -s loom-full-stack -s postgres-best-practices
+hermes bundles create frontend-dev -s fe -s loom-motion -s solid
 ```
 
 > `**qa` name clash:** team agent `qa` vs browser-use skill `qa` → installer exposes browser-use as `**qa-browser`** in Hermes.
 
 **Capabilities:** autonomous/headless, cron, multi-channel. Good for scheduled loops (e.g. morning triage). Must run from / point at the right control folder.
 
-> All three platforms read `loop.config.json` from the **folder you're in**. Start with `loop-start` to pin the right project. **You do not need all three** — pick one.
+> All three platforms read `loop.config.json` from the **folder you're in**. Start with `loom-start` to pin the right project. **You do not need all three** — pick one.
 
 ---
 
 ## loop.config.json
 
-Don't create this in Base — `loop-start` or
+Don't create this in Base — `loom-start` or
 `zsh "$(cat ~/.loop-base)/tools/init-config.sh"` (from control folder) walks you through it.
 One job can have many services; **each service can live at its own base path**.
 
@@ -565,7 +565,7 @@ One job can have many services; **each service can live at its own base path**.
 | field   | Meaning                                                                           | Examples                                                                                                        |
 | ------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `id`    | Short unique name for commands like `scaffold-all.sh api`                         | `web`, `admin`, `api`, `worker`                                                                                 |
-| `side`  | Which agents own it                                                               | `fe` = frontend/UI (fe, fe-anim) · `be` = backend/API/data (be, be-sr)                                          |
+| `side`  | Which agents own it                                                               | `fe` = frontend/UI (fe, loom-motion) · `be` = backend/API/data (be, loom-full-stack)                                          |
 | `path`  | Code location — **relative** = under control folder · **absolute/`~`** = anywhere | `web`, `apps/admin`, `~/Documents/coding/legacy/old-api`                                                        |
 | `stack` | Scaffold template                                                                 | fe: `nextjs` `vite-react` `sveltekit` `astro` · be: `nestjs` `fastapi` `node-express` `go` · `""` = no scaffold |
 
@@ -597,12 +597,12 @@ node "$B/tools/cfg.js" ids fe
 
 ### Adding services later
 
-Create the control folder once — `**services[]` can grow anytime**. No need to run `loop-start` again.
+Create the control folder once — `**services[]` can grow anytime**. No need to run `loom-start` again.
 
 **How to add**
 
 1. **Edit `loop.config.json`** — append an object to `services[]` (same shape as above)
-2. **Via chat** — `Use loop-orch at L1: add service … to loop.config.json` (from control folder or Loom with `.active-project` set)
+2. **Via chat** — `Use loom-orch at L1: add service … to loop.config.json` (from control folder or Loom with `.active-project` set)
 
 **Don't re-run `init-config.sh` casually** — the wizard overwrites the whole file; it does not merge existing services.
 
@@ -661,16 +661,16 @@ Result — mixed paths in one config:
 
 ### Legacy sync — understand existing code first (`mode: existing`)
 
-On legacy code agents have **no prior context** — `loop-orch` runs **orientation (step 0b)** before clarify/build:
+On legacy code agents have **no prior context** — `loom-orch` runs **orientation (step 0b)** before clarify/build:
 
 1. Identify **in-scope services** from `loop.config.json` (don't scan whole repo unless needed)
-2. Delegate makers (`fe` / `be` / `be-sr`) to **read structure** — stack, entry points, tests, conventions
+2. Delegate makers (`loom-fe` / `loom-be` / `loom-full-stack`) to **read structure** — stack, entry points, tests, conventions
 3. `**/ponytail-review`** on **files/modules this task will touch** — over-engineering / risks
 4. `**/ponytail-audit`** — only when needed (huge codebase, blocking debt, or user asks); limit to relevant service folders
 5. Summarize in `STATE.md` → `## Project context` + `## Relevant areas for this task`
 
 ```
-loop-orch: legacy orient — shop (fe+be)
+loom-orch: legacy orient — shop (fe+be)
   → fe explore shop-frontend → ponytail-review on components to change
   → be explore shop-core     → ponytail-review on relevant API layer
   → write STATE.md, then PM / build
@@ -739,7 +739,7 @@ zsh tools/new-project.sh portal
 }
 ```
 
-> `side` routes to the right agents (fe/fe-anim vs be/be-sr) — adjust as needed.
+> `side` routes to the right agents (fe/loom-motion vs be/loom-full-stack) — adjust as needed.
 > `stack` can be `""` for existing (no scaffold).
 
 Verify before starting:
@@ -751,34 +751,34 @@ node "$B/tools/cfg.js" resolved
 zsh "$B/tools/verify-paths.sh"
 ```
 
-### Via skill — `/loop-start` or `Use loop-start`
+### Via skill — `/loom-start` or `Use loom-start`
 
 No `zsh tools` required — chat step by step; skill writes `loop.config.json` (existing + absolute paths) at the control folder.
 
 ```text
-You: Use loop-start                                    ← Step 1 start
-loop-start: Where should projects live? [~/Documents/coding/agent-build]
+You: Use loom-start                                    ← Step 1 start
+loom-start: Where should projects live? [~/Documents/coding/agent-build]
 You: (Enter)                                           ← Step 1: confirm base (mkdir if missing)
-loop-start: Existing projects: (none) — (1) open existing  (2) create new
+loom-start: Existing projects: (none) — (1) open existing  (2) create new
 You: 2                                                 ← Step 2b: create new control
-loop-start: Project name?
+loom-start: Project name?
 You: shop                                              ← control folder name → …/agent-build/shop/
-loop-start: mode? new = scaffold / existing = use code you already have
+loom-start: mode? new = scaffold / existing = use code you already have
 You: existing
-loop-start: autonomy? [L1]
+loom-start: autonomy? [L1]
 You: (Enter)
-loop-start: service — id / side / path / stack (blank = done)
+loom-start: service — id / side / path / stack (blank = done)
 You: frontend · fe · ~/Documents/coding/legacy/shop-frontend · (blank)
 You: core · be · ~/Documents/coding/legacy/shop-core · (blank)
 You: (blank Enter = done)                              ← Step 2b: write loop.config.json + STATE.md
-loop-start: ✓ Active project → ~/Documents/coding/agent-build/shop   ← Step 3: .active-project
-            wrote loop.config.json — next: Use loop-orch at L1: <task>
+loom-start: ✓ Active project → ~/Documents/coding/agent-build/shop   ← Step 3: .active-project
+            wrote loop.config.json — next: Use loom-orch at L1: <task>
 ```
 
 Same `loop.config.json` as job A above.
 
-> Same outcome: `new-project.sh`/`init-config.sh` (terminal) vs `loop-start` (chat).
-> Chat-only platforms (Hermes/Claude) → `/loop-start` is easiest.
+> Same outcome: `new-project.sh`/`init-config.sh` (terminal) vs `loom-start` (chat).
+> Chat-only platforms (Hermes/Claude) → `/loom-start` is easiest.
 
 ### Resume a session — reopen a project you already set up
 
@@ -790,58 +790,58 @@ Loop memory lives in the control folder's `STATE.md` (`loop.config.json` too).
 Open Cursor/chat in **Loom** (this blueprint repo) and type:
 
 ```
-Use loop-start
+Use loom-start
 ```
 
 Example conversation:
 
 ```
-You:        Use loop-start                            ← Step 1 start
-loop-start: Where should projects live?
+You:        Use loom-start                            ← Step 1 start
+loom-start: Where should projects live?
 You:        ~/Documents/coding/agent-build          ← Step 1: confirm base (mkdir if missing)
-loop-start: Found existing projects:
+loom-start: Found existing projects:
               1) shop   → .../agent-build/shop
               2) portal → .../agent-build/portal
             Open existing or create new?
 You:        1                                          ← Step 2a: reopen existing control (no create)
-loop-start: ✓ Active project → .../agent-build/shop   ← Step 3: .active-project
+loom-start: ✓ Active project → .../agent-build/shop   ← Step 3: .active-project
             read STATE.md — continue with:
-            Use loop-orch at L1: <work to resume>
-You:        Use loop-orch at L1: continue from STATE — fix checkout bug
+            Use loom-orch at L1: <work to resume>
+You:        Use loom-orch at L1: continue from STATE — fix checkout bug
 ```
 
-`loop-start` / `/loop-start` will:
+`loom-start` / `/loom-start` will:
 
 - **Step 1** — create **base folder** if missing (`mkdir -p`)
 - **Step 2a** — list controls under base that have `loop.config.json` — **no new folder**
 - **Step 2b** — create **control folder** + config (wizard cannot be skipped)
-- **Step 3** — write `.active-project` in Loom so `loop-orch` knows the active job
+- **Step 3** — write `.active-project` in Loom so `loom-orch` knows the active job
 
-Continue immediately — **stay in Loom chat** because `loop-orch` reads `.active-project` when cwd has no config:
+Continue immediately — **stay in Loom chat** because `loom-orch` reads `.active-project` when cwd has no config:
 
 ```
-Use loop-orch at L1: <continue task>
+Use loom-orch at L1: <continue task>
 ```
 
-Hermes: `/loop-orch run at L1: <task>`
+Hermes: `/loom-orch run at L1: <task>`
 
 #### When do you need to `cd`?
 
 
 | Action                                                   | Need `cd`?                                                 |
 | -------------------------------------------------------- | ---------------------------------------------------------- |
-| `Use loop-start` / `Use loop-orch` in chat               | **No** — uses `.active-project`                            |
+| `Use loom-start` / `Use loom-orch` in chat               | **No** — uses `.active-project`                            |
 | `verify-paths`, `scaffold`, `init-config`, `node cfg.js` | **Yes** — tools read `loop.config.json` from cwd           |
 | `dash.sh serve` / `where`                                | **No** — central board                                     |
 | `dash.sh set/reset/log`                                  | Recommended `cd` to control — from Base uses `.active-project` instead of `(unknown)` |
 
 
-Prefer opening the folder in your IDE — open the **control folder** as workspace, then `Use loop-orch` (cwd has `loop.config.json`):
+Prefer opening the folder in your IDE — open the **control folder** as workspace, then `Use loom-orch` (cwd has `loop.config.json`):
 
 ```zsh
 # Optional — open control as Cursor workspace
 # File → Open Folder → ~/Documents/coding/agent-build/shop
-# chat: Use loop-orch at L1: <task>
+# chat: Use loom-orch at L1: <task>
 ```
 
 Or `cd` in terminal for manual tools:
@@ -854,7 +854,7 @@ zsh "$B/tools/verify-paths.sh"
 
 #### Switch jobs (`shop` ↔ `portal`)
 
-Run `Use loop-start` again → pick another control — or `cd` and invoke orch.
+Run `Use loom-start` again → pick another control — or `cd` and invoke orch.
 Every platform uses the active project's `loop.config.json` — no mixing.
 
 #### New machine / never deployed
@@ -865,7 +865,7 @@ Once from Loom:
 zsh tools/deploy.sh    # register ~/.loop-base
 ```
 
-Then `Use loop-start` as usual — control folders + `STATE.md` remain on disk at their paths.
+Then `Use loom-start` as usual — control folders + `STATE.md` remain on disk at their paths.
 
 ---
 
@@ -892,11 +892,11 @@ zsh "$B/tools/dash.sh" set qa   done "PASS all criteria"
 **Rich activity feed** — who talks to whom · which skill · which command · what they're doing:
 
 ```zsh
-zsh "$B/tools/dash.sh" delegate orch pm "→ PM: write AC" activity="planning loop" skill=loop-orch
+zsh "$B/tools/dash.sh" delegate orch pm "→ PM: write AC" activity="planning loop" skill=loom-orch
 zsh "$B/tools/dash.sh" skill be ponytail activity="trimming auth handler"
 zsh "$B/tools/dash.sh" cmd qa "npx playwright test" activity="regression" skill=qa-browser
 zsh "$B/tools/dash.sh" event orch "route fixes" kind=delegate to=be cmd="Task be" activity="triage"
-zsh "$B/tools/dash.sh" say besr title="core audit" kind=report --stdin <<'EOF'
+zsh "$B/tools/dash.sh" say fullstack title="core audit" kind=report --stdin <<'EOF'
 TL;DR + PASS/FAIL + decisions here
 EOF
 ```
@@ -904,7 +904,7 @@ EOF
 Commands: `say` (long multiline speech) · `delegate` · `skill` · `cmd` · `event` · `log` · `set` · `clearlog`
 Feed keeps 400 lines (rolling) · daily archive in `agent-dashboard/log-archive/` · **Loop Activity** panel has Clear log + archived dates
 
-Opens on `deploy.sh` · at `loop-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
+Opens on `deploy.sh` · at `loom-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
 
 **Star-Office dashboard** (`agent-dashboard/star-office/`) — vendored from
 **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** by [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo).
@@ -942,13 +942,13 @@ Run from Base directly (no config in cwd):
 
 ```zsh
 zsh tools/deploy.sh                 # install team + register ~/.loop-base
-zsh tools/loop-start.sh                 # wizard Steps 1–4
+zsh tools/loom-start.sh                 # wizard Steps 1–4
 zsh tools/new-project.sh my-app       # shortcut: Step 1 + 2b
 zsh tools/sync-agents.sh              # sync agent defs to all platforms
 zsh tools/dash.sh serve               # open board
 ```
 
-> Use **chat skills** (`loop-start`, `loop-orch`, …) or `zsh tools/*.sh` / `zsh "$B/tools/*.sh"`
+> Use **chat skills** (`loom-start`, `loom-orch`, …) or `zsh tools/*.sh` / `zsh "$B/tools/*.sh"`
 
 ---
 
@@ -981,7 +981,7 @@ zsh tools/dash.sh serve               # open board
 
 Built for this team (installed to `~/.hermes/skills/` by `deploy.sh`):
 
-`loop-start` · `loop-orch` · `pm` · `design` · `fe` · `fe-anim` · `be` · `be-sr` · `qa` · `LOOP`
+`loom-start` · `loom-orch` · `loom-pm` · `loom-ux-ui` · `loom-fe` · `loom-motion` · `loom-be` · `loom-full-stack` · `loom-qa` · `LOOM`
 
 ### External skills (`tools/install-external-skills.sh`)
 
@@ -992,11 +992,13 @@ Installed to `~/.agents/skills/` on deploy (via `npx skills add` when available)
 | ------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **solid**                                               | all makers | SOLID, TDD, clean code                                                                                                 |
 | **ponytail** · **ponytail-review** · **ponytail-audit** | all makers | minimum correct code; review / audit — [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)           |
-| **postgres-best-practices**                             | be-sr      | Postgres guidance                                                                                                      |
+| **postgres-best-practices**                             | loom-full-stack      | Postgres guidance                                                                                                      |
 | **docker-containerization**                             | all agents | [ailabs-393/ai-labs-claude-skills](https://skills.sh/ailabs-393/ai-labs-claude-skills/docker-containerization)         |
-| **hexagonal-architecture**                              | be, be-sr  | Ports & Adapters — [affaan-m/ECC](https://github.com/affaan-m/ECC/blob/main/skills/hexagonal-architecture/SKILL.md)    |
+| **hexagonal-architecture**                              | be, loom-full-stack  | Ports & Adapters — [affaan-m/ECC](https://github.com/affaan-m/ECC/blob/main/skills/hexagonal-architecture/SKILL.md)    |
 | **perf-lighthouse**                                     | fe         | Lighthouse audits                                                                                                      |
-| **threejs-animation**                                   | fe-anim    | Three.js animation helpers                                                                                             |
+| **threejs-animation**                                   | loom-motion    | Three.js animation helpers                                                                                             |
+| **loom-me**                                             | loom-pm    | Workflow grilling — adapted from [mattpocock/loop-me](https://github.com/mattpocock/skills/tree/main/skills/in-progress/loop-me) |
+| **ui-ux-pro-max**                                       | loom-ux-ui | Design intelligence — [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)   |
 | **qa** → Hermes `**qa-browser`**                        | qa         | Browser QA — [browser-use/browser-use](https://github.com/browser-use/browser-use) (`tools/install-browser-use-qa.sh`) |
 
 
@@ -1005,10 +1007,10 @@ Installed to `~/.agents/skills/` on deploy (via `npx skills add` when available)
 
 | Skill                                    | Used by                | Source / install                                                    |
 | ---------------------------------------- | ---------------------- | ------------------------------------------------------------------- |
-| **context7**                             | fe, be, fe-anim, be-sr | MCP — up-to-date library docs                                       |
+| **context7**                             | fe, be, loom-motion, loom-full-stack | MCP — up-to-date library docs                                       |
 | **ui-ux-pro-max**                        | design                 | Design intelligence / UI spec                                       |
-| **pm-skills**                            | pm                     | [phuryn/pm-skills](https://github.com/phuryn/pm-skills) marketplace |
-| **threejs-skills**                       | fe-anim                | CloudAI-X Three.js skill bundle                                     |
+| **pm-skills**                            | pm                     | [phuryn/loom-pm-skills](https://github.com/phuryn/loom-pm-skills) marketplace |
+| **threejs-skills**                       | loom-motion                | CloudAI-X Three.js skill bundle                                     |
 | **handoff**                              | all                    | Session / IDE continuity                                            |
 | **docx** · **pdf** · **pptx** · **xlsx** | pm, design, qa, orch   | Deliverables when asked                                             |
 
@@ -1028,16 +1030,118 @@ agent-dashboard/           **central** live status board (Star-Office — all pr
 tools/                     only in Base — every control folder shares via ~/.loop-base
   deploy.sh                install team to Claude Code + Hermes + register Base at ~/.loop-base
   sync-agents.sh           sync agent defs to all platforms (source = .claude/agents/)
-  loop-start.sh              wizard Steps 1–4: base folder → control folder → .active-project → hand off
-  new-project.sh             shortcut: loop-start --new NAME (Step 1 + 2b)
+  loom-start.sh              wizard Steps 1–4: base folder → control folder → .active-project → hand off
+  new-project.sh             shortcut: loom-start --new NAME (Step 1 + 2b)
   base-dir.sh              resolve destination folder (arg > BASE_DIR > .base-dir > default)
   init-config.sh           wizard writes loop.config.json (run in control folder)
   dash.sh                  talk to central board (serve / set / log) — auto-tags project name
   scaffold-all.sh · scaffold.sh   scaffold services per config (mode=new)
   cfg.js · verify-paths.sh        read config (from cwd) / verify folder access
   to-hermes-skills.sh · install-hermes-skills.sh   build + install SKILL.md for Hermes
+  install-cursor-subagents.sh   sync ~/.cursor/agents + .cursor/agents; purge Cursor cache
+  purge-legacy-agents.sh        one-shot cleanup for installs before v1.0.2 (see below)
 LOOP.md                    loop methodology (also a skill)
 STATE.template.md          loop memory template (copied to STATE.md in control folder)
 loop.config.example.json   example config with _help for every field
 ```
+
+---
+
+## Upgrading from v1.0.2 and earlier (purge legacy agents)
+
+If you installed Loom **before v1.0.2** (or before the `loom-*` agent rename), your machine may still have **old agent IDs** (`loop-start`, `loop-orch`, `pm`, `be`, `fe-anim`, …) in Claude Code, Hermes, or **Cursor Settings → Agents → Subagents**. New installs via `deploy.sh` are already clean — this section is for **existing installs only**.
+
+### What changed
+
+| Old ID / skill | New ID / skill |
+| -------------- | -------------- |
+| `loop-start` | `loom-start` |
+| `loop-orch` | `loom-orch` |
+| `pm` | `loom-pm` |
+| `design` | `loom-ux-ui` |
+| `fe` | `loom-fe` |
+| `fe-anim` | `loom-motion` |
+| `be` | `loom-be` |
+| `be-sr` | `loom-full-stack` |
+| `qa` | `loom-qa` |
+
+Invocation examples: `Use loom-start`, `/loom-orch`, `Use loom pm to …` (see [Agent team](#agent-team)).
+
+### One-command cleanup (recommended)
+
+From your **Loom blueprint** repo (not a control folder):
+
+```zsh
+cd ~/Documents/coding/loom          # wherever you cloned Loom
+git pull
+zsh tools/purge-legacy-agents.sh
+```
+
+**Preview without deleting** (lists paths only):
+
+```zsh
+zsh tools/purge-legacy-agents.sh --dry-run
+```
+
+### What `purge-legacy-agents.sh` does
+
+1. **Claude Code** — removes stale files under `~/.claude/agents/`:
+   - Old filenames: `loop-start.md`, `tech-loop-orchestrator.md`, `designer-agent.md`, `frontend-animation-agent.md`, `backend-senior-agent.md`
+   - Any `.md` whose frontmatter still says `name: loop-start`, `name: pm`, `name: be`, etc.
+
+2. **Cursor** — removes the same stale IDs from:
+   - `~/.cursor/agents/` (user-level subagents)
+   - `<blueprint>/.cursor/agents/` (project-level symlinks, if present)
+
+3. **Hermes** — removes old skill folders under `~/.hermes/skills/` (`loop-start`, `loop-orch`, `pm`, `design`, … and legacy aliases `feanim`, `besr`).
+
+4. **Reinstall** — runs `sync-agents.sh`, which:
+   - Copies current `loom-*` agents → `~/.claude/agents/`
+   - Regenerates and installs Hermes skills (`loom-start` … `loom-qa`, `LOOM`)
+   - Runs `install-cursor-subagents.sh` (fresh `~/.cursor/agents/`, project symlinks, clears Cursor subagent cache)
+
+**Not touched:** `loop.config.json`, `STATE.md`, dashboard hooks, project code, or external skills in `~/.agents/skills/`.
+
+### After the script — verify each platform
+
+| Platform | Check | Expected |
+| -------- | ----- | -------- |
+| **Claude Code** | `ls ~/.claude/agents/` | 9 files (`loom-start.md`, `loom-orchestrator.md`, `pm-agent.md`, …) with `name: loom-*` in frontmatter |
+| **Hermes** | `ls ~/.hermes/skills/` | `loom-start`, `loom-orch`, … `loom-qa`, `LOOM` (+ external symlinks if `deploy.sh` ran) |
+| **Cursor** | Reload window, then **Settings → Agents → Subagents** | `loom-start`, `loom-orch`, `loom-pm`, `loom-ux-ui`, `loom-fe`, `loom-motion`, `loom-be`, `loom-full-stack`, `loom-qa` |
+
+**Cursor reload:** `Cmd+Shift+P` → **Developer: Reload Window**
+
+If Subagents still lists old names after reload, delete those entries manually (**⋯ → Delete**), reload once more. Cursor sometimes keeps a stale registry until the window restarts.
+
+### Manual cleanup (if you prefer not to run the script)
+
+```zsh
+# Claude Code
+rm -f ~/.claude/agents/{loop-start,tech-loop-orchestrator,designer-agent,frontend-animation-agent,backend-senior-agent}.md
+
+# Hermes (full wipe of installed team skills — deploy will restore)
+rm -rf ~/.hermes/skills/{loop-start,loop-orch,pm,design,fe,fe-anim,be,be-sr,qa,LOOP,feanim,besr}
+
+# Cursor user subagents
+rm -rf ~/.cursor/agents
+
+# Then from blueprint:
+zsh tools/sync-agents.sh
+# or full reinstall:
+zsh tools/deploy.sh
+```
+
+### Fresh install alternative
+
+If you do not need to preserve custom hook edits, a full redeploy also works:
+
+```zsh
+cd ~/Documents/coding/loom
+git pull
+zsh tools/purge-legacy-agents.sh    # still recommended before deploy on old machines
+zsh tools/deploy.sh
+```
+
+`deploy.sh` runs `sync-agents.sh` (which includes Cursor subagent sync) but does **not** remove old Hermes skill folder names by itself — use `purge-legacy-agents.sh` first on upgrades from v1.0.2 and earlier.
 

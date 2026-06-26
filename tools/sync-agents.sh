@@ -17,6 +17,10 @@ echo "== sync agents (source: $SRC, $n files) =="
 # Claude Code (global) — only if Claude Code is present
 if command -v claude >/dev/null 2>&1 || [[ -d "$HOME/.claude" ]]; then
   mkdir -p "$HOME/.claude/agents"
+  # Remove stale copies (old loop-* names and orphans no longer in SRC)
+  setopt null_glob 2>/dev/null || true
+  rm -f "$HOME/.claude/agents"/*.md
+  unsetopt null_glob 2>/dev/null || true
   cp -f "$SRC"/*.md "$HOME/.claude/agents/"
   echo "  ✓ Claude Code  → ~/.claude/agents/  ($n agents)"
 else
@@ -32,6 +36,10 @@ else
   echo "  - Hermes       → not detected (skipped)"
 fi
 
-# Cursor
-echo "  ✓ Cursor       → reads .claude/agents/ in the project (source of truth)"
+# Cursor Subagents (~/.cursor/agents + .cursor/agents symlinks + cache purge)
+if command -v cursor >/dev/null 2>&1 || [[ -d "$HOME/.cursor" ]]; then
+  zsh tools/install-cursor-subagents.sh
+else
+  echo "  - Cursor       → not detected (skipped)"
+fi
 echo "Done."

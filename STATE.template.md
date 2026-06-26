@@ -38,7 +38,7 @@ L1 (report only)   <!-- L1 | L2 (assisted, no merge) | L3 (unattended, allowlist
 |------|-------|-----------|
 | Orchestrator | idle | — |
 | PM | idle | — |
-| Designer | idle | — |
+| UX/UI | idle | — |
 | Backend | idle | — |
 | Frontend | idle | — |
 | QA | idle | — |

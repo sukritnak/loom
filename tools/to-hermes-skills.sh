@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# Convert Claude Code subagent files (*-agent.md, tech-loop-orchestrator.md) into
+# Convert Claude Code subagent files (*-agent.md, loom-orchestrator.md) into
 # SKILL.md skills for Hermes Agent (or any agentskills.io-compatible agent).
 # It keeps `name` + `description`, drops `tools:`/`model:`, and writes
 # hermes-skills/<name>/SKILL.md. Run from the control-repo root.
@@ -30,9 +30,9 @@ done
 
 # Also expose the loop spec as a skill (LOOP.md has no frontmatter, so add one).
 if [ -f LOOP.md ]; then
-  mkdir -p "$OUT_DIR/LOOP"
-  { printf -- '---\nname: loop\ndescription: Loop-engineering spec for this team — primitives (STATE.md, loop.config.json), L1/L2/L3 phases, safety denylist, iteration anatomy. Use when the user asks how the loop works, which autonomy level to use, or what the orchestrator should do between runs.\n---\n'; cat LOOP.md; } > "$OUT_DIR/LOOP/SKILL.md"
-  echo "  + $OUT_DIR/LOOP/SKILL.md"
+  mkdir -p "$OUT_DIR/LOOM"
+  { printf -- '---\nname: loom\ndescription: Loom loop-engineering spec — primitives (STATE.md, loop.config.json), L1/L2/L3 phases, safety denylist, iteration anatomy. Use when the user asks how the Loom loop works, which autonomy level to use, or what loom-orch should do between runs.\n---\n'; cat LOOP.md; } > "$OUT_DIR/LOOM/SKILL.md"
+  echo "  + $OUT_DIR/LOOM/SKILL.md"
 fi
 
 echo "Done → $OUT_DIR"

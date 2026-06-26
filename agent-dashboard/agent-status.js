@@ -38,7 +38,7 @@ const { cleanProject, resolveProject, resolveControlDir, resolveDisplayPath } = 
 
 const FILE = path.join(__dirname, 'status.json');
 const ARCHIVE_DIR = path.join(__dirname, 'log-archive');
-const IDS = ['orch', 'pm', 'design', 'be', 'besr', 'fe', 'feanim', 'qa'];
+const IDS = ['orch', 'pm', 'ux-ui', 'be', 'fullstack', 'fe', 'fe-mo', 'qa'];
 const STATES = ['idle', 'work', 'fix', 'done'];
 const META_KEYS = ['kind', 'to', 'skill', 'cmd', 'activity', 'title', 'speech', 'file', 'action', 'detail', 'removed', 'added', 'lines', 'lineStart', 'lineEnd', 'removedLineStart', 'addedLineStart'];
 const FILE_ACTIONS = ['create', 'edit', 'delete', 'rename'];

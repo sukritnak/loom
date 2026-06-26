@@ -18,10 +18,11 @@ typeset -A SPECS=(
   ponytail                 dietrichgebert/ponytail@ponytail
   ponytail-review          dietrichgebert/ponytail@ponytail-review
   ponytail-audit           dietrichgebert/ponytail@ponytail-audit
+  ui-ux-pro-max            nextlevelbuilder/ui-ux-pro-max-skill@ui-ux-pro-max
 )
 
 ORDER=(solid postgres-best-practices docker-containerization perf-lighthouse \
-  threejs-animation ponytail ponytail-review ponytail-audit)
+  threejs-animation ponytail ponytail-review ponytail-audit ui-ux-pro-max)
 
 have() { [ -f "$SKILLS_DIR/$1/SKILL.md" ]; }
 
@@ -81,6 +82,8 @@ if have hexagonal-architecture; then
 else
   zsh "$ROOT/tools/install-hexagonal-architecture-skill.sh"
 fi
+
+promote_local loom-me || true
 
 if [ ${#failed[@]} -gt 0 ]; then
   echo "  ! failed: ${failed[*]} — retry: zsh tools/install-external-skills.sh" >&2

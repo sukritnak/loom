@@ -5,7 +5,7 @@ const SKILLS = {
   'ponytail-audit': 'ponytail-audit — audit ทั้ง repo หา over-engineering',
   'qa-browser': 'qa-browser — เทส FE/UI บน browser จริง (browser-use)',
   solid: 'solid — TDD / SOLID ตาม skill',
-  'loop-orch': 'loop-orch — นำ loop ทีม PM→Design→FE/BE→QA',
+  'loom-orch': 'loom-orch — นำ loop ทีม PM→Design→FE/BE→QA',
   'pm-skills': 'pm-skills — PRD, user stories, prioritize (pm-skills marketplace)',
   'ui-ux-pro-max': 'ui-ux-pro-max — design intelligence / UI spec',
   context7: 'context7 — ดึง docs library ล่าสุด',

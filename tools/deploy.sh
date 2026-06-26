@@ -42,7 +42,7 @@ cat <<'TXT'
 For Cursor personas (optional): Settings → Custom Modes → add one per agent,
 pasting the body of each .claude/agents/*.md as the instructions.
 
-Next: start a project →  Use loop-start  (or  zsh tools/loop-start.sh)
+Next: start a project →  Use loom-start  (or  zsh tools/loom-start.sh)
 TXT
 
 echo "== opening central dashboard =="

@@ -46,7 +46,7 @@
     "qa": {
       "source": "browser-use/browser-use",
       "sourceType": "github",
-      "skillPath": "skills/qa/SKILL.md",
+      "skillPath": "skills/loom-qa/SKILL.md",
       "computedHash": "db0ede85f44095730008eb6dec9e9c073a8a7de73f66fdd6cb9d7075a9be6fec"
     }
   }

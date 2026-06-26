@@ -10,7 +10,7 @@ Drive a website with a real browser, judge how well it does the thing the user a
 
 ## Inputs
 
-From the user's invocation (the text after `/qa`, or their message):
+From the user's invocation (the text after `/loom-qa`, or their message):
 - **Target** — a URL (`https://…`) or a local dev server (`localhost:5173`, `:3000`, "the app on 5173"). **Required** — if absent, ask for it before doing anything else.
 - **What to test** (optional) — a flow or focus ("the signup", "search + filters"). If omitted, test the most obvious happy path and say so in the report.
 
