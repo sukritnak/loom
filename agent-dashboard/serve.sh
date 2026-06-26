@@ -5,6 +5,7 @@
 #
 #   zsh serve.sh                 # start on :19000 (override with STAR_BACKEND_PORT)
 set -euo pipefail
+source "${0:A:h}/../tools/path-guard.sh"
 cd "$(dirname "$0")" || exit 1
 DASH="$(pwd)"
 STAR="$DASH/star-office"

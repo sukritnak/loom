@@ -11,6 +11,7 @@
 #
 # Base resolution:  $LOOP_BASE env  >  ~/.loop-base file  >  this tool's own repo (if it has the dashboard)
 set -euo pipefail
+source "${0:A:h}/path-guard.sh"
 SELF_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 BASE="${LOOP_BASE:-}"

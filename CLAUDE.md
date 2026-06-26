@@ -27,8 +27,9 @@ agent-dashboard/ central board
 
 ### Install (once per machine, run from this repo)
 ```zsh
-zsh tools/deploy.sh                        # install team + register ~/.loop-base + dashboard hooks + open board
+zsh tools/deploy.sh                        # full install (optional — ./loom auto-bootstraps on first use)
 DEPLOY_SKIP_EXTERNAL_SKILLS=1 zsh tools/deploy.sh  # skip external skill download
+zsh tools/refresh.sh                       # re-sync CLI + agents + hooks (after move)
 ```
 
 ### Claude Code from anywhere (after deploy)

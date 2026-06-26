@@ -37,6 +37,12 @@ cfg = YAML.load_file(config_path) || {}
 cfg["hooks"] ||= {}
 
 loom = {
+  "on_session_start" => [
+    { "command" => bridge_cmd, "timeout" => 15 },
+  ],
+  "pre_llm_call" => [
+    { "command" => bridge_cmd, "timeout" => 15 },
+  ],
   "post_tool_call" => [
     { "matcher" => "terminal|write_file|patch", "command" => bridge_cmd, "timeout" => 15 },
   ],
@@ -73,7 +79,7 @@ require "fileutils"
 require "set"
 
 allowlist_path, bridge_cmd = ARGV
-events = %w[post_tool_call subagent_start subagent_stop post_llm_call]
+events = %w[on_session_start pre_llm_call post_tool_call subagent_start subagent_stop post_llm_call]
 data = { "approvals" => [] }
 if File.exist?(allowlist_path)
   begin
@@ -96,4 +102,5 @@ RUBY
 
 echo ""
 echo "Restart Hermes CLI / gateway so hooks reload."
+echo "Hooks bridge after /loom-start, Use loom-orch, or a Loom sub-agent (pre_llm_call activates the session)."
 echo "Optional: hooks_auto_accept: true in config for CI — or use hermes --accept-hooks chat"

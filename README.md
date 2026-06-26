@@ -28,15 +28,21 @@ A team of **9 AI agents** working in a **loop** (plan → build → verify → i
 
 ## Quick start — Claude Code
 
-**Once per machine** (clone this repo, then run from inside it):
+**Clone and go** (no manual `deploy.sh` required — first `./loom` auto-registers):
 
 ```zsh
 git clone <repo-url> loom
 cd loom
-zsh tools/deploy.sh
+./loom wrap claude
 ```
 
-This registers `~/.loop-base`, installs the global `loom` CLI (`~/.local/bin/loom`), copies agents to `~/.claude/agents/`, and opens the dashboard at `http://localhost:19000`.
+First run writes `~/.loop-base`, installs the global `loom` CLI, syncs agents (Claude Code · Cursor · Hermes), and wires dashboard hooks. `git pull` auto-refreshes hooks via built-in git hooks.
+
+**Optional full install** (external skills + opens dashboard):
+
+```zsh
+zsh tools/deploy.sh
+```
 
 **Every session — from any folder on your machine:**
 
@@ -102,7 +108,7 @@ No `cd` into your project required — `loom-orch` reads `.active-project` from 
 | `loom start` | Terminal wizard — same flow as `Use loom-start` |
 | `loom dash serve` | Central agent dashboard (`:19000`) |
 
-**Already installed?** After `git pull`, re-run `zsh tools/deploy.sh` from the repo to refresh the CLI and hooks.
+**Already installed?** After `git pull`, hooks refresh automatically. If you moved the repo folder, run `zsh tools/refresh.sh` once (or `./loom where`).
 
 → Full platform matrix, skills, and Cursor/Hermes paths: [Getting started](#getting-started)
 
@@ -113,7 +119,7 @@ No `cd` into your project required — `loom-orch` reads `.active-project` from 
 | What | **Base** (this repo) | **Control folder** (`<base-dir>/<name>`) |
 | ---- | -------------------- | ------------------------------------------ |
 | **Role** | Blueprint — shared by all jobs | One job — config + memory only |
-| **Agent team** | `.claude/agents/` | — (installed machine-wide via `deploy.sh`) |
+| **Agent team** | `.claude/agents/` | — (installed machine-wide via `refresh.sh` / `deploy.sh`) |
 | **Hermes skills** | `hermes-skills/` | — |
 | **Shared tools** | `tools/` | — (call Base via `~/.loop-base`) |
 | **Dashboard** | `agent-dashboard/` | — |
@@ -132,7 +138,7 @@ No `cd` into your project required — `loom-orch` reads `.active-project` from 
 
 - Never create a project or write `loop.config.json` inside Base / the current directory
 - Agents install machine-wide (`~/.claude/agents`, `~/.hermes/skills`) → usable from any project
-- tools + dashboard resolve Base via `~/.loop-base` (written by `deploy.sh` or `new-project.sh`)
+- tools + dashboard resolve Base via `~/.loop-base` (written by `refresh.sh` / `deploy.sh` or `new-project.sh`)
 - 1 job = 1 control folder = 1 separable session
 - `.active-project` in Base stores the active control folder path (`loom-start` writes it)
 
@@ -178,7 +184,7 @@ Step 3 — lock target (.active-project in Loom) — no new folder
 | **Step 3**                | `.active-project` in Loom (Blueprint) only           | no job folder created                           |
 
 
-> **Blueprint (Base = this Loom repo)** is NOT created by `loom-start` — clone the repo and run `deploy.sh` once.
+> **Blueprint (Base = this Loom repo)** is NOT created by `loom-start` — clone the repo; first `./loom` auto-bootstraps (or run `zsh tools/deploy.sh` for full install).
 
 **How base affects control**
 
@@ -331,8 +337,23 @@ Job `portal` is another control — three services point at `portal-*` under `le
 
 ### 1) Install the team (once per machine) — run from Base
 
+**Fastest (auto on first `./loom`):**
+
+```zsh
+git clone <repo-url> loom && cd loom
+./loom wrap claude          # or: ./loom where  (Cursor / bootstrap only)
+```
+
+**Full install** (external skills + opens dashboard):
+
 ```zsh
 zsh tools/deploy.sh
+```
+
+**Manual sync** (after moving the repo, or without running `./loom`):
+
+```zsh
+zsh tools/refresh.sh
 ```
 
 First command does everything:
@@ -340,7 +361,7 @@ First command does everything:
 
 | Step                | What it does                                                |
 | ------------------- | ----------------------------------------------------------- |
-| **always**          | Register `~/.loop-base` · open dashboard at `:19000`        |
+| **always**          | Register `~/.loop-base` · agents · dashboard hooks · git pull hooks |
 | agents              | Copy subagents → `~/.claude/agents/` **if Claude detected** |
 | Hermes skills       | Install team skills → `~/.hermes/skills/` **if Hermes detected** |
 | **external skills** | Recommended → `~/.agents/skills/` (+ Hermes symlinks if Hermes) |
@@ -371,7 +392,7 @@ zsh tools/sync-agents.sh                  # refresh Hermes skills if needed
 
 Restart **Claude Code / Cursor / Hermes** after hook changes.
 
-**After `git pull`:** run `zsh tools/deploy.sh` again to refresh hook paths — safe even if you only have one platform.
+**After `git pull`:** hooks refresh automatically via git hooks — or run `zsh tools/refresh.sh` manually.
 
 
 Skip external skills (no network / install later):
@@ -433,7 +454,7 @@ zsh tools/sync-agents.sh    # source = .claude/agents/
 >
 > Then restart **Claude Code, Cursor, and/or Hermes** so hooks reload.
 >
-> `git pull` alone does **not** refresh hooks — run `deploy.sh` (or at minimum `zsh tools/install-dash-hooks.sh` and rewrite `~/.loop-base`) after moving.
+> `git pull` refreshes hooks automatically — after moving the repo folder, run `zsh tools/refresh.sh` (or `./loom where`).
 >
 > Control folders under `agent-build/` and your real project code are **not** affected — only the blueprint install on this machine.
 
@@ -1119,7 +1140,8 @@ Loop flow is inspired by durable-state agent loops; see [LOOP.md](LOOP.md) and [
 hermes-skills/             SKILL.md for Hermes (generated via to-hermes-skills.sh)
 agent-dashboard/           **central** live status board (Star-Office — all projects report here)
 tools/                     only in Base — every control folder shares via ~/.loop-base
-  deploy.sh                install team to Claude Code + Hermes + register Base at ~/.loop-base
+  refresh.sh               idempotent sync: ~/.loop-base · CLI · agents · hooks (auto on ./loom / git pull)
+  deploy.sh                full install: refresh + external skills + L3 + open dashboard
   sync-agents.sh           sync agent defs to all platforms (source = .claude/agents/)
   loom-start.sh              wizard Steps 1–4: base folder → control folder → .active-project → hand off
   new-project.sh             shortcut: loom-start --new NAME (Step 1 + 2b)

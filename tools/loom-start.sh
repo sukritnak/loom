@@ -52,7 +52,8 @@ ensure_dashboard() {
 }
 
 ensure_dashboard
-echo
+
+lock_project() {
   local dest="$1"
   [ -f "$dest/loop.config.json" ] || { echo "✗ no loop.config.json in $dest" >&2; exit 1; }
   step 3 "lock target (.active-project — no new folder)"
@@ -81,12 +82,14 @@ fi
 
 # --- Step 1: base folder ---
 step 1 "base folder (job shelf — mkdir if missing)"
+SUGGEST="$(zsh "$ROOT/tools/base-dir.sh" suggest)"
 DEFAULT="$(zsh "$ROOT/tools/base-dir.sh" "${BASE_ARG:-}")"
 if [ -n "$BASE_ARG" ]; then
   BASE="$DEFAULT"
   echo "Using base → $BASE"
 else
-  BASE="$(ask "Where should projects live? (absolute path outside Loom)" "$DEFAULT")"
+  echo "Default: $SUGGEST  (outside Loom — not this repo)"
+  BASE="$(ask "Where should projects live? [Enter = default]" "$SUGGEST")"
   BASE="$(zsh "$ROOT/tools/base-dir.sh" "$BASE")"
 fi
 

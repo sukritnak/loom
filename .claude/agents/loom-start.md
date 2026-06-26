@@ -49,13 +49,33 @@ NEVER create a project or write `loop.config.json` there, and never use the curr
 as a project. Projects always live under a separate base folder.
 
 ## Step 1 — base folder
-Ask under banner `== Step 1 — base folder (job shelf — mkdir if missing) ==` (use this wording):
+Print banner `== Step 1 — base folder (job shelf — mkdir if missing) ==`.
+
+**Cursor:** use **AskQuestion** for this step (do not guess from cwd):
+
+| Field | Value |
+|-------|--------|
+| **prompt** | Where should control folders live? Must be **outside** the Loom blueprint — never inside the repo you have open now. |
+| **option 1 (Recommended)** | `~/Documents/coding/agent-build` |
+| **option 2** | Other path… (then ask for absolute `/…` or `~/…`) |
+
+If the user picks the recommended option, blank reply, or Enter → use **`~/Documents/coding/agent-build`** exactly.
+Resolve + validate before `mkdir`:
+
+```bash
+B="$(cat ~/.loop-base)"
+BASE="$(zsh "$B/tools/base-dir.sh" "~/Documents/coding/agent-build")"
+```
+
+**Never suggest as default:** `$PWD`, workspace root, blueprint path (`~/.loop-base`), or any folder inside the Loom repo.
+
+**Claude Code / Hermes (no AskQuestion):** ask in chat:
 
 > Where should projects live?
 >
-> Default: `~/Documents/coding/agent-build`
+> **Default (recommended):** `~/Documents/coding/agent-build`
 >
-> Press **Enter** for the default, or type your own path (must be absolute — starts with `/` or `~`).
+> Press **Enter** for the default, or type another absolute path (`/` or `~`).
 
 Validate:
 - must be an **absolute** path (starts with `/` or `~`),

@@ -2,20 +2,14 @@
 # Deploy the agent team from this blueprint to your platforms (run once).
 # Syncs agents to Claude Code + Hermes (see sync-agents.sh), then opens the dashboard.
 # Usage: zsh tools/deploy.sh
+# Also runs automatically on first ./loom or loom command (via tools/refresh.sh).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-# Register THIS blueprint as the central dashboard home so any project can find it
-# (tools/dash.sh reads ~/.loop-base). The dashboard is never copied into projects.
-printf '%s\n' "$ROOT" > "$HOME/.loop-base"
+zsh tools/refresh.sh --quiet
 
-zsh tools/install-loom-cli.sh
-zsh tools/sync-agents.sh
-
-if [ "${DEPLOY_SKIP_CC_HOOKS:-}" != 1 ]; then
-  zsh tools/install-dash-hooks.sh
-else
+if [ "${DEPLOY_SKIP_CC_HOOKS:-}" = 1 ]; then
   echo "  (skipped dashboard hooks — DEPLOY_SKIP_CC_HOOKS=1)"
 fi
 
@@ -43,9 +37,11 @@ cat <<'TXT'
 For Cursor personas (optional): Settings → Custom Modes → add one per agent,
 pasting the body of each .claude/agents/*.md as the instructions.
 
-Next: start a project →  Use loom-start  (or  zsh tools/loom-start.sh)
+Next: ./loom wrap claude   or   Use loom-start in Cursor
 TXT
 
-echo "== opening central dashboard =="
-( zsh "$ROOT/agent-dashboard/serve.sh" >/dev/null 2>&1 & )
-echo "  http://localhost:19000"
+if [ "${LOOM_DEPLOY_NO_DASH:-}" != 1 ]; then
+  echo "== opening central dashboard =="
+  ( zsh "$ROOT/agent-dashboard/serve.sh" >/dev/null 2>&1 & )
+  echo "  http://localhost:19000"
+fi

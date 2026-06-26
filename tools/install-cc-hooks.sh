@@ -27,8 +27,10 @@ const hookBlock = (matcher) => ({
   hooks: [entry],
 });
 const loomHooks = {
+  SessionStart: [hookBlock()],
+  UserPromptSubmit: [hookBlock()],
   SubagentStart: [hookBlock()],
-  PostToolUse: [hookBlock('Edit|Write|StrReplace|Delete|Bash')],
+  PostToolUse: [hookBlock('Edit|Write|StrReplace|Delete|Bash|Task|Agent')],
   SubagentStop: [hookBlock()],
   Stop: [hookBlock()],
 };
@@ -63,4 +65,4 @@ mkdir -p "$HOME/.loop-dash"
 echo "  ✓ state dir ~/.loop-dash"
 echo ""
 echo "Restart Claude Code (or start a new session) so hooks load."
-echo "Hooks bridge only after Use loom-start / loom-orch (or a Loom sub-agent starts)."
+echo "Hooks bridge after Use loom-start / loom-orch, loom wrap claude, or a Loom sub-agent."

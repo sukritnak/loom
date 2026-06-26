@@ -47,27 +47,75 @@ ${d}           plan → build → verify · AI agent team${r}
 BANNER
 }
 
+loom_self_root() {
+  local script="${0:A}"
+  local root
+  root="$(cd "$(dirname "$script")/.." && pwd)"
+  [[ -f "$root/tools/refresh.sh" ]] || return 1
+  print -r -- "$root"
+}
+
+loom_git_root() {
+  local root
+  root="$(git -C "${PWD}" rev-parse --show-toplevel 2>/dev/null)" || return 1
+  [[ -f "$root/tools/refresh.sh" ]] || return 1
+  print -r -- "$root"
+}
+
+loom_resolve_root() {
+  local b root
+  b="$(loom_base 2>/dev/null)" && { print -r -- "$b"; return 0; }
+  root="$(loom_self_root 2>/dev/null)" && { print -r -- "$root"; return 0; }
+  root="$(loom_git_root 2>/dev/null)" && { print -r -- "$root"; return 0; }
+  return 1
+}
+
+loom_is_registered() {
+  local root="$1" reg=""
+  root="${root%/}"
+  [[ -f "$HOME/.loop-base" ]] || return 1
+  reg="$(head -n1 "$HOME/.loop-base")"
+  reg="${reg%/}"
+  [[ "$reg" == "$root" && -d "$root" ]]
+}
+
+loom_ensure_deployed() {
+  local root
+  root="$(loom_resolve_root)" || return 1
+  loom_is_registered "$root" && return 0
+  echo
+  echo "  → First run — registering Loom on this machine…"
+  LOOM_DEPLOY_NO_DASH=1 zsh "$root/tools/refresh.sh"
+  echo
+}
+
 loom_base() {
   local b="${LOOP_BASE:-}"
   if [[ -z "$b" && -f "$HOME/.loop-base" ]]; then
     b="$(head -n1 "$HOME/.loop-base")"
   fi
   b="${b%/}"
-  if [[ -z "$b" || ! -d "$b" ]]; then
-    return 1
+  if [[ -n "$b" && -d "$b" && -f "$b/tools/refresh.sh" ]]; then
+    print -r -- "$b"
+    return 0
   fi
-  print -r -- "$b"
+  return 1
 }
 
 loom_base_or_die() {
+  loom_ensure_deployed || true
   local b
-  b="$(loom_base)" || {
+  b="$(loom_base)" || b="$(loom_resolve_root)" || {
     loom_banner
     echo
     echo "  ✗ Blueprint not registered (~/.loop-base missing or stale)"
-    echo "  → First time:  cd /path/to/loom && zsh tools/deploy.sh"
+    echo "  → cd /path/to/loom && ./loom wrap claude"
+    echo "  → or: zsh tools/deploy.sh"
     exit 1
   }
+  if ! loom_is_registered "$b"; then
+    printf '%s\n' "$b" > "$HOME/.loop-base"
+  fi
   print -r -- "$b"
 }
 
@@ -191,7 +239,10 @@ loom — Loom blueprint CLI (path from ~/.loop-base)
   loom dash [cmd…]        Central dashboard (serve · set · log · …)
   loom start [args…]      loom-start wizard (Steps 1–4)
 
-Run once per machine from the loom repo:
+First time (from cloned repo):
+  ./loom wrap claude      auto-registers ~/.loop-base + hooks
+
+Full install (external skills + dashboard):
   zsh tools/deploy.sh
 EOF
 }
@@ -221,10 +272,12 @@ case "$cmd" in
         argv=()
         (( ${#dirs[@]} )) && argv+=( --add-dir "${dirs[@]}" )
         if loom_should_auto_start "$@"; then
+          export LOOM_DASH_ACTIVE=1
+          export LOOM_DASH_AGENT=loom-start
           argv+=( --agent loom-start "${LOOM_WRAP_START_PROMPT:-Use loom-start}" )
         fi
         argv+=( "$@" )
-        exec claude "${argv[@]}"
+        exec env LOOM_DASH_ACTIVE="${LOOM_DASH_ACTIVE:-}" LOOM_DASH_AGENT="${LOOM_DASH_AGENT:-}" claude "${argv[@]}"
         ;;
       *)
         echo "loom wrap: supported: claude" >&2
@@ -240,6 +293,12 @@ case "$cmd" in
   dash)
     shift
     B="$(loom_base_or_die)"
+    case "${1:-}" in
+      doctor|hooks)
+        shift
+        exec zsh "$B/tools/hook-doctor.sh" "$@"
+        ;;
+    esac
     exec zsh "$B/tools/dash.sh" "$@"
     ;;
   start)

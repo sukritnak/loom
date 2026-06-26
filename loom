@@ -1,0 +1,3 @@
+#!/usr/bin/env zsh
+# Run from repo root without PATH setup: ./loom wrap claude
+exec "$(CDPATH= cd -- "$(dirname "$0")" && pwd)/bin/loom" "$@"

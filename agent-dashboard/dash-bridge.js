@@ -10,7 +10,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { cleanProject, resolveDisplayPath } = require(path.join(__dirname, '../tools/resolve-project.js'));
+const { cleanProject, resolveDisplayPath, serviceRoots } = require(path.join(__dirname, '../tools/resolve-project.js'));
 const { cmdLabel } = require('./capability-labels');
 
 const IDS = new Set(['orch', 'pm', 'ux-ui', 'be', 'fullstack', 'fe', 'fe-mo', 'qa']);
@@ -34,6 +34,7 @@ const AGENT_MAP = {
   'loom-start': 'orch',
 };
 const STATE_DIR = path.join(os.homedir(), '.loop-dash');
+const GLOBAL_STATE = path.join(STATE_DIR, 'global.json');
 const DEDUPE_MS = 4000;
 const FILE_COALESCE_MS = 20000; // merge rapid edits to same file into one log line
 const FILE_DETAIL_CAP = 8000;
@@ -102,7 +103,8 @@ const SKIP_SHELL_RES = [
   /status\.json/i,
   /\bnode\s+-e\b/,
   /\bgit\s+(status|diff|log)\b/i,
-  /\b(rg|grep|cat|head|tail|wc|ls|pwd|echo)\b/i,
+  /\b(rg|grep|cat|head|tail|wc|ls|pwd|echo|find|fd)\b/i,
+  /\bcd\s+[^\s&|]+\s*&&\s*(cat|head|rg|grep)\b/i,
 ];
 /** Loom dashboard hook plumbing — edits here aren't user-project work. */
 const SKIP_FILE_RES = [
@@ -150,7 +152,69 @@ function readProjectFromDir(dir) {
   }
 }
 
-/** Hooks: cwd walk only; .active-project fallback only after explicit Loom session start. */
+function hookDebug(msg, data) {
+  if (process.env.LOOM_DASH_DEBUG !== '1') return;
+  try {
+    fs.mkdirSync(STATE_DIR, { recursive: true });
+    const line = `${new Date().toISOString()} ${msg}${data ? ' ' + JSON.stringify(data) : ''}\n`;
+    fs.appendFileSync(path.join(STATE_DIR, 'hook-debug.log'), line);
+  } catch (e) { /* ok */ }
+}
+
+function activeControlDir() {
+  const base = loopBase();
+  if (!base) return '';
+  try {
+    const active = fs.readFileSync(path.join(base, '.active-project'), 'utf8').trim();
+    if (active && fs.existsSync(path.join(active, 'loop.config.json'))) return active;
+  } catch (e) { /* ok */ }
+  return '';
+}
+
+/** Blueprint, control folder, or any service path from the active job. */
+function isLoomJobWorkspace(cwd) {
+  const r = path.resolve(cwd || process.cwd());
+  const base = loopBase();
+  const active = activeControlDir();
+  const roots = new Set();
+  if (base) roots.add(path.resolve(base));
+  if (active) {
+    roots.add(path.resolve(active));
+    for (const p of serviceRoots(active)) roots.add(path.resolve(p));
+  }
+  for (const root of roots) {
+    if (r === root || r.startsWith(root + path.sep)) return true;
+  }
+  return false;
+}
+
+function loadGlobal() {
+  try { return JSON.parse(fs.readFileSync(GLOBAL_STATE, 'utf8')); } catch (e) {
+    return { loomActive: false };
+  }
+}
+
+function saveGlobal(patch) {
+  try {
+    fs.mkdirSync(STATE_DIR, { recursive: true });
+    const g = { ...loadGlobal(), ...patch, at: Date.now() };
+    fs.writeFileSync(GLOBAL_STATE, JSON.stringify(g, null, 2));
+  } catch (e) { /* ok */ }
+}
+
+function mergeGlobalActivation(st, input, sid) {
+  const g = loadGlobal();
+  if (!g.loomActive) return;
+  const cid = input.parent_conversation_id || input.conversation_id || sid;
+  const fresh = !g.at || (Date.now() - g.at < 7 * 24 * 3600 * 1000);
+  const sameConvo = g.conversation_id && (g.conversation_id === cid || g.conversation_id === sid);
+  if (sameConvo || (fresh && isLoomJobWorkspace(resolveCwd(input)))) {
+    st.loomActive = true;
+    if (g.who) st.who = g.who;
+  }
+}
+
+/** Hooks: cwd walk; .active-project when session active or workspace is the active Loom job. */
 function resolveHookContext(cwd, loomActive) {
   let d = path.resolve(cwd || process.cwd());
   for (let i = 0; i < 16 && d && d !== path.dirname(d); i++) {
@@ -159,15 +223,11 @@ function resolveHookContext(cwd, loomActive) {
     }
     d = path.dirname(d);
   }
-  if (!loomActive) return { controlDir: null, project: '' };
-  const base = loopBase();
-  if (!base) return { controlDir: null, project: '' };
-  try {
-    const active = fs.readFileSync(path.join(base, '.active-project'), 'utf8').trim();
-    if (active && fs.existsSync(path.join(active, 'loop.config.json'))) {
-      return { controlDir: active, project: readProjectFromDir(active) };
-    }
-  } catch (e) { /* ok */ }
+  const active = activeControlDir();
+  if (!active) return { controlDir: null, project: '' };
+  if (loomActive || isLoomJobWorkspace(cwd)) {
+    return { controlDir: active, project: readProjectFromDir(active) };
+  }
   return { controlDir: null, project: '' };
 }
 
@@ -181,18 +241,34 @@ function isLoomAgentType(agentType) {
 }
 
 function promptText(input) {
-  return pickField(input, ['prompt', 'user_message', 'userMessage', 'user_prompt', 'userPrompt', 'message', 'content']);
+  const ex = extra(input);
+  return pickField(input, ['prompt', 'user_message', 'userMessage', 'user_prompt', 'userPrompt', 'message', 'content'])
+    || pickField(ex, ['user_message', 'userMessage', 'user_prompt', 'userPrompt', 'prompt', 'message', 'content']);
 }
 
 function maybeActivateLoom(st, input, event) {
   if (st.loomActive) return true;
-  if (event === 'beforeSubmitPrompt' && LOOM_INVOKE_RE.test(promptText(input))) {
+  if (process.env.LOOM_DASH_ACTIVE === '1') {
+    st.loomActive = true;
+    const at = input.agent_type || process.env.LOOM_DASH_AGENT || '';
+    if (isLoomAgentType(at)) st.who = mapWho(at);
+    return true;
+  }
+  if (isLoomJobWorkspace(resolveCwd(input))) {
+    st.loomActive = true;
+    return true;
+  }
+  if (event === 'sessionStart' && isLoomAgentType(input.agent_type)) {
+    st.loomActive = true;
+    st.who = mapWho(input.agent_type);
+    return true;
+  }
+  if ((event === 'beforeSubmitPrompt' || event === 'preLlmCall') && LOOM_INVOKE_RE.test(promptText(input))) {
     st.loomActive = true;
     return true;
   }
   if (event === 'subagentStart') {
-    const ex = extra(input);
-    const agent = ex.child_role || input.agent_type || input.subagent_type;
+    const agent = hookAgentType(input);
     if (isLoomAgentType(agent)) {
       st.loomActive = true;
       return true;
@@ -209,6 +285,63 @@ function maybeActivateLoom(st, input, event) {
     }
   }
   return false;
+}
+
+function hookAgentType(input) {
+  const ex = extra(input);
+  const ti = toolInput(input);
+  return pickField(input, ['agent_type', 'subagent_type', 'subagentType', 'child_role', 'childRole'])
+    || pickField(ex, ['child_role', 'childRole', 'agent_type', 'subagent_type', 'child_agent'])
+    || pickField(ti, ['subagent_type', 'subagentType', 'agent_type']);
+}
+
+function hookAgentId(input) {
+  const ex = extra(input);
+  return pickField(input, ['agent_id', 'subagent_id', 'agentId', 'subagentId', 'tool_call_id'])
+    || pickField(ex, ['child_id', 'agent_id', 'subagent_id']);
+}
+
+function registerSubagent(st, input) {
+  const at = hookAgentType(input);
+  if (!at) return st.who || 'orch';
+  const who = mapWho(at);
+  st.who = who;
+  st.agent_type = at;
+  const aid = hookAgentId(input) || at;
+  st.subagents = st.subagents || {};
+  st.subagents[aid] = who;
+  st.activeSubagent = aid;
+  return who;
+}
+
+/** CC agent_type · Cursor subagent_id registry · Hermes extra.child_role */
+function resolveWho(st, input) {
+  const aid = hookAgentId(input);
+  if (aid && st.subagents?.[aid]) {
+    st.who = st.subagents[aid];
+    return st.who;
+  }
+  const at = hookAgentType(input);
+  if (at) {
+    st.who = mapWho(at);
+    st.agent_type = at;
+    if (aid) {
+      st.subagents = st.subagents || {};
+      st.subagents[aid] = st.who;
+      st.activeSubagent = aid;
+    }
+    return st.who;
+  }
+  if (st.activeSubagent && st.subagents?.[st.activeSubagent]) {
+    st.who = st.subagents[st.activeSubagent];
+  }
+  return st.who || 'orch';
+}
+
+function clearSubagent(st, input) {
+  const aid = hookAgentId(input) || st.activeSubagent;
+  if (aid && st.subagents) delete st.subagents[aid];
+  if (st.activeSubagent === aid) delete st.activeSubagent;
 }
 
 function mapWho(agentType) {
@@ -246,6 +379,8 @@ function normalizeEvent(input) {
     subagentstop: 'subagentStop',
     subagent_stop: 'subagentStop',
     subagent_start: 'subagentStart',
+    pre_llm_call: 'preLlmCall',
+    on_session_start: 'sessionStart',
     post_llm_call: 'afterAgentResponse',
     beforesubmitprompt: 'beforeSubmitPrompt',
     userpromptsubmit: 'beforeSubmitPrompt',
@@ -257,6 +392,8 @@ function normalizeEvent(input) {
   };
   if (map[e]) return map[e];
   // Claude Code PascalCase
+  if (raw === 'SessionStart') return 'sessionStart';
+  if (raw === 'UserPromptSubmit') return 'beforeSubmitPrompt';
   if (raw === 'SubagentStart') return 'subagentStart';
   if (raw === 'PostToolUse') return 'postToolUse';
   if (raw === 'SubagentStop') return 'subagentStop';
@@ -272,7 +409,12 @@ function normalizeEvent(input) {
 }
 
 function sessionId(input) {
-  return input.session_id || input.conversation_id || input.parent_conversation_id || 'default';
+  return input.conversation_id || input.session_id || input.parent_conversation_id || 'default';
+}
+
+/** Cursor subagent hooks use parent_conversation_id — share one state file with parent. */
+function stateSessionId(input) {
+  return input.parent_conversation_id || input.conversation_id || input.session_id || 'default';
 }
 
 function statePath(sid) {
@@ -562,40 +704,66 @@ function main() {
   const event = normalizeEvent(input);
   if (!event) process.exit(0);
 
-  const sid = sessionId(input);
+  const sid = stateSessionId(input);
   const cwd = resolveCwd(input);
   const st = loadState(sid);
+  mergeGlobalActivation(st, input, sid);
   const activated = maybeActivateLoom(st, input, event);
-  if (activated) saveState(sid, st);
+  if (activated) {
+    saveState(sid, st);
+    saveGlobal({ loomActive: true, conversation_id: stateSessionId(input), who: st.who || 'orch' });
+  }
+  hookDebug(event, { sid, activated, loomActive: st.loomActive, cwd: cwd.slice(-60) });
 
-  if (event === 'beforeSubmitPrompt') {
+  if (event === 'beforeSubmitPrompt' || event === 'sessionStart' || event === 'preLlmCall') {
     if (isHermes(input)) hermesOk();
     else cursorOk();
     process.exit(0);
   }
 
-  if (!st.loomActive) exitBridge(input);
+  if (!st.loomActive) {
+    hookDebug('skip-inactive', { sid, event });
+    exitBridge(input);
+  }
 
   const { controlDir, project } = resolveHookContext(cwd, st.loomActive);
-  if (!controlDir) exitBridge(input);
+  if (!controlDir) {
+    hookDebug('skip-no-control', { sid, event, cwd });
+    exitBridge(input);
+  }
 
   if (event === 'subagentStart') {
-    const ex = extra(input);
-    const who = mapWho(ex.child_role || input.agent_type || input.subagent_type);
-    st.who = who;
-    st.agent_type = ex.child_role || input.agent_type || input.subagent_type || '';
+    const who = registerSubagent(st, input);
     st.cwd = cwd;
     saveState(sid, st);
-    const label = (ex.child_goal || input.task || input.agent_type || input.subagent_type || who).slice(0, 80);
+    const label = (extra(input).child_goal || input.task || hookAgentType(input) || who).slice(0, 80);
     dash(['set', who, 'work', label, `subagent started: ${label}`, `speech=เริ่มงาน: ${label}`], project, controlDir);
     exitBridge(input);
   }
 
-  const who = st.who || mapWho(extra(input).child_role || input.agent_type || input.subagent_type) || 'orch';
+  const who = resolveWho(st, input);
+  saveState(sid, st);
 
   if (event === 'postToolUse') {
     const tool = String(input.tool_name || input.tool || '').trim();
     const ti = toolInput(input);
+    if (tool === 'Task') {
+      const sub = ti.subagent_type || ti.subagentType || ti.agent_type || '';
+      if (isLoomAgentType(sub)) {
+        const w = mapWho(sub);
+        st.who = w;
+        st.agent_type = sub;
+        const pending = hookAgentId(input) || `task-${sub}`;
+        st.subagents = st.subagents || {};
+        st.subagents[pending] = w;
+        st.activeSubagent = pending;
+        saveState(sid, st);
+        const label = String(ti.description || ti.prompt || sub).slice(0, 80);
+        dash(['delegate', 'orch', w, label, `activity=delegate → ${w}`, `speech=มอบหมาย ${w}`], project, controlDir);
+        dash(['set', w, 'work', label, `subagent: ${label}`, `speech=เริ่มงาน: ${label}`], project, controlDir);
+      }
+      exitBridge(input);
+    }
     if (tool === 'Write' || tool === 'Edit') {
       const fp = filePathFrom(ti, cwd);
       const pair = tool === 'Write'
@@ -635,8 +803,12 @@ function main() {
 
   if (event === 'subagentStop') {
     const ex = extra(input);
-    const id = mapWho(ex.child_role || input.agent_type || input.subagent_type || st.agent_type || st.who);
-    let msg = String(ex.child_summary || input.summary || input.last_assistant_message || '').trim();
+    const id = resolveWho(st, input);
+    saveState(sid, st);
+    let msg = String(
+      input.last_assistant_message || input.summary || input.description
+      || ex.child_summary || ex.childSummary || ''
+    ).trim();
     if (!msg && input.agent_transcript_path && fs.existsSync(input.agent_transcript_path)) {
       try {
         const tail = fs.readFileSync(input.agent_transcript_path, 'utf8').slice(-12000);
@@ -644,6 +816,8 @@ function main() {
       } catch (e) { /* ok */ }
     }
     reportMessage(st, sid, id, msg, project, controlDir);
+    clearSubagent(st, input);
+    saveState(sid, st);
     exitBridge(input);
   }
 
@@ -672,8 +846,24 @@ if (process.argv.includes('--self-check')) {
   console.assert(!shouldSkipShell('npm test'), 'keep npm test');
   console.assert(normalizeEvent({ hook_event_name: 'post_tool_call' }) === 'postToolUse', 'hermes post_tool_call');
   console.assert(normalizeEvent({ hook_event_name: 'subagent_stop' }) === 'subagentStop', 'hermes subagent_stop');
-  console.assert(!maybeActivateLoom({ loomActive: false }, { prompt: 'fix this bug' }, 'beforeSubmitPrompt'), 'no activate casual chat');
+  console.assert(!maybeActivateLoom({ loomActive: false }, { prompt: 'fix this bug', cwd: '/tmp' }, 'beforeSubmitPrompt'), 'no activate casual chat');
+  console.assert(maybeActivateLoom({ loomActive: false }, { agent_type: 'loom-start' }, 'sessionStart'), 'activate session loom-start');
+  console.assert(maybeActivateLoom({ loomActive: false }, { hook_event_name: 'pre_llm_call', extra: { user_message: '/loom-start' } }, 'preLlmCall'), 'activate hermes pre_llm_call');
   console.assert(maybeActivateLoom({ loomActive: false }, { prompt: 'Use loom-start' }, 'beforeSubmitPrompt'), 'activate loop-start');
+  console.assert(sessionId({ conversation_id: 'c1', session_id: 's1' }) === 'c1', 'prefer conversation_id');
+  console.assert(stateSessionId({ parent_conversation_id: 'p', conversation_id: 'c' }) === 'p', 'cursor parent session');
+  const st = { who: 'orch' };
+  resolveWho(st, { agent_type: 'loom-fe', hook_event_name: 'PostToolUse' });
+  console.assert(st.who === 'fe', 'cc subagent agent_type → fe');
+  const stC = { who: 'orch', subagents: {} };
+  registerSubagent(stC, { subagent_type: 'loom-fe', subagent_id: 'sub-1' });
+  console.assert(stC.who === 'fe' && stC.subagents['sub-1'] === 'fe', 'cursor subagent registry');
+  const stA = { who: 'orch', subagents: { 'sub-1': 'fe' }, activeSubagent: 'sub-1' };
+  resolveWho(stA, { tool_name: 'Bash' });
+  console.assert(stA.who === 'fe', 'active subagent fallback');
+  const stH = { who: 'orch' };
+  resolveWho(stH, { hook_event_name: 'post_tool_call', extra: { child_role: 'loom-be' } });
+  console.assert(stH.who === 'be', 'hermes child_role → be');
   console.assert(isLoomAgentType('loom-orch'), 'loom agent');
   console.assert(!isLoomAgentType('explore'), 'not loom explore');
   console.assert(cmdLabel('npm test'), 'label npm test');

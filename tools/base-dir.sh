@@ -5,6 +5,18 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEFAULT="$HOME/Documents/coding/agent-build"
+SUGGEST='~/Documents/coding/agent-build'
+
+case "${1:-}" in
+  suggest)
+    echo "$SUGGEST"
+    exit 0
+    ;;
+  default)
+    echo "$DEFAULT"
+    exit 0
+    ;;
+esac
 
 b="${1:-${BASE_DIR:-}}"
 [ -n "$b" ] || { [ -f "$ROOT/.base-dir" ] && b="$(head -n1 "$ROOT/.base-dir")"; }
