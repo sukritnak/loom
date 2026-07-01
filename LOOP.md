@@ -17,6 +17,7 @@ rounds that makers read before retrying.
 |-----------|--------------|
 | State / Memory | `STATE.md` — durable spine; orchestrator reads first, writes last |
 | Project map | `loop.config.json` — which FE/BE folders to work in (many services). **Not hand-written first** — the `loom-start` skill (or `loom-orch`) creates it on first run |
+| Communication locale | `loop.config.json` → `locale`: `en` \| `th` \| `auto` (match user language) — set at loom-start |
 | Sub-agents (maker / checker) | makers = frontend-agent, backend-agent · checker = qa-agent |
 | Worktrees | makers run in isolated git worktrees for safe parallel work |
 | Skills & connectors | pm-skills, ui-ux-pro-max, context7, ponytail (+ ponytail-review, ponytail-audit on legacy), browser-use qa |
@@ -67,6 +68,16 @@ Move up a level only once the previous one has been boring for a while.
 Force-push / history rewrite · delete branches or data · edit secrets/`.env`/CI
 credentials · change access controls · publish/deploy · any payment. These always
 stop at the human gate.
+
+## Communication locale
+Set once at **loom-start** → `loop.config.json` → `locale`:
+| Value | Agents use |
+|-------|------------|
+| `en` | English for all user-facing text |
+| `th` | Thai (ไทย) |
+| `auto` | Match whatever language the user writes in *(default)* |
+
+Orchestrator passes the same rule in every delegation. Terminal: `zsh tools/loom-start.sh` asks at Step 0.5.
 
 ## Run it
 No `loop.config.json` yet? Start anyway — `loom-orch` asks project/mode/folders and writes the file before work.

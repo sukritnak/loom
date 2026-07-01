@@ -53,9 +53,23 @@ ensure_dashboard() {
 
 ensure_dashboard
 
+# --- locale (communication language) ---
+source "$ROOT/tools/locale.sh"
+if [ -n "$OPEN_PATH" ]; then
+  : # lock_project will ensure locale on existing config
+else
+  LOOM_LOCALE="$(pick_locale "${LOOM_LOCALE:-}")"
+  echo "✓ Communication language → $(locale_label "$LOOM_LOCALE")"
+fi
+
 lock_project() {
   local dest="$1"
   [ -f "$dest/loop.config.json" ] || { echo "✗ no loop.config.json in $dest" >&2; exit 1; }
+  source "$ROOT/tools/locale.sh" 2>/dev/null || true
+  if ! read_locale_from_config "$dest" >/dev/null 2>&1; then
+    step "0.5" "communication language (locale)"
+  fi
+  ensure_locale_config "$dest" "${LOOM_LOCALE:-}"
   step 3 "lock target (.active-project — no new folder)"
   printf '%s\n' "$dest" > "$ROOT/.active-project"
   zsh "$ROOT/tools/apply-agent-model.sh" "$dest" 2>/dev/null || true

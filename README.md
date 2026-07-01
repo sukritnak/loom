@@ -51,7 +51,9 @@ In chat (any platform):
 Use loom-start
 ```
 
-Steps: dashboard → base folder → control folder → **platform + model** → hand off.
+Steps: dashboard → **language** → base folder → control folder → **platform + model** → hand off.
+
+**Language** (`locale` in config): **English** · **ไทย** · **Auto** (match how you type — default)
 
 Default models: Cursor `composer-2.5` · Claude `sonnet` · Hermes `inherit`
 

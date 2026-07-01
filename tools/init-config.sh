@@ -7,6 +7,11 @@ B="$(cat ~/.loop-base 2>/dev/null || true)"
 
 ask() { local p="$1" d="${2:-}" v; read -r "v?$p${d:+ [$d]}: " || true; echo "${v:-$d}"; }
 
+source "$(dirname "$0")/locale.sh"
+if [ -z "${LOOM_LOCALE:-}" ]; then
+  LOOM_LOCALE="$(pick_locale)"
+fi
+
 pick_model() {
   local platform="$1" default_n="${2:-1}"
   echo
@@ -32,6 +37,8 @@ process.stdout.write(o.id);
 }
 
 echo "== loom-start Step 2b — loop.config.json (writes into $(pwd)) =="
+[ -n "${LOOM_LOCALE:-}" ] || LOOM_LOCALE="$(pick_locale)"
+echo "Communication language → $(locale_label "$LOOM_LOCALE")"
 PROJECT=$(ask "Project name" "$(basename "$(pwd)")")
 MODE=$(ask "Mode (new = scaffold fresh folders / existing = use what's here)" "new")
 AUTO=$(ask "Autonomy (L1 report / L2 assisted / L3 unattended)" "L1")
@@ -94,7 +101,7 @@ while true; do
 done
 
 AGENT_PLATFORM="$AGENT_PLATFORM" CURSOR_MODEL="$CURSOR_MODEL" CLAUDE_MODEL="$CLAUDE_MODEL" HERMES_MODEL="$HERMES_MODEL" \
-PROJECT="$PROJECT" MODE="$MODE" AUTO="$AUTO" IMPROVEMENT="$IMPROVEMENT" SVCS="$SVC_LINES" B="$B" node <<'NODE'
+PROJECT="$PROJECT" MODE="$MODE" AUTO="$AUTO" IMPROVEMENT="$IMPROVEMENT" LOOM_LOCALE="${LOOM_LOCALE:-auto}" SVCS="$SVC_LINES" B="$B" node <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -120,6 +127,7 @@ const cfg = {
   mode: process.env.MODE,
   services: svcs,
   autonomy: process.env.AUTO,
+  locale: process.env.LOOM_LOCALE || 'auto',
   agent_platform: platform,
   agent_models,
   improvement_policy: process.env.IMPROVEMENT || 'guided',

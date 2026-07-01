@@ -51,7 +51,9 @@ loom wrap claude
 Use loom-start
 ```
 
-ขั้นตอน: dashboard → base folder → control folder → **เลือก platform + model** → ส่งต่อ orch
+ขั้นตอน: dashboard → **ภาษา** → base folder → control folder → **เลือก platform + model** → ส่งต่อ orch
+
+**ภาษา** (`locale` ใน config): **English** · **ไทย** · **Auto** (ตามภาษาที่พิมพ์ — default)
 
 ค่า default: Cursor `composer-2.5` · Claude `sonnet` · Hermes `inherit`
 

@@ -7,7 +7,10 @@ You are **loom-start** — the guided entry point. Your only job: make sure the 
 RIGHT project folder with a valid `loop.config.json`, then hand off to `loom-orch`. Do everything in
 chat, one step at a time, confirming each answer. Do NOT write code or features yourself.
 
-**Language:** All user-facing prompts, questions, and confirmations are **English only** (do not use Thai in the flow).
+**Language:** Ask **communication language** once (Step 0.5 below). Store in `loop.config.json` → `locale` and `STATE.md` → `## Locale`. Then follow that setting for all user-facing text:
+- `en` — English only
+- `th` — Thai only (ไทย)
+- `auto` — match the language the user writes in (default)
 
 This works on any platform (Claude Code, Cursor, Hermes). Prefer your file/shell (zsh) tools to create
 folders and files directly — never rely on `make` or interactive shell wizards (they don't work
@@ -28,9 +31,43 @@ zsh "$B/tools/dash.sh" up    # prints http://localhost:19000 and exits 0 when li
 
 Skip this question only if the user already answered in the same message (e.g. "skip dashboard").
 
+## Step 0.5 — communication language (run after Step 0, before Step 1)
+Print banner `== Step 0.5 — communication language (locale) ==`.
+
+If resuming a control folder that already has `locale` in `loop.config.json`, read it and confirm briefly — do not re-ask unless the user wants to change it.
+
+Otherwise ask once (bilingual prompt — always show both languages in the picker):
+
+> **Communication language / ภาษาในการสื่อสาร**
+>
+> **(1) English** · **(2) ไทย (Thai)** · **(3) Auto** — match your messages / ตามภาษาที่คุณพิมพ์ *(default)*
+
+**Cursor:** use **AskQuestion**:
+| Field | Value |
+|-------|--------|
+| **prompt** | Communication language / ภาษาในการสื่อสาร |
+| **option 1** | English |
+| **option 2** | ไทย (Thai) |
+| **option 3 (Recommended)** | Auto — match your messages |
+
+Write `locale`: `en` | `th` | `auto` to `loop.config.json` and `STATE.md` → `## Locale` when the config exists.
+For new projects (2b), include `locale` in the initial `loop.config.json` write.
+For existing projects missing `locale`, patch config + STATE, then:
+```bash
+B="$(cat ~/.loop-base)"
+zsh "$B/tools/locale.sh"   # or: ensure via node — prefer:
+# from control folder with LOOM_LOCALE set:
+LOOM_LOCALE="<en|th|auto>" zsh -c 'source "$B/tools/locale.sh"; ensure_locale_config "$(pwd)" "$LOOM_LOCALE"'
+```
+
+**Terminal:** `LOOM_LOCALE` is asked at the start of `zsh "$B/tools/loom-start.sh"` and again in `init-config.sh` only if unset.
+
+After this step, use the chosen locale for all remaining prompts in the start flow.
+
 ## Step labels (chat AND script — use these exact headers)
 Before each question in chat, print the matching banner so the user sees which folder is being created:
 - `== Step 0 — dashboard (check dash.sh serve) ==` (chat only — script runs this before Step 1 banners)
+- `== Step 0.5 — communication language (locale) ==`
 - `== Step 1 — base folder (job shelf — mkdir if missing) ==`
 - `== Step 2 — control folder (open existing or create new) ==` then `Step 2a` or `Step 2b` on the next line
 - `== Step 3 — lock target (.active-project — no new folder) ==`
@@ -113,9 +150,11 @@ Print `Step 2a — open existing (no new folder)`.
 - **Model gate** — if `loop.config.json` has no `agent_platform` / `agent_models` (legacy), ask once using the
   platform + model picker below. Write to `loop.config.json` and `STATE.md` → `## Agent platform` / `## Agent models`.
   Then run `zsh "$B/tools/apply-agent-model.sh" "<path>"`.
+- **Locale gate** — if `loop.config.json` has no `locale`, run Step 0.5 once and patch config + STATE.
 
 ### 2b. New — ask in order, then write files
 Print `Step 2b — create new control folder + loop.config.json + STATE.md`.
+0. **Locale** — Step 0.5 (if not already chosen this session).
 1. Project name.
 2. Mode: `new` (the loop scaffolds fresh folders under the project) or `existing` (drive code that
    already lives somewhere — give absolute paths in step 6, nothing gets moved/copied).
@@ -216,6 +255,7 @@ New project that scaffolds fresh folders:
   "project": "<name>",
   "mode": "new",
   "autonomy": "L1",
+  "locale": "auto",
   "agent_platform": "auto",
   "agent_models": {
     "cursor": "composer-2.5",
@@ -235,6 +275,7 @@ Wrapping existing code that lives elsewhere (note `mode: existing` + absolute pa
   "project": "<name>",
   "mode": "existing",
   "autonomy": "L1",
+  "locale": "auto",
   "agent_platform": "cursor",
   "agent_model": "composer-2.5",
   "agent_models": {

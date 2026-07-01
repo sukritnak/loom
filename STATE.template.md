@@ -16,6 +16,9 @@
 ## Autonomy level
 L1 (report only)   <!-- L1 | L2 (assisted, no merge) | L3 (unattended, allowlist only) -->
 
+## Locale
+auto   <!-- en | th | auto — also in loop.config.json -->
+
 ## Agent platform
 auto   <!-- auto | cursor | claude | hermes — also in loop.config.json -->
 

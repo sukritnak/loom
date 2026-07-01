@@ -9,6 +9,7 @@
     "hermes": "inherit"
   },
   "improvement_policy": "guided",
+  "locale": "auto",
   "services": [
     { "id": "web",     "side": "fe", "path": "web",                       "stack": "nextjs" },
     { "id": "admin",   "side": "fe", "path": "apps/admin",                "stack": "vite-react" },
@@ -23,6 +24,7 @@
     "agent_models": "per-platform model ids — see tools/agent-models.json. Defaults: cursor composer-2.5 · claude sonnet · hermes inherit",
     "agent_model": "optional shorthand when agent_platform is not auto (same as agent_models.<platform>)",
     "improvement_policy": "conform = match existing style, recommend only · guided = recommend then user picks · auto = apply all recommendations",
+    "locale": "en = English user-facing text · th = Thai · auto = match the language the user writes in",
     "services": "one entry per FE/BE folder — add as many as you want; each can live in its OWN base path (see service.path)",
     "service.id": "short unique name you refer to the service by. e.g. \"web\", \"admin\", \"api\", \"worker\". Used in commands like: zsh tools/scaffold-all.sh api",
     "service.side": "\"fe\" = frontend/UI (owned by fe + fe-anim agents) · \"be\" = backend/API/logic/data (owned by be + be-sr agents)",

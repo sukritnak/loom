@@ -38,7 +38,18 @@ Catalog: `tools/agent-models.json` — **separate lists per platform** (Cursor /
 - Legacy `model` field → treated as `agent_models.cursor`.
 - When delegating via the **Agent** tool, **always** pass `model: <resolved id>` (skip when resolved model is `inherit`).
 - If `agent_platform` / `agent_models` missing, ask once (same picker as loom-start), write config + `STATE.md`, run `zsh "$B/tools/apply-agent-model.sh"` from control folder.
+- If `locale` missing, ask once (same picker as loom-start Step 0.5), write config + `STATE.md`.
 - **Hermes**: if model ≠ `inherit`, remind user to start with `hermes -m "<model>"` or `/model <model>`.
+
+## Communication locale
+Read `locale` from `loop.config.json` (default `auto`):
+| Value | Rule |
+|-------|------|
+| `en` | All user-facing text in **English** |
+| `th` | All user-facing text in **Thai** (ไทย) |
+| `auto` | **Match the user's message language** (mixed OK per turn) |
+
+Apply to your reports, questions, and human gates. **Include the same locale rule in every Agent delegation** so makers and QA match.
 
 ## Autonomy level (set per run; default L1)
 - **L1 — report only**: plan and propose; make no commits. Good for the first runs.
