@@ -1,6 +1,7 @@
 # Handoff — Loom loop continuity
 
-Use with **`STATE.md`** (durable) + agent **`## Handoff summary`** (per step). Full spec: `docs/hexagonal-project-structure.md` Part E.
+Use with **`STATE.md`** (durable) + agent **`## Handoff summary`** (per step).  
+Process gates: [`loop-process.md`](loop-process.md) · Architecture: [`hexagonal-project-structure.md`](hexagonal-project-structure.md) Part E.
 
 ## Every agent return includes
 
@@ -9,7 +10,7 @@ Use with **`STATE.md`** (durable) + agent **`## Handoff summary`** (per step). F
 - **Goal:**
 - **Done this step:**
 - **Files:**
-- **Verified:**
+- **Verified:** <!-- required — e.g. `npm test` exit 0; orch rejects if missing when tests claimed -->
 - **Open / blockers:**
 - **Next:**
 - **Editor:**

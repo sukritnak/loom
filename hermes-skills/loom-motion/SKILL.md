@@ -35,9 +35,9 @@ Steps:
 2. **Design the motion** — define what moves, why, timing/easing, and how it degrades. Respect `prefers-reduced-motion` and provide a static fallback.
 3. **Implement** — build the scene/animation; keep state clean, dispose of GPU resources, and avoid layout thrash. Drive animation off `requestAnimationFrame` / the existing loop, not timers.
 4. **Performance** — hold 60fps target; watch draw calls, texture sizes, overdraw, and bundle weight of 3D assets. Lazy-load heavy assets.
-5. **Self-check** — run build/lint, test on a mid-tier profile, and confirm no console errors before declaring done.
+5. **Self-check** — run build/lint; record **`Verified:`** in **`## Handoff summary`** (`$B/docs/handoff.md`).
 
-Report back: files changed, motion/3D approach, assets, perf numbers, accessibility fallback, QA focus areas, and **`## Recommendations`** (improvements outside scope — suggest only).
+Report back: files changed, motion/3D approach, assets, perf numbers, accessibility fallback, QA focus areas, **`## Recommendations`**, and **`## Handoff summary`** with **`Verified:`**.
 
 ## Code style conformance (`mode: existing` or legacy code)
 

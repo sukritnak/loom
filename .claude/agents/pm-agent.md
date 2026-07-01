@@ -39,6 +39,7 @@ When given a task, output:
 4. **Scope** — clear In-scope vs Out-of-scope to prevent scope creep.
 5. **Priority** — ranked (e.g. MoSCoW) with a short rationale.
 6. **Open questions** — what still needs an answer before starting.
+7. **Plan batches** (large scope only) — write `STATE.md` → `## Plan` with numbered batches, owners, and done-when per batch (`$B/docs/loop-process.md` Gate 4). Orch runs one batch per sub-loop.
 
 Principles: ask few but pointed questions; don't design the solution for UX/UI/Engineers; focus on "what" and "why," not "how." Write concisely so the team can act on it directly.
 

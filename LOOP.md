@@ -25,18 +25,43 @@ rounds that makers read before retrying.
 | Human gate | risky/ambiguous steps escalate to you with full context |
 
 ## Anatomy of one iteration
+
+```mermaid
+flowchart TD
+  LOAD[load STATE + config] --> ORCH[loom-orch]
+  ORCH --> DBG{bug?}
+  DBG -->|yes| REPRO[repro + Debug log]
+  DBG -->|no| PM
+  REPRO --> PM[loom-pm]
+  PM --> UX[loom-ux-ui?]
+  UX --> MK[loom-be · loom-fe · loom-motion]
+  PM --> MK
+  MK --> VER[Verified handoff]
+  VER --> SR[loom-full-stack SR A→B]
+  SR --> QA[loom-qa]
+  QA -->|PASS| DONE[finish checklist]
+  QA -->|FAIL| TRI[pm triage → be/fe fix]
+  TRI --> MK
+```
+
+Text summary:
+
 ```
 load STATE.md + loop.config.json (create config first if missing — use loom-start or zsh "$(cat ~/.loop-base)/tools/init-config.sh")
    → dashboard gate — options: **A** Yes open dashboard *(recommended)* · **B** No (Cursor: AskQuestion)
    → legacy sync (mode: existing) — explore in-scope services, /ponytail-review on task-relevant code,
      /ponytail-audit only if needed; write ## Project context to STATE.md
-   → clarify (PM) → design (UX/UI, if UI)
-   → build in parallel worktrees (Backend + Frontend, makers)
+   → bug debug gate (task_kind: bug) — repro + ## Debug log before fix — see docs/loop-process.md Gate 2
+   → clarify (PM) → design (UX/UI, if UI) → ## Plan batches for large features
+   → build: loom-be · loom-fe · loom-motion (per scope, parallel worktrees) — Verified: required in handoff
+   → SR review (loom-full-stack, 2-stage: contract then ponytail) — Gate 3
    → verify (QA: unit/API tests + qa-browser for every FE/UI AC against dev server)
-   → PASS? ── yes → persist STATE.md → human gate → done
-              └─ no → PM lead triage → feedback packet per owner (fe/loom-be/…)
-                        → makers fix tagged items → QA re-test → loop++ (≤3 rounds)
+   → PASS? ── yes → finish checklist (Gate 5) → persist STATE.md → human gate → done
+              └─ no → PM lead triage → feedback packet per owner (loom-be / loom-fe / fe-mo)
+                        → fix tagged items → QA re-test → loop++ (≤3 rounds)
 ```
+
+Process gates (single spec): **`docs/loop-process.md`** — evidence, debug, SR, plan batches, finish.
 FE/UI acceptance criteria are verified with **browser-use** (`qa-browser` skill) — real browser, not code review alone.
 Install once: `zsh "$(cat ~/.loop-base)/tools/install-browser-use-qa.sh"`
 Every transition is mirrored to the single central dashboard via `zsh "$(cat ~/.loop-base)/tools/dash.sh" ...`

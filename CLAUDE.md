@@ -100,16 +100,20 @@ Agent definitions live in `.claude/agents/` (source of truth). `sync-agents.sh` 
 
 ```
 load STATE.md + loop.config.json
-  → classify ## Task scope (skip agents that don't apply)
+  → classify ## Task scope + task_kind (skip agents that don't apply)
   → dashboard gate
   → legacy orient (mode:existing — BE→Part B, FE→Part C)
-  → clarify (PM) → design (UX if UI in scope)
+  → bug debug gate (task_kind:bug — repro + ## Debug log)
+  → clarify (PM) → design (UX if UI in scope) → ## Plan if large
   → bootstrap (mode:new — fullstack) → build (scoped makers: be / fe / fe-mo)
-  → SR review (fullstack reviewer — separate turn from maker)
+  → evidence gate (Verified: in handoff)
+  → SR review (fullstack reviewer, Stage A+B — separate turn from maker)
   → verify (QA + qa-browser) — skip if audit-only
-  → PASS → recommendations → STATE + handoff
+  → PASS → finish checklist → recommendations → STATE + handoff
   → FAIL → PM triage → fix → re-test (max 3 rounds)
 ```
+
+Process gates: `docs/loop-process.md` · Handoff: `docs/handoff.md`
 
 **Fast path:** `audit-only` → fullstack L1 review only (hex + ponytail + recommendations).
 

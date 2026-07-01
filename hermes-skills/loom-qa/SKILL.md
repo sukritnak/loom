@@ -37,7 +37,7 @@ Steps:
    Docker/Compose files; use those commands for test/build/dev (see **Project run discovery** below).
 3. **Design tests** — cover happy path, edge cases, error cases, boundaries, and regression of nearby features.
 4. **Test** — run the existing test suite, add tests where coverage is missing, and reproduce real behavior as far as the tooling allows.
-5. **Decide** — mark PASS / FAIL per criterion clearly, with the reason for any failure.
+5. **Decide** — mark PASS / FAIL per criterion with **evidence** (command output, `qa-browser` score). Never PASS from maker self-report alone (`$B/docs/loop-process.md` Gate 1).
 
 For each bug, report: reproduction steps, expected vs actual result, severity (blocker/major/minor), and the likely file/line involved. Assign each finding an ID (`F-1`, `F-2`, …) for the PM feedback cycle.
 

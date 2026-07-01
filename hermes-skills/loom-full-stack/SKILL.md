@@ -21,14 +21,20 @@ You are **maker + SR reviewer** (checker-adjacent — separate from `loom-qa`). 
 
 **Concurrency:** only **one** fullstack agent per service path — never parallel fullstack writers on the same repo.
 
-### SR code review (required after every maker build)
+### SR code review (required after every maker build — 2 stages)
 
-1. **Load `ponytail-review` skill** and run **`/ponytail-review`** on all files the makers changed (BE, FE, motion). Focus: over-engineering, needless abstractions, duplicate logic, missing validation at trust boundaries.
-2. **Architecture** — **BE:** Part B (hexagonal, Command/Query/Result). **FE:** Part C (clean layers, Query hooks — **do not** fail FE for missing `ports/` or `usecases/` folders). **Integration:** API contract, no client-side business authority.
-3. **Code quality** — naming, error handling, test gaps, dead code, consistency with `STATE.md` → `## Project context` conventions.
-4. **Security** — authn/authz boundaries, injection, secrets/PII in logs, client-side secret leaks.
-5. **Integration** — API contract match (types, status codes, error shape), auth/session end-to-end.
-6. **Run or spot-check** — makers' test/lint/build claims; flag if missing or red.
+Process: **`$B/docs/loop-process.md` Gate 3**. Reject handoffs without **`Verified:`** when makers claimed green tests/build.
+
+**Stage A — Spec / contract**
+1. AC coverage — did makers address every in-scope criterion?
+2. API contract — types, status codes, error shape, FE↔BE alignment.
+3. Security boundaries — authn/authz, injection surfaces, secrets/PII in logs.
+4. Architecture fit — **BE:** Part B (hexagonal, Command/Query/Result). **FE:** Part C (clean layers, Query hooks — **do not** fail FE for missing `ports/` or `usecases/`). No client-side business authority.
+
+**Stage B — Code quality (ponytail)**
+5. **Load `ponytail-review` skill** — run **`/ponytail-review`** on all changed files. Focus: over-engineering, duplicate logic, missing validation at trust boundaries.
+6. Naming, error handling, test gaps, dead code, consistency with `## Project context`.
+7. **Spot-check `Verified:`** — re-run or sample makers' test/lint/build commands; flag if missing or red.
 
 Return **`## SR code review`** with:
 

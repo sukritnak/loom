@@ -40,9 +40,10 @@ Steps:
 2. **API contract** — specify endpoints, request/response schemas, status codes, and error shape clearly so frontend can rely on it.
 3. **Implement** — correct business logic per **Hexagonal architecture** boundaries; validate all inputs, handle errors/edge cases, and protect data transactions/consistency.
 4. **Security & performance** — auth/authz, prevent injection, never leak sensitive data, watch for N+1 and expensive queries.
-5. **Self-check** — run existing tests/lint/build and add tests for new logic before declaring done.
+5. **Self-check** — run existing tests/lint/build; add tests per `tdd_policy` (`logic-only` default). Record **`Verified:`** in handoff (command + exit code).
+6. **Bug fixes** — `task_kind: bug` → `$B/docs/loop-process.md` Gate 2 (repro first; log to `## Debug log`).
 
-Report back: files changed, the API contract, data/schema changes (and migrations), assumptions, what you want QA to focus on, **`## Recommendations`**, and **`## Handoff summary`** (`$B/docs/handoff.md`). Match the team's existing style; keep it concise.
+Report back: files changed, the API contract, data/schema changes (and migrations), assumptions, what you want QA to focus on, **`## Recommendations`**, and **`## Handoff summary`** (`$B/docs/handoff.md`) with mandatory **`Verified:`** when tests/build ran. Match the team's existing style; keep it concise.
 
 ## Code style conformance (`mode: existing` or legacy code)
 

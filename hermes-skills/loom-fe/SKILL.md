@@ -70,7 +70,7 @@ For `mode: existing`, mirror project patterns — don't impose Part B or C1 on l
 
 ## Handoff (required every return)
 
-End every delegation with **`## Handoff summary`** per `$B/docs/handoff.md` (Goal, Done, Files, Verified, Blockers, Next, Editor). Orch persists to `STATE.md` → `## Last handoff`. On editor switch or long session, also use **handoff** skill → `HANDOFF.md` if needed.
+End every delegation with **`## Handoff summary`** per `$B/docs/handoff.md` (Goal, Done, Files, **Verified**, Blockers, Next, Editor). **`Verified:`** = commands run + exit codes (e.g. `npm run build` → 0). Orch persists to `STATE.md` → `## Last handoff`.
 
 Report back: files changed, assumptions, QA focus, limitations, **`## Recommendations`**, and **`## Handoff summary`**.
 

@@ -43,11 +43,28 @@ guided   <!-- conform | guided | auto — also in loop.config.json -->
 ## Current task
 <the feature/bug in flight>
 
+## Task kind
+<!-- feature | bug | audit-only — orch sets each iteration -->
+feature
+
+## TDD policy
+<!-- logic-only (default) | off | always — also loop.config.json tdd_policy -->
+logic-only
+
 ## Task scope
 <!-- orch sets each iteration: full-stack | api-only | fe-only | motion-heavy | audit-only -->
 scope: full-stack
 makers: <!-- agents that wrote code this iteration, e.g. be, fe — empty if none yet -->
 in-scope services: <!-- service ids from loop.config.json -->
+
+## Plan
+<!-- Large features only — PM batches; orch runs one batch per sub-loop -->
+- [ ] Batch 1: —
+- [ ] Batch 2: —
+
+## Debug log
+<!-- task_kind: bug — one line per repro experiment -->
+- —
 
 ## Project context
 <!-- Legacy orientation (mode: existing) — orchestrator + makers fill before first build -->
@@ -108,6 +125,7 @@ in-scope services: <!-- service ids from loop.config.json -->
 <!-- Overwritten each agent return — compact snapshot for editor/session switches -->
 - **Done:**
 - **Files:**
+- **Verified:** <!-- mandatory when makers ran tests/build — command + exit code -->
 - **Blockers:**
 - **Next:**
 - **Editor:**

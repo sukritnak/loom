@@ -269,18 +269,59 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-  A([New task]) --> B[loom-orch loads STATE + config]
-  B --> C[PM: acceptance criteria]
-  C --> D{UI work?}
-  D -->|yes| E[UX/UI: flows + states]
-  D -->|no| F
-  E --> F[BE / FE build in parallel]
-  F --> G[QA: tests + browser AC]
-  G -->|PASS| H([Update STATE.md · human gate if L1/L2])
-  G -->|FAIL| I[PM triage → feedback to owner]
-  I -->|round ≤ 3| F
-  I -->|stuck / no progress| J([Human gate])
+  START([New task]) --> ORCH[loom-orch<br/>STATE + scope]
+
+  ORCH --> KIND{task_kind}
+  KIND -->|bug| DBG[Debug gate<br/>repro + Debug log]
+  KIND -->|audit-only| FSREV[loom-full-stack<br/>review only]
+  KIND -->|feature| PM
+
+  DBG --> PM[loom-pm<br/>acceptance criteria]
+  PM --> UI{UI in scope?}
+  UI -->|yes| UX[loom-ux-ui]
+  UI -->|no| BUILD
+  UX --> BUILD[Build]
+
+  BUILD --> BE[loom-be<br/>API · logic · data]
+  BUILD --> FE[loom-fe / loom-motion<br/>UI · 3D]
+
+  BE --> VER[Verified in handoff]
+  FE --> VER
+  VER --> SR[loom-full-stack<br/>SR Stage A → B]
+  SR -->|blockers| BUILD
+  SR --> QA[loom-qa<br/>tests + qa-browser]
+  QA -->|PASS| DONE([Finish · STATE · human gate])
+  QA -->|FAIL| TRI[loom-pm triage]
+  TRI -->|round ≤ 3| BUILD
+  TRI -->|stuck| HUMAN([Human gate])
+  FSREV --> DONE
 ```
+
+> **Scope:** orch delegates **only** the makers that apply — not every box every time. See diagram below.
+
+**Who runs per `scope`:**
+
+```mermaid
+flowchart LR
+  subgraph FS_SCOPE["full-stack"]
+    direction TB
+    B1[loom-be] --- F1[loom-fe]
+  end
+  subgraph API["api-only"]
+    B2[loom-be]
+  end
+  subgraph FE_ONLY["fe-only"]
+    F2[loom-fe]
+  end
+  subgraph MOTION["motion-heavy"]
+    M[loom-motion]
+  end
+  subgraph AUDIT["audit-only"]
+    A[loom-full-stack]
+  end
+```
+
+Full process spec: [`docs/loop-process.md`](docs/loop-process.md) · Handoff: [`docs/handoff.md`](docs/handoff.md)
 
 
 
@@ -567,16 +608,102 @@ Resume details → [Resume a session](#resume-a-session--reopen-a-project-you-al
 | `loom-ux-ui` | UX/UI                | UX/UI flow, all states before FE · **ui-ux-pro-max** design intelligence           |
 | `loom-fe`    | Frontend             | UI against API, all states                                                         |
 | `loom-motion`| Frontend Motion      | animation, Three.js/WebGL                                                          |
-| `loom-be`    | Backend              | API, business logic, data layer                                                    |
-| `loom-full-stack` | Fullstack (BE specialist) | DB design, security, deep backend escalation                              |
-| `loom-qa`    | QA                   | AC → PASS/FAIL · FE/UI via `**qa-browser`** (browser-use)                          |
+| `loom-be`    | Backend              | API, business logic, data layer (maker)                                            |
+| `loom-full-stack` | Senior Fullstack | **SR code review** (2-stage) before QA · hex bootstrap · DB/security maker       |
+| `loom-qa`    | QA                   | AC → PASS/FAIL · FE/UI via **`qa-browser`** (checker — separate from makers)       |
 
 
 **Feedback loop:** QA FAIL → PM triage → feedback packet to `fe`/`be`/… → fix → QA re-test (max 3 rounds) — logged in `STATE.md` → `## Feedback history`
 
+### What Loom can do
+
+| You ask for… | Loom does… |
+|--------------|------------|
+| New feature (full stack) | PM AC → UX spec → BE + FE in parallel → SR review → QA browser + tests |
+| API-only change | PM → BE → SR → QA (skips UX/FE) |
+| UI / motion | PM → UX → FE or **fe-mo** (3D/WebGL) → SR → QA |
+| Bug fix | Repro + debug log → fix → evidence → SR → QA regression |
+| Architecture audit | **audit-only** fast path — fullstack L1 review, no feature build |
+| Legacy codebase | Orientation first — explore style, ponytail-review, then match conventions |
+| New project | Hexagonal BE scaffold + clean FE layers (`mode: new`) |
+
+### How agents collaborate
+
+```mermaid
+flowchart LR
+  YOU([You]) --> ORCH[loom-orch]
+
+  subgraph PLAN["① Plan"]
+    PM[loom-pm]
+    UX[loom-ux-ui]
+  end
+
+  subgraph MAKE["② Make — write code"]
+    BE[loom-be]
+    FE[loom-fe]
+    MO[loom-motion]
+  end
+
+  subgraph CHECK["③ Check"]
+    FS[loom-full-stack<br/>SR review]
+    QA[loom-qa<br/>PASS / FAIL]
+  end
+
+  ORCH --> PLAN
+  PLAN --> MAKE
+  MAKE --> FS
+  FS --> QA
+  QA -->|FAIL| PM
+  QA -->|PASS| YOU
+```
+
+| Phase | Agents | Job |
+|-------|--------|-----|
+| Plan | `loom-pm`, `loom-ux-ui` | AC, flows, `## Plan` — no production code |
+| Make | `loom-be`, `loom-fe`, `loom-motion` | Implement + `Verified:` in handoff |
+| Review | `loom-full-stack` | SR Stage A (contract) → B (ponytail) — **after** makers, separate turn |
+| Verify | `loom-qa` | Tests + `qa-browser` — never trusts maker self-report |
+
+**Separation of roles (no overlap):**
+
+| Role | Agents | Must not… |
+|------|--------|-----------|
+| Plan | pm, ux-ui | Write production code |
+| Make | be, fe, fe-mo, fullstack (when maker) | Mark own work PASS |
+| Review | fullstack (reviewer turn) | QA's job; skip ponytail |
+| Verify | qa | Implement features |
+
+**Process gates** ([`docs/loop-process.md`](docs/loop-process.md)) — same 9 agents, stricter order:
+
+1. **Evidence** — makers include `Verified:` (command + exit code) in handoff; orch rejects self-report without proof
+2. **Debug** — bugs need repro + `## Debug log` before fix
+3. **SR review** — fullstack 2-stage before QA
+4. **Plan batches** — large features split in `STATE.md` → `## Plan`
+5. **Finish** — QA PASS + SR clear + handoff written
+
+### Handoff & switching editors
+
+Every agent ends with **`## Handoff summary`** → orch writes `STATE.md` → `## Last handoff`.
+
+Switch Cursor ↔ Claude ↔ Hermes:
+
+1. Finish current agent turn (handoff in STATE)
+2. `zsh tools/refresh.sh` after `git pull`
+3. New chat: `Use loom-orch at L1: continue from STATE`
+
+See [`docs/handoff.md`](docs/handoff.md).
+
+### Task scope & kind (`STATE.md`)
+
+| Field | Values | Purpose |
+|-------|--------|---------|
+| `scope` | full-stack · api-only · fe-only · motion-heavy · audit-only | Which makers run |
+| `task_kind` | feature · bug · audit-only | Bug path vs feature path |
+| `tdd_policy` | logic-only · off · always | When makers write tests first |
+
 `**qa-browser`** is included in `zsh tools/init.sh` — see [step 1](#1-install-the-team-once-per-machine--run-from-base)
 
-Full loop spec → [LOOP.md](LOOP.md) · Reference: [Loop Engineering Guide 2026](https://tosea.ai/blog/loop-engineering-ai-agents-complete-guide-2026)
+Full loop spec → [LOOP.md](LOOP.md) · Process gates → [docs/loop-process.md](docs/loop-process.md) · Architecture → [docs/hexagonal-project-structure.md](docs/hexagonal-project-structure.md)
 
 ---
 
