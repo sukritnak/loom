@@ -208,7 +208,7 @@ Every agent (including loom-orch) reads each service's **`package.json`**, **`Ma
 On Step 4, remind the user that the first loop iteration will capture run commands in `STATE.md`.
 
 The loop tools live in the blueprint (Base), not in the project. Resolve the Base path once with
-`B="$(cat ~/.loop-base)"` (written by `deploy.sh`), then call them from the project folder, e.g.
+`B="$(cat ~/.loop-base)"` (written by `init.sh`), then call them from the project folder, e.g.
 `node "$B/tools/cfg.js" resolved`, `zsh "$B/tools/verify-paths.sh"`, `zsh "$B/tools/dash.sh" serve`.
 
 ## loop.config.json shape

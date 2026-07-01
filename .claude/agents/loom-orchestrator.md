@@ -78,7 +78,7 @@ The control folder holds ONLY `loop.config.json` + `STATE.md`. All loop tools li
 (Base). Resolve the Base path once and reuse it; always run the tools FROM the project folder so they
 read the right `loop.config.json` (from cwd):
 ```
-B="$(cat ~/.loop-base)"   # blueprint path, written by deploy.sh
+B="$(cat ~/.loop-base)"   # blueprint path, written by init.sh
 ```
 Then use `node "$B/tools/cfg.js" …`, `zsh "$B/tools/verify-paths.sh"`, `zsh "$B/tools/scaffold-all.sh" …`,
 `zsh "$B/tools/dash.sh" …`, `zsh "$B/tools/init-config.sh"`. (The examples below write `$B/tools/…`.)
@@ -299,7 +299,7 @@ log **cmd** when running dev servers, tests, scaffold, or verify scripts.
 ### Claude Code (Task / background agents)
 On **Claude Code**, sub-agents run via **Task** (background). Chat lines like `Agent "be: …" finished` are **chat only** unless hooks or `dash.sh report` mirror them.
 
-**Preferred — auto-bridge:** run once `zsh tools/install-dash-hooks.sh` (included in `deploy.sh`), then **restart Claude Code and/or Cursor**. Hooks push file edits, Bash, sub-agent stops, and assistant responses to the dashboard.
+**Preferred — auto-bridge:** run once `zsh tools/install-dash-hooks.sh` (included in `init.sh`), then **restart Claude Code and/or Cursor**. Hooks push file edits, Bash, sub-agent stops, and assistant responses to the dashboard.
 
 **Manual fallback** (if hooks off):
 ```bash

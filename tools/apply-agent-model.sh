@@ -3,7 +3,7 @@
 # Run from control folder (or pass control folder as $1).
 set -euo pipefail
 B="$(cat ~/.loop-base 2>/dev/null || true)"
-[ -n "$B" ] || { echo "✗ ~/.loop-base missing — run deploy.sh first" >&2; exit 1; }
+[ -n "$B" ] || { echo "✗ ~/.loop-base missing — run init.sh first" >&2; exit 1; }
 
 DEST="${1:-$(pwd)}"
 CFG="$DEST/loop.config.json"

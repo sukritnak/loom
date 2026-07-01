@@ -22,7 +22,7 @@ DASH="$BASE/agent-dashboard"
 
 if [ ! -d "$DASH" ]; then
   echo "central dashboard not found at: $DASH" >&2
-  echo "run 'zsh tools/deploy.sh' inside the blueprint once to register it (writes ~/.loop-base)." >&2
+  echo "run 'zsh tools/init.sh' inside the blueprint once to register it (writes ~/.loop-base)." >&2
   exit 1
 fi
 

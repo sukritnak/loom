@@ -27,12 +27,12 @@ agent-dashboard/ central board
 
 ### Install (once per machine, run from this repo)
 ```zsh
-zsh tools/deploy.sh                        # full install (optional — ./loom auto-bootstraps on first use)
-DEPLOY_SKIP_EXTERNAL_SKILLS=1 zsh tools/deploy.sh  # skip external skill download
+zsh tools/init.sh                        # full install (optional — ./loom auto-bootstraps on first use)
+INIT_SKIP_EXTERNAL_SKILLS=1 zsh tools/init.sh  # skip external skill download
 zsh tools/refresh.sh                       # re-sync CLI + agents + hooks (after move)
 ```
 
-### Claude Code from anywhere (after deploy)
+### Claude Code from anywhere (after init)
 ```zsh
 loom wrap claude                           # cwd = blueprint; active project dirs via --add-dir if set
 loom where                                 # print ~/.loop-base path
@@ -142,7 +142,7 @@ Never hand-write this in Base — `loom-start` or `zsh tools/init-config.sh` (fr
 
 ## Path resolution
 
-Tools live only in Base and are shared by all projects via `~/.loop-base` (written by `deploy.sh`). The pattern from any control folder:
+Tools live only in Base and are shared by all projects via `~/.loop-base` (written by `init.sh`). The pattern from any control folder:
 
 ```zsh
 B="$(cat ~/.loop-base)"    # resolve Base once
@@ -163,9 +163,9 @@ B="$(cat ~/.loop-base)"    # resolve Base once
 
 ## Platform notes
 
-- **Claude Code** — `deploy.sh` copies agents to `~/.claude/agents/` (global, every project)
+- **Claude Code** — `init.sh` copies agents to `~/.claude/agents/` (global, every project)
 - **Cursor** — reads `.claude/agents/` directly from this repo; optional Custom Modes per agent
-- **Hermes** — `deploy.sh` installs skills to `~/.hermes/skills/`; use `/loom-start`, `/loom-orch`, `/loom-be`, `/loom-qa` etc.
+- **Hermes** — `init.sh` installs skills to `~/.hermes/skills/`; use `/loom-start`, `/loom-orch`, `/loom-be`, `/loom-qa` etc.
 
 ## Dashboard status calls
 

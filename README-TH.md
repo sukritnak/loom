@@ -22,7 +22,7 @@
 ```zsh
 git clone <repo-url> loom && cd loom
 ./loom wrap claude          # Claude Code — bootstrap อัตโนมัติครั้งแรก
-# หรือ: zsh tools/deploy.sh   # ติดตั้งเต็ม + dashboard
+# หรือ: zsh tools/init.sh   # ติดตั้งเต็ม + dashboard
 ```
 
 ครั้งแรกจะเขียน `~/.loop-base` sync agents ไป **Claude Code · Cursor · Hermes** และต่อ hooks

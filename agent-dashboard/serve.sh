@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # Launch the Star-Office pixel dashboard (vendored) + the loop->office bridge.
 # Idempotent: if the office is already up on PORT, it just opens the browser and exits —
-# safe to call repeatedly (e.g. from deploy.sh or at loom-orch start).
+# safe to call repeatedly (e.g. from init.sh or at loom-orch start).
 #
 #   zsh serve.sh                 # start on :19000 (override with STAR_BACKEND_PORT)
 set -euo pipefail

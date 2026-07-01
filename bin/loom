@@ -1,5 +1,5 @@
 #!/usr/bin/env zsh
-# loom — global CLI. Blueprint path from ~/.loop-base (set by deploy.sh).
+# loom — global CLI. Blueprint path from ~/.loop-base (set by init.sh).
 #   loom wrap claude [-- claude-args…]   open Claude Code in the blueprint
 #   loom where                            print blueprint path
 #   loom dash [cmd…]                      central dashboard (dash.sh)
@@ -83,10 +83,11 @@ loom_ensure_deployed() {
   local root
   root="$(loom_resolve_root)" || return 1
   loom_is_registered "$root" && return 0
-  echo
-  echo "  → First run — registering Loom on this machine…"
-  LOOM_DEPLOY_NO_DASH=1 zsh "$root/tools/refresh.sh"
-  echo
+  echo >&2
+  echo "  → First run — registering Loom on this machine…" >&2
+  LOOM_INIT_NO_DASH=1 zsh "$root/tools/refresh.sh" --quiet >/dev/null
+  echo "  ✓ registered ~/.loop-base" >&2
+  echo >&2
 }
 
 loom_base() {
@@ -110,7 +111,7 @@ loom_base_or_die() {
     echo
     echo "  ✗ Blueprint not registered (~/.loop-base missing or stale)"
     echo "  → cd /path/to/loom && ./loom wrap claude"
-    echo "  → or: zsh tools/deploy.sh"
+    echo "  → or: zsh tools/init.sh"
     exit 1
   }
   if ! loom_is_registered "$b"; then
@@ -243,7 +244,7 @@ First time (from cloned repo):
   ./loom wrap claude      auto-registers ~/.loop-base + hooks
 
 Full install (external skills + dashboard):
-  zsh tools/deploy.sh
+  zsh tools/init.sh
 EOF
 }
 

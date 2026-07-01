@@ -56,7 +56,7 @@ Legacy `"model": "…"` only → treated as `agent_models.cursor`. Hermes explic
 
 ## Quick start — Claude Code
 
-**Clone and go** (no manual `deploy.sh` required — first `./loom` auto-registers):
+**Clone and go** (no manual `init.sh` required — first `./loom` auto-registers):
 
 ```zsh
 git clone <repo-url> loom
@@ -69,7 +69,7 @@ First run writes `~/.loop-base`, installs the global `loom` CLI, syncs agents (C
 **Optional full install** (external skills + opens dashboard):
 
 ```zsh
-zsh tools/deploy.sh
+zsh tools/init.sh
 ```
 
 **Every session — from any folder on your machine:**
@@ -147,7 +147,7 @@ No `cd` into your project required — `loom-orch` reads `.active-project` from 
 | What | **Base** (this repo) | **Control folder** (`<base-dir>/<name>`) |
 | ---- | -------------------- | ------------------------------------------ |
 | **Role** | Blueprint — shared by all jobs | One job — config + memory only |
-| **Agent team** | `.claude/agents/` | — (installed machine-wide via `refresh.sh` / `deploy.sh`) |
+| **Agent team** | `.claude/agents/` | — (installed machine-wide via `refresh.sh` / `init.sh`) |
 | **Hermes skills** | `hermes-skills/` | — |
 | **Shared tools** | `tools/` | — (call Base via `~/.loop-base`) |
 | **Dashboard** | `agent-dashboard/` | — |
@@ -166,7 +166,7 @@ No `cd` into your project required — `loom-orch` reads `.active-project` from 
 
 - Never create a project or write `loop.config.json` inside Base / the current directory
 - Agents install machine-wide (`~/.claude/agents`, `~/.hermes/skills`) → usable from any project
-- tools + dashboard resolve Base via `~/.loop-base` (written by `refresh.sh` / `deploy.sh` or `new-project.sh`)
+- tools + dashboard resolve Base via `~/.loop-base` (written by `refresh.sh` / `init.sh` or `new-project.sh`)
 - 1 job = 1 control folder = 1 separable session
 - `.active-project` in Base stores the active control folder path (`loom-start` writes it)
 
@@ -212,7 +212,7 @@ Step 3 — lock target (.active-project in Loom) — no new folder
 | **Step 3**                | `.active-project` in Loom (Blueprint) only           | no job folder created                           |
 
 
-> **Blueprint (Base = this Loom repo)** is NOT created by `loom-start` — clone the repo; first `./loom` auto-bootstraps (or run `zsh tools/deploy.sh` for full install).
+> **Blueprint (Base = this Loom repo)** is NOT created by `loom-start` — clone the repo; first `./loom` auto-bootstraps (or run `zsh tools/init.sh` for full install).
 
 **How base affects control**
 
@@ -375,7 +375,7 @@ git clone <repo-url> loom && cd loom
 **Full install** (external skills + opens dashboard):
 
 ```zsh
-zsh tools/deploy.sh
+zsh tools/init.sh
 ```
 
 **Manual sync** (after moving the repo, or without running `./loom`):
@@ -397,12 +397,12 @@ First command does everything:
 | L3 hook             | Claude Code permission auto-allow **if Claude detected**    |
 
 
-**Platforms are optional — `deploy.sh` never fails if one is missing.**
+**Platforms are optional — `init.sh` never fails if one is missing.**
 
 Installers detect what is on your machine and **skip the rest** (exit 0, message like `(skip Cursor hooks …)`). You can use **only Claude Code, only Cursor, or only Hermes**.
 
 
-| Platform        | Detected when                                              | Installed by `deploy.sh`                                      | If not present        |
+| Platform        | Detected when                                              | Installed by `init.sh`                                      | If not present        |
 | --------------- | ---------------------------------------------------------- | ------------------------------------------------------------- | --------------------- |
 | **Claude Code** | `claude` CLI **or** `~/.claude/settings.json`              | `~/.claude/agents/` · CC dashboard hooks · L3 permission hook | skipped — no error    |
 | **Cursor**      | `cursor` CLI **or** `~/.cursor/` folder                    | Dashboard hooks in `~/.cursor/hooks.json`                     | skipped — no error    |
@@ -414,7 +414,7 @@ Cursor always reads agent defs from **this repo’s** `.claude/agents/` when the
 
 ```zsh
 hermes setup                              # once, if adding Hermes
-zsh tools/deploy.sh                       # or: zsh tools/install-dash-hooks.sh
+zsh tools/init.sh                       # or: zsh tools/install-dash-hooks.sh
 zsh tools/sync-agents.sh                  # refresh Hermes skills if needed
 ```
 
@@ -426,7 +426,7 @@ Restart **Claude Code / Cursor / Hermes** after hook changes.
 Skip external skills (no network / install later):
 
 ```zsh
-DEPLOY_SKIP_EXTERNAL_SKILLS=1 zsh tools/deploy.sh
+INIT_SKIP_EXTERNAL_SKILLS=1 zsh tools/init.sh
 ```
 
 Install external skills later or retry after skip:
@@ -435,7 +435,7 @@ Install external skills later or retry after skip:
 zsh tools/install-external-skills.sh && zsh tools/install-hermes-skills.sh
 ```
 
-**External skills installed by deploy**
+**External skills installed by init**
 
 
 | skill                     | Used by    | Purpose                                                                                                        |
@@ -458,7 +458,7 @@ After editing agent definitions, sync all platforms:
 zsh tools/sync-agents.sh    # source = .claude/agents/
 ```
 
-> **⚠ Moving the Loom folder after `deploy.sh`**
+> **⚠ Moving the Loom folder after `init.sh`**
 >
 > Install writes **absolute paths** on your machine — not relative to git:
 >
@@ -477,7 +477,7 @@ zsh tools/sync-agents.sh    # source = .claude/agents/
 >
 > ```zsh
 > cd /path/to/loom
-> zsh tools/deploy.sh
+> zsh tools/init.sh
 > ```
 >
 > Then restart **Claude Code, Cursor, and/or Hermes** so hooks reload.
@@ -532,7 +532,7 @@ Hermes: `/loom-orch run at L1: <task>`
 ### 3) Terminal alternatives
 
 ```zsh
-zsh tools/deploy.sh                  # install team (once per machine)
+zsh tools/init.sh                  # install team (once per machine)
 zsh tools/loom-start.sh              # wizard Steps 1–4 (base → control → lock → hand off)
 zsh tools/new-project.sh my-app      # shortcut: Step 1 + 2b (--new)
 zsh tools/dash.sh serve              # open central board (Star-Office)
@@ -574,7 +574,7 @@ Resume details → [Resume a session](#resume-a-session--reopen-a-project-you-al
 
 **Feedback loop:** QA FAIL → PM triage → feedback packet to `fe`/`be`/… → fix → QA re-test (max 3 rounds) — logged in `STATE.md` → `## Feedback history`
 
-`**qa-browser`** is included in `zsh tools/deploy.sh` — see [step 1](#1-install-the-team-once-per-machine--run-from-base)
+`**qa-browser`** is included in `zsh tools/init.sh` — see [step 1](#1-install-the-team-once-per-machine--run-from-base)
 
 Full loop spec → [LOOP.md](LOOP.md) · Reference: [Loop Engineering Guide 2026](https://tosea.ai/blog/loop-engineering-ai-agents-complete-guide-2026)
 
@@ -586,7 +586,7 @@ Full loop spec → [LOOP.md](LOOP.md) · Reference: [Loop Engineering Guide 2026
 |                 | Claude Code           | Cursor                          | Hermes                |
 | --------------- | --------------------- | ------------------------------- | --------------------- |
 | Team shape      | subagents             | `.claude/agents` + Custom Modes | SKILL.md (slash)      |
-| Install         | `zsh tools/deploy.sh` | open folder                     | `zsh tools/deploy.sh` |
+| Install         | `zsh tools/init.sh` | open folder                     | `zsh tools/init.sh` |
 | Start           | `Use loom-start`      | `Use loom-start`                | `/loom-start`         |
 | Call agent      | `Use loom be to ...`       | chat / Custom Mode              | `/loom-be`, `/loom-qa`, …       |
 | Parallel work   | full (worktree)       | limited                         | yes (subagents)       |
@@ -601,7 +601,7 @@ Full loop spec → [LOOP.md](LOOP.md) · Reference: [Loop Engineering Guide 2026
 One command wires every **detected** platform to the central board (`http://localhost:19000`):
 
 ```zsh
-zsh tools/install-dash-hooks.sh   # included in deploy.sh — skips missing platforms
+zsh tools/install-dash-hooks.sh   # included in init.sh — skips missing platforms
 ```
 
 | Platform      | Hook file / config              | What mirrors to the board |
@@ -621,7 +621,7 @@ After install → **restart** the IDE or Hermes. Hermes gateway/cron: `hermes --
 
 ### Claude Code
 
-`deploy.sh` copies subagents to `~/.claude/agents/` when Claude is detected — usable in every project immediately.
+`init.sh` copies subagents to `~/.claude/agents/` when Claude is detected — usable in every project immediately.
 
 ```
 Use loom-start
@@ -643,7 +643,7 @@ Chat like Claude Code (`Use loom-orch at L1: ...`) or switch Custom Modes.
 
 ### Hermes
 
-When Hermes is detected, `deploy.sh` installs team skills (`loom-start loom-orch loom-pm loom-ux-ui loom-fe loom-motion loom-be loom-full-stack loom-qa LOOM`)
+When Hermes is detected, `init.sh` installs team skills (`loom-start loom-orch loom-pm loom-ux-ui loom-fe loom-motion loom-be loom-full-stack loom-qa LOOM`)
 to `~/.hermes/skills/` with external skill symlinks.
 
 ```
@@ -833,7 +833,7 @@ loom-orch: legacy orient — shop (fe+be)
   → write STATE.md, then PM / build
 ```
 
-Requires `ponytail-review` / `ponytail-audit` — `deploy.sh` installs them — see [step 1](#1-install-the-team-once-per-machine--run-from-base)
+Requires `ponytail-review` / `ponytail-audit` — `init.sh` installs them — see [step 1](#1-install-the-team-once-per-machine--run-from-base)
 
 ### Autonomy levels
 
@@ -1018,12 +1018,12 @@ zsh "$B/tools/verify-paths.sh"
 Run `Use loom-start` again → pick another control — or `cd` and invoke orch.
 Every platform uses the active project's `loop.config.json` — no mixing.
 
-#### New machine / never deployed
+#### New machine / never initialized
 
 Once from Loom:
 
 ```zsh
-zsh tools/deploy.sh    # register ~/.loop-base
+zsh tools/init.sh    # register ~/.loop-base
 ```
 
 Then `Use loom-start` as usual — control folders + `STATE.md` remain on disk at their paths.
@@ -1076,7 +1076,7 @@ EOF
 Commands: `say` (long multiline speech) · `delegate` · `skill` · `cmd` · `event` · `log` · `set` · `clearlog`
 Feed keeps 400 lines (rolling) · daily archive in `agent-dashboard/log-archive/` · **Loop Activity** panel has Clear log + archived dates
 
-Opens on `deploy.sh` · at `loom-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
+Opens on `init.sh` · at `loom-orch` start asks **「Open the dashboard to watch agents? [Y/n]」** (default Y) then opens the browser at `http://localhost:19000` — safe to call repeatedly.
 
 **Star-Office dashboard** (`agent-dashboard/star-office/`) — vendored from
 **[Star-Office-UI](https://github.com/ringhyacinth/Star-Office-UI)** by [Ring Hyacinth](https://github.com/ringhyacinth) & [Simon Lee](https://x.com/simonxxoo).
@@ -1098,7 +1098,7 @@ but point scripts at Base via `~/.loop-base`:
 
 ```zsh
 cd ~/Documents/coding/agent-build/my-app      # enter control folder first
-B="$(cat ~/.loop-base)"                        # Base path (written by deploy.sh)
+B="$(cat ~/.loop-base)"                        # Base path (written by init.sh)
 
 node "$B/tools/cfg.js" resolved      # services + resolved absolute paths
 node "$B/tools/cfg.js" get project   # read scalar config value
@@ -1113,7 +1113,7 @@ zsh "$B/tools/dash.sh" where        # central board path
 Run from Base directly (no config in cwd):
 
 ```zsh
-zsh tools/deploy.sh                 # install team + register ~/.loop-base
+zsh tools/init.sh                 # install team + register ~/.loop-base
 zsh tools/loom-start.sh                 # wizard Steps 1–4
 zsh tools/new-project.sh my-app       # shortcut: Step 1 + 2b
 zsh tools/sync-agents.sh              # sync agent defs to all platforms
@@ -1151,13 +1151,13 @@ zsh tools/dash.sh serve               # open board
 
 ### Skills shipped with Loom (`hermes-skills/`)
 
-Built for this team (installed to `~/.hermes/skills/` by `deploy.sh`):
+Built for this team (installed to `~/.hermes/skills/` by `init.sh`):
 
 `loom-start` · `loom-orch` · `loom-pm` · `loom-ux-ui` · `loom-fe` · `loom-motion` · `loom-be` · `loom-full-stack` · `loom-qa` · `LOOM`
 
 ### External skills (`tools/install-external-skills.sh`)
 
-Installed to `~/.agents/skills/` on deploy (via `npx skills add` when available):
+Installed to `~/.agents/skills/` on init (via `npx skills add` when available):
 
 
 | Skill                                                   | Used by    | Notes                                                                                                                  |
@@ -1203,7 +1203,7 @@ hermes-skills/             SKILL.md for Hermes (generated via to-hermes-skills.s
 agent-dashboard/           **central** live status board (Star-Office — all projects report here)
 tools/                     only in Base — every control folder shares via ~/.loop-base
   refresh.sh               idempotent sync: ~/.loop-base · CLI · agents · hooks (auto on ./loom / git pull)
-  deploy.sh                full install: refresh + external skills + L3 + open dashboard
+  init.sh                full install: refresh + external skills + L3 + open dashboard
   sync-agents.sh           sync agent defs to all platforms (source = .claude/agents/)
   loom-start.sh              wizard Steps 1–4: base folder → control folder → .active-project → hand off
   new-project.sh             shortcut: loom-start --new NAME (Step 1 + 2b)
@@ -1227,7 +1227,7 @@ loop.config.example.json   example config with _help for every field
 
 ## Upgrading from v1.0.2 and earlier (purge legacy agents)
 
-If you installed Loom **before v1.0.2** (or before the `loom-*` agent rename), your machine may still have **old agent IDs** (`loop-start`, `loop-orch`, `pm`, `be`, `fe-anim`, …) in Claude Code, Hermes, or **Cursor Settings → Agents → Subagents**. New installs via `deploy.sh` are already clean — this section is for **existing installs only**.
+If you installed Loom **before v1.0.2** (or before the `loom-*` agent rename), your machine may still have **old agent IDs** (`loop-start`, `loop-orch`, `pm`, `be`, `fe-anim`, …) in Claude Code, Hermes, or **Cursor Settings → Agents → Subagents**. New installs via `init.sh` are already clean — this section is for **existing installs only**.
 
 ### What changed
 
@@ -1285,7 +1285,7 @@ zsh tools/purge-legacy-agents.sh --dry-run
 | Platform | Check | Expected |
 | -------- | ----- | -------- |
 | **Claude Code** | `ls ~/.claude/agents/` | 9 files (`loom-start.md`, `loom-orchestrator.md`, `pm-agent.md`, …) with `name: loom-*` in frontmatter |
-| **Hermes** | `ls ~/.hermes/skills/` | `loom-start`, `loom-orch`, … `loom-qa`, `LOOM` (+ external symlinks if `deploy.sh` ran) |
+| **Hermes** | `ls ~/.hermes/skills/` | `loom-start`, `loom-orch`, … `loom-qa`, `LOOM` (+ external symlinks if `init.sh` ran) |
 | **Cursor** | Reload window, then **Settings → Agents → Subagents** | `loom-start`, `loom-orch`, `loom-pm`, `loom-ux-ui`, `loom-fe`, `loom-motion`, `loom-be`, `loom-full-stack`, `loom-qa` |
 
 **Cursor reload:** `Cmd+Shift+P` → **Developer: Reload Window**
@@ -1298,7 +1298,7 @@ If Subagents still lists old names after reload, delete those entries manually (
 # Claude Code
 rm -f ~/.claude/agents/{loop-start,tech-loop-orchestrator,designer-agent,frontend-animation-agent,backend-senior-agent}.md
 
-# Hermes (full wipe of installed team skills — deploy will restore)
+# Hermes (full wipe of installed team skills — init will restore)
 rm -rf ~/.hermes/skills/{loop-start,loop-orch,pm,design,fe,fe-anim,be,be-sr,qa,LOOP,feanim,besr}
 
 # Cursor user subagents
@@ -1307,19 +1307,19 @@ rm -rf ~/.cursor/agents
 # Then from blueprint:
 zsh tools/sync-agents.sh
 # or full reinstall:
-zsh tools/deploy.sh
+zsh tools/init.sh
 ```
 
 ### Fresh install alternative
 
-If you do not need to preserve custom hook edits, a full redeploy also works:
+If you do not need to preserve custom hook edits, a full re-init also works:
 
 ```zsh
 cd ~/Documents/coding/loom
 git pull
-zsh tools/purge-legacy-agents.sh    # still recommended before deploy on old machines
-zsh tools/deploy.sh
+zsh tools/purge-legacy-agents.sh    # still recommended before init on old machines
+zsh tools/init.sh
 ```
 
-`deploy.sh` runs `sync-agents.sh` (which includes Cursor subagent sync) but does **not** remove old Hermes skill folder names by itself — use `purge-legacy-agents.sh` first on upgrades from v1.0.2 and earlier.
+`init.sh` runs `sync-agents.sh` (which includes Cursor subagent sync) but does **not** remove old Hermes skill folder names by itself — use `purge-legacy-agents.sh` first on upgrades from v1.0.2 and earlier.
 

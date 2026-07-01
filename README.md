@@ -22,7 +22,7 @@ Nine AI agents in one loop. This repo is the **blueprint (Base)** — your real 
 ```zsh
 git clone <repo-url> loom && cd loom
 ./loom wrap claude          # Claude Code — auto-bootstraps on first run
-# or: zsh tools/deploy.sh   # full install + dashboard
+# or: zsh tools/init.sh   # full install + dashboard
 ```
 
 First run writes `~/.loop-base`, syncs agents to **Claude Code · Cursor · Hermes**, and wires hooks.

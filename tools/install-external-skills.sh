@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 # Install recommended external skills → ~/.agents/skills/ (idempotent).
-# Called by deploy.sh on first setup; safe to re-run.
-# Skip: DEPLOY_SKIP_EXTERNAL_SKILLS=1 zsh tools/deploy.sh
+# Called by init.sh on first setup; safe to re-run.
+# Skip: INIT_SKIP_EXTERNAL_SKILLS=1 zsh tools/init.sh
 #
 # ponytail: bare names fail — skills CLI needs owner/repo@skill and -g for global install.
 set -euo pipefail

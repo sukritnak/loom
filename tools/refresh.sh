@@ -17,16 +17,19 @@ done
 
 say() { (( QUIET )) || echo "$@"; }
 
+# ponytail: legacy DEPLOY_* env names still work
+INIT_SKIP_CC_HOOKS="${INIT_SKIP_CC_HOOKS:-${DEPLOY_SKIP_CC_HOOKS:-}}"
+
 printf '%s\n' "$ROOT" > "$HOME/.loop-base"
 
 say "== Loom refresh =="
 zsh tools/install-loom-cli.sh
 zsh tools/sync-agents.sh
 
-if [[ "${DEPLOY_SKIP_CC_HOOKS:-}" != 1 ]]; then
+if [[ "${INIT_SKIP_CC_HOOKS:-}" != 1 ]]; then
   zsh tools/install-dash-hooks.sh
 else
-  say "  (skipped dashboard hooks — DEPLOY_SKIP_CC_HOOKS=1)"
+  say "  (skipped dashboard hooks — INIT_SKIP_CC_HOOKS=1)"
 fi
 
 zsh tools/install-git-hooks.sh
@@ -39,5 +42,5 @@ if (( GIT_HOOK )); then
 else
   say ""
   say "  Next: ./loom wrap claude   or   Use loom-start in Cursor"
-  say "  Full install (external skills): zsh tools/deploy.sh"
+  say "  Full install (external skills): zsh tools/init.sh"
 fi

@@ -50,7 +50,7 @@ From the **Loom** repo root:
 
 ```zsh
 # One-time: register Base + dashboard (if not done yet)
-zsh tools/deploy.sh
+zsh tools/init.sh
 
 # Start the dashboard
 zsh tools/dash.sh serve
