@@ -43,6 +43,12 @@ guided   <!-- conform | guided | auto — also in loop.config.json -->
 ## Current task
 <the feature/bug in flight>
 
+## Task scope
+<!-- orch sets each iteration: full-stack | api-only | fe-only | motion-heavy | audit-only -->
+scope: full-stack
+makers: <!-- agents that wrote code this iteration, e.g. be, fe — empty if none yet -->
+in-scope services: <!-- service ids from loop.config.json -->
+
 ## Project context
 <!-- Legacy orientation (mode: existing) — orchestrator + makers fill before first build -->
 <!-- Per service: stack, layout, entry points, package.json/Makefile/Docker run commands, conventions, risks -->
@@ -65,6 +71,7 @@ guided   <!-- conform | guided | auto — also in loop.config.json -->
 | UX/UI | idle | — |
 | Backend | idle | — |
 | Frontend | idle | — |
+| Fullstack | idle | — |
 | QA | idle | — |
 
 ## Acceptance criteria
@@ -96,3 +103,11 @@ guided   <!-- conform | guided | auto — also in loop.config.json -->
 
 ## Next action
 <the single next step the loop will take>
+
+## Last handoff
+<!-- Overwritten each agent return — compact snapshot for editor/session switches -->
+- **Done:**
+- **Files:**
+- **Blockers:**
+- **Next:**
+- **Editor:**

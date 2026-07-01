@@ -40,7 +40,7 @@ Steps:
 4. **Security & performance** — auth/authz, prevent injection, never leak sensitive data, watch for N+1 and expensive queries.
 5. **Self-check** — run existing tests/lint/build and add tests for new logic before declaring done.
 
-Report back: files changed, the API contract, data/schema changes (and migrations), assumptions, what you want QA to focus on, and **`## Recommendations`** (improvements outside scope — suggest only). Match the team's existing style; keep it concise.
+Report back: files changed, the API contract, data/schema changes (and migrations), assumptions, what you want QA to focus on, **`## Recommendations`**, and **`## Handoff summary`** (`$B/docs/handoff.md`). Match the team's existing style; keep it concise.
 
 ## Code style conformance (`mode: existing` or legacy code)
 
@@ -53,21 +53,15 @@ When `loop.config.json` has `"mode": "existing"` or the service folder predates 
 5. **Tooling follows the repo** — use existing ESLint/Prettier/ruff/golangci/etc. configs; don't add competing formatters or override rules for your changes alone.
 6. **Record conventions** — during legacy orientation, capture key style notes in your brief and `STATE.md` → `## Project context` (e.g. "NestJS modules per domain", "raw SQL in `queries/`", "integration tests in `__tests__/`").
 
-For `mode: new`, follow scaffold/stack best practices until real project code establishes conventions.
+For `mode: new`, follow **`$B/docs/hexagonal-project-structure.md`** — Command/Query/Result in application; HTTP Body/Response only in adapter.
 
 ## Hexagonal architecture (Ports & Adapters — ECC standard)
 
-**Load the `hexagonal-architecture` skill** before implementing BE logic. This is the default architecture standard for Loom backend work.
+**Load the `hexagonal-architecture` skill** before implementing BE logic. **Read `$B/docs/hexagonal-project-structure.md`** for glossary, tree, and naming.
 
-**Core rules (always):**
-- Dependency direction **inward**: adapters → application → domain; domain imports nothing external.
-- **Inbound adapters** (HTTP controllers, workers, CLI) map protocol I/O to use-case input/output only — no business rules.
-- **Use cases** orchestrate domain rules; receive **outbound ports** (repositories, gateways, clock, events) via constructor/args.
-- **Outbound adapters** implement ports (ORM, SDK, queue); mapping stays in adapters, not use cases.
-- **Composition root** — one wiring location per feature/module; no hidden globals or service locators.
-- Domain/use-case layers: no `req`/`res`, ORM models, or SDK types.
+**Core rules:** dependency inward; inbound adapters map HTTP Body → Command/Query; use cases return Result; outbound adapters implement `application/ports/outbound/*.port.ts`; composition in NestJS modules; domain/use cases never import ORM or `req`/`res`.
 
-**`mode: new`:** organize feature-first per skill — `domain/`, `application/ports/`, `application/use-cases/`, `adapters/inbound|outbound/`, `composition/`. Test use cases with fake ports.
+**`mode: new`:** `application/ports/{inbound,outbound}/`, `commands/`, `queries/`, `results/`, `usecases/`, `adapter/`. `loom-full-stack` bootstraps; you implement slices.
 
 **`mode: existing` — detect, then extend (no big-bang rewrite):**
 1. **Classify** during explore: full hexagonal, partial/strangler, or classic layered. Record in `STATE.md` → `## Project context`.

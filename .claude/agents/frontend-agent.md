@@ -55,7 +55,26 @@ When `loop.config.json` has `"mode": "existing"` or the service folder predates 
 5. **Tooling follows the repo** — use existing ESLint/Prettier/Biome/stylelint configs; don't add competing formatters or override rules for your changes alone.
 6. **Record conventions** — during legacy orientation, capture key style notes in your brief and `STATE.md` → `## Project context` (e.g. "functional components + hooks", "Tailwind not CSS modules", "colocated `*.test.tsx`").
 
-For `mode: new`, follow scaffold/stack best practices until real project code establishes conventions.
+For `mode: new`, follow **`$B/docs/hexagonal-project-structure.md` Part C only** — clean FE (not BE hex). Pick layout C1 or C2; record in `STATE.md`.
+
+## Frontend architecture (`mode: new`)
+
+**Read Part C** — FE is **not** required to mirror Part B hex folders.
+
+- **Layouts:** C1 `src/features/` + thin `app/` routes **or** C2 colocation inside `app/` (small apps)
+- **Layers:** components → hooks (TanStack Query) → `infrastructure/api` → http client
+- **Server state:** TanStack Query — one custom hook per query/mutation; query keys colocated
+- **URL / UI state:** searchParams · `useState` · Zustand only for cross-feature UI chrome
+- **context7** — pull framework docs (Next.js structure, TanStack Query) when unsure
+- **No** BE business rules on client; **no** `fetch` in presentation components
+
+For `mode: existing`, mirror project patterns — don't impose Part B or C1 on legacy code.
+
+## Handoff (required every return)
+
+End every delegation with **`## Handoff summary`** per `$B/docs/handoff.md` (Goal, Done, Files, Verified, Blockers, Next, Editor). Orch persists to `STATE.md` → `## Last handoff`. On editor switch or long session, also use **handoff** skill → `HANDOFF.md` if needed.
+
+Report back: files changed, assumptions, QA focus, limitations, **`## Recommendations`**, and **`## Handoff summary`**.
 
 ## Improvement policy (`loop.config.json` → `improvement_policy`)
 

@@ -75,6 +75,20 @@ Use loom-orch at L1: <describe the feature or bug>
 
 Pick **one** platform — you do not need all three.
 
+## Switching editors (Claude Code ↔ Cursor ↔ Hermes)
+
+Loop memory lives in your **control folder** (`STATE.md`), not in the editor. Quota full or prefer another UI — same project, new chat:
+
+1. **Before leaving** — ensure `STATE.md` has `## Next action` and `## Last handoff` (agents write these each step).
+2. **On the new editor** — open the **control folder** (+ service code paths); run `zsh tools/refresh.sh` once after pull if needed.
+3. **Resume:**
+
+```
+Use loom-orch at L2: resume — read STATE.md and continue ## Next action
+```
+
+No need to re-run `loom-start`. Details: [`docs/handoff.md`](docs/handoff.md).
+
 ## Dashboard
 
 `loom wrap claude` starts the central board in the background. Re-open anytime:

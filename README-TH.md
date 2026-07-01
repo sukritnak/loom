@@ -75,6 +75,20 @@ Use loom-orch at L1: <อธิบาย feature หรือ bug>
 
 เลือก **อย่างใดอย่างหนึ่ง** — ไม่จำเป็นต้องมีครบทั้งสาม
 
+## สลับ editor (Claude Code ↔ Cursor ↔ Hermes)
+
+หน่วยความจำ loop อยู่ที่ **control folder** (`STATE.md`) ไม่ได้อยู่ที่ editor — quota เต็มหรืออยากเปลี่ยน UI โปรเจกต์เดิม แชตใหม่:
+
+1. **ก่อนออก** — ให้ `STATE.md` มี `## Next action` และ `## Last handoff` (agent เขียนทุกขั้น)
+2. **editor ใหม่** — เปิด **control folder** (+ path โค้ด service); รัน `zsh tools/refresh.sh` ครั้งแรกหลัง pull ถ้าจำเป็น
+3. **ต่องาน:**
+
+```
+Use loom-orch at L2: resume — อ่าน STATE.md แล้วทำ ## Next action ต่อ
+```
+
+ไม่ต้อง `loom-start` ใหม่ รายละเอียด: [`docs/handoff.md`](docs/handoff.md)
+
 ## Dashboard
 
 `loom wrap claude` สตาร์ท board กลางใน background เปิดซ้ำได้ตลอด:

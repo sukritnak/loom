@@ -57,9 +57,11 @@ Use loom-orch at L1: <describe feature or bug>
 
 ### Sync agent definitions after editing `.claude/agents/*.md`
 ```zsh
-zsh tools/sync-agents.sh    # copies to ~/.claude/agents/ + Hermes
+zsh tools/sync-agents.sh    # copies to ~/.claude/agents/ + Hermes + Cursor
 zsh tools/install-cc-hooks.sh  # Claude Code → dashboard auto-bridge (once)
 ```
+
+**After `git pull`:** `tools/install-git-hooks.sh` (via `refresh.sh`) auto-runs `sync-agents.sh` — agents stay current on all platforms. First clone: `zsh tools/init.sh` or any `loom` command bootstraps the same.
 
 ### Dashboard
 ```zsh
@@ -89,7 +91,7 @@ zsh "$B/tools/scaffold-all.sh" api      # scaffold one service by id
 | `loom-fe` | Frontend/UI implementation |
 | `loom-motion` | Animation, Three.js/WebGL |
 | `loom-be` | Backend/API/data layer — **Hexagonal (Ports & Adapters, ECC)** |
-| `loom-full-stack` | Fullstack (BE specialist) — DB, security, **hexagonal outbound ports**, escalation |
+| `loom-full-stack` | Senior reviewer in loop — ponytail SR review, hex bootstrap, DB/security maker |
 | `loom-qa` | Tests against AC, decides PASS/FAIL (checker — stays separate from makers) |
 
 Agent definitions live in `.claude/agents/` (source of truth). `sync-agents.sh` pushes them to `~/.claude/agents/` (Claude Code global) and `~/.hermes/skills/` (Hermes).
@@ -98,14 +100,18 @@ Agent definitions live in `.claude/agents/` (source of truth). `sync-agents.sh` 
 
 ```
 load STATE.md + loop.config.json
-  → dashboard gate (ask to open http://localhost:19000)
-  → legacy orient (mode:existing — explore in-scope services, mirror existing code style, /ponytail-review on touched areas)
-  → clarify (PM) → design (if UI)
-  → build in parallel worktrees (be + fe makers)
-  → verify (QA: tests + qa-browser for FE/UI AC against dev server)
-  → PASS → persist STATE.md → human gate → done
-  → FAIL → PM triage → feedback packet per owner → fix → re-test (max 3 rounds)
+  → classify ## Task scope (skip agents that don't apply)
+  → dashboard gate
+  → legacy orient (mode:existing — BE→Part B, FE→Part C)
+  → clarify (PM) → design (UX if UI in scope)
+  → bootstrap (mode:new — fullstack) → build (scoped makers: be / fe / fe-mo)
+  → SR review (fullstack reviewer — separate turn from maker)
+  → verify (QA + qa-browser) — skip if audit-only
+  → PASS → recommendations → STATE + handoff
+  → FAIL → PM triage → fix → re-test (max 3 rounds)
 ```
+
+**Fast path:** `audit-only` → fullstack L1 review only (hex + ponytail + recommendations).
 
 **`STATE.md`** is the durable loop memory. `loom-orch` reads it first and writes it last every iteration. Keep it under ~150 lines; compact old feedback rounds into Lessons.
 

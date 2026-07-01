@@ -15,6 +15,47 @@ write() { # write() <path> <<'EOF' ... ; skips if file exists
   if [ -e "$f" ]; then echo "  skip  $f (exists)"; cat >/dev/null; else cat > "$f"; echo "  +     $f"; fi
 }
 
+scaffold_be_hex() {
+  # Stack-agnostic hexagonal skeleton — docs/hexagonal-project-structure.md (Part B)
+  mkdir -p "$DIR"/src/domain/{model,value-objects,services,errors}
+  mkdir -p "$DIR"/src/application/{ports/{inbound,outbound},commands,queries,results,usecases,shared}
+  mkdir -p "$DIR"/src/adapter/inbound/{handlers,controllers,dtos,schemas,filters,guards,mappers}
+  mkdir -p "$DIR"/src/adapter/outbound/{mappers,repositories}
+  mkdir -p "$DIR"/src/{configs,composition,common/tokens}
+  mkdir -p "$DIR"/{environments,http,scripts,test,docs}
+  write environments/.env.template <<'EOF'
+# Copy to .env — never commit secrets
+# PORT=
+# DATABASE_URL=
+EOF
+  write docs/ARCHITECTURE.md <<'EOF'
+# Architecture
+
+Loom guidelines: blueprint `docs/hexagonal-project-structure.md` (all stacks).
+
+Backend: domain → application (ports, commands, queries, results, usecases) → adapter.
+Ports only in `application/ports/`. Mappers in `adapter/outbound/mappers/`.
+Composition: `composition/` or framework modules / main entry.
+EOF
+}
+
+scaffold_fe_layers() {
+  # Layered FE skeleton — docs/hexagonal-project-structure.md (Part C)
+  mkdir -p "$DIR"/src/{app,features,shared/{components,lib},infrastructure/{http,api},stores}
+  mkdir -p "$DIR"/docs
+  write docs/ARCHITECTURE.md <<'EOF'
+# Architecture
+
+Loom FE: blueprint `docs/hexagonal-project-structure.md` **Part C** (clean FE — not BE hex).
+
+Pick C1 (features outside app/) or C2 (colocate in app/). TanStack Query for server state.
+EOF
+  write src/infrastructure/http/client.ts <<'EOF'
+// HTTP client — set baseURL from env; used by infrastructure/api/*
+export const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? process.env.VITE_API_URL ?? '';
+EOF
+}
+
 echo "Scaffolding $SIDE → $DIR (stack: ${STACK:-unspecified})"
 
 write .editorconfig <<'EOF'
@@ -62,6 +103,30 @@ npm run dev
 EOF
 
 if [ "$SIDE" = "be" ]; then
+  # Hex layout for every BE stack (Go, Python, Node, Django, …)
+  scaffold_be_hex
+
+  case "$STACK" in
+    *go*|*golang*|*gin*|*echo*|*fiber*)
+      mkdir -p "$DIR"/cmd/api
+      mkdir -p "$DIR"/internal/domain/{model,value-objects,services,errors}
+      mkdir -p "$DIR"/internal/application/{ports/{inbound,outbound},commands,queries,results,usecases,shared}
+      mkdir -p "$DIR"/internal/adapter/inbound/http/{handlers,dto}
+      mkdir -p "$DIR"/internal/adapter/outbound
+      write cmd/api/main.go <<'EOF'
+// Composition root — wire adapters → use cases → HTTP router
+package main
+
+func main() {}
+EOF
+      ;;
+    *django*)
+      mkdir -p "$DIR"/config
+      write config/.gitkeep <<'EOF'
+EOF
+      ;;
+  esac
+
   case "$STACK" in
     *fastapi*|*python*)
       write Dockerfile <<'EOF'
@@ -155,6 +220,10 @@ coverage
 EOF
 fi
 
+if [ "$SIDE" = "fe" ]; then
+  scaffold_fe_layers
+fi
+
 echo "Done. Next: run the framework generator in $DIR, e.g.:"
 case "$SIDE-$STACK" in
   fe-*next*)    echo "  npx create-next-app@latest . --ts --eslint" ;;
@@ -165,6 +234,7 @@ case "$SIDE-$STACK" in
   be-*fastapi*) echo "  python -m venv .venv && .venv/bin/pip install fastapi uvicorn[standard] && echo 'fastapi\\nuvicorn[standard]' > requirements.txt" ;;
   be-*nest*)    echo "  npx @nestjs/cli new . " ;;
   be-*node*|be-*express*) echo "  npm init -y && npm i express" ;;
-  be-*go*)      echo "  go mod init $(basename "$DIR")" ;;
+  be-*django*)  echo "  django-admin startproject config . && see docs/hexagonal-project-structure.md § B4" ;;
+  be-*go*)      echo "  go mod init $(basename "$DIR") && mkdir -p cmd/api internal" ;;
   be-*)         echo "  (pick a BE framework and init it here)" ;;
 esac
