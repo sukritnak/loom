@@ -2,6 +2,13 @@
   "project": "my-app",
   "mode": "new",
   "autonomy": "L1",
+  "agent_platform": "auto",
+  "agent_models": {
+    "cursor": "composer-2.5",
+    "claude": "sonnet",
+    "hermes": "inherit"
+  },
+  "improvement_policy": "guided",
   "services": [
     { "id": "web",     "side": "fe", "path": "web",                       "stack": "nextjs" },
     { "id": "admin",   "side": "fe", "path": "apps/admin",                "stack": "vite-react" },
@@ -12,6 +19,10 @@
     "project": "short project name, e.g. \"my-app\" — shows on the dashboard plaque + tags every log line",
     "mode": "'new' = agents scaffold the folders below from scratch · 'existing' = drive the folders as they already are (no scaffolding)",
     "autonomy": "L1 = report only (start here) · L2 = assisted, no merge · L3 = unattended",
+    "agent_platform": "'auto' = detect Cursor / Claude Code / Hermes at runtime · or lock to 'cursor' | 'claude' | 'hermes'",
+    "agent_models": "per-platform model ids — see tools/agent-models.json. Defaults: cursor composer-2.5 · claude sonnet · hermes inherit",
+    "agent_model": "optional shorthand when agent_platform is not auto (same as agent_models.<platform>)",
+    "improvement_policy": "conform = match existing style, recommend only · guided = recommend then user picks · auto = apply all recommendations",
     "services": "one entry per FE/BE folder — add as many as you want; each can live in its OWN base path (see service.path)",
     "service.id": "short unique name you refer to the service by. e.g. \"web\", \"admin\", \"api\", \"worker\". Used in commands like: zsh tools/scaffold-all.sh api",
     "service.side": "\"fe\" = frontend/UI (owned by fe + fe-anim agents) · \"be\" = backend/API/logic/data (owned by be + be-sr agents)",

@@ -24,7 +24,33 @@ A team of **9 AI agents** working in a **loop** (plan → build → verify → i
 > Real code lives at `services[].path` in `loop.config.json` (relative or absolute).
 > Control folders (config + STATE) are created at `<base-dir>/<name>`, default `~/Documents/coding/agent-build`.
 
+**What's new (2026-07-01):** Per-platform agent model selection — see [below](#whats-new-2026-07-01).
+
 **Why “Loom”?** Like Hermes carries messages and Ponytail trims code to the bone, **Loom** is where software loops get *woven* — plan, build, verify, repeat — with a team of agents on one thread. Short name for the blueprint; your real apps still live in control folders and service paths.
+
+## What's new (2026-07-01)
+
+Pick **editor + model once** at `loom-start` — every agent inherits it (`loom-orch` passes `model` on each delegation).
+
+| | |
+| --- | --- |
+| **`agent_platform`** | `auto` (detect Cursor / Claude Code / Hermes) · `cursor` · `claude` · `hermes` |
+| **`agent_models`** | One model id per platform — lists in [tools/agent-models.json](tools/agent-models.json) |
+| **Defaults** | Cursor `composer-2.5` · Claude Code `sonnet` · Hermes `inherit` |
+
+**New tools:** `agent-models.json` · `resolve-agent-model.js` · `apply-agent-model.sh`
+
+**After `git pull`:**
+
+```zsh
+zsh tools/refresh.sh                    # sync agents to Claude / Cursor / Hermes
+# Reload Cursor: Cmd+Shift+P → Developer: Reload Window
+Use loom-start                          # open existing → model gate (legacy projects)
+# or edit loop.config.json + from control folder:
+zsh "$(cat ~/.loop-base)/tools/apply-agent-model.sh"
+```
+
+Legacy `"model": "…"` only → treated as `agent_models.cursor`. Hermes explicit models → `hermes -m "<id>"` when not `inherit`.
 
 ## Quick start — Claude Code
 
@@ -651,6 +677,13 @@ One job can have many services; **each service can live at its own base path**.
   "project": "my-app",
   "mode": "new",
   "autonomy": "L1",
+  "agent_platform": "auto",
+  "agent_models": {
+    "cursor": "composer-2.5",
+    "claude": "sonnet",
+    "hermes": "inherit"
+  },
+  "improvement_policy": "guided",
   "services": [
     { "id": "web",     "side": "fe", "path": "web",                        "stack": "nextjs" },
     { "id": "admin",   "side": "fe", "path": "apps/admin",                 "stack": "vite-react" },
@@ -659,6 +692,27 @@ One job can have many services; **each service can live at its own base path**.
   ]
 }
 ```
+
+### Agent platform & models
+
+Set **once at `loom-start`** — every agent in the loop inherits the choice.
+
+| field | Meaning |
+| ----- | ------- |
+| `agent_platform` | `auto` = detect Cursor / Claude Code / Hermes at runtime · or lock to `cursor` \| `claude` \| `hermes` |
+| `agent_models` | Per-platform model ids — see [tools/agent-models.json](tools/agent-models.json) |
+| `agent_model` | Optional shorthand when `agent_platform` is not `auto` (same as `agent_models.<platform>`) |
+
+**Defaults:** Cursor `composer-2.5` · Claude Code `sonnet` · Hermes `inherit`
+
+```zsh
+B="$(cat ~/.loop-base)"
+node "$B/tools/resolve-agent-model.js"              # resolve for current editor
+node "$B/tools/resolve-agent-model.js" list cursor  # show Cursor options
+zsh "$B/tools/apply-agent-model.sh"               # sync → ~/.cursor/agents + ~/.claude/agents (from control folder)
+```
+
+Legacy configs with only `"model": "…"` are treated as `agent_models.cursor`. See [What's new (2026-07-01)](#whats-new-2026-07-01) for upgrade steps.
 
 ### `services[]` fields
 
@@ -868,6 +922,10 @@ loom-start: mode? new = scaffold / existing = use code you already have
 You: existing
 loom-start: autonomy? [L1]
 You: (Enter)
+loom-start: Agent platform? (1) Auto  (2) Cursor  (3) Claude Code  (4) Hermes
+You: 1                                                 ← agent_platform: auto
+loom-start: Models per platform? [Cursor composer-2.5 · Claude sonnet · Hermes inherit]
+You: (Enter defaults)
 loom-start: service — id / side / path / stack (blank = done)
 You: frontend · fe · ~/Documents/coding/legacy/shop-frontend · (blank)
 You: core · be · ~/Documents/coding/legacy/shop-core · (blank)
@@ -1147,6 +1205,9 @@ tools/                     only in Base — every control folder shares via ~/.l
   new-project.sh             shortcut: loom-start --new NAME (Step 1 + 2b)
   base-dir.sh              resolve destination folder (arg > BASE_DIR > .base-dir > default)
   init-config.sh           wizard writes loop.config.json (run in control folder)
+  agent-models.json        per-platform model catalog (Cursor / Claude / Hermes)
+  resolve-agent-model.js   detect editor + resolve model from loop.config.json
+  apply-agent-model.sh     sync agent_models → global agent copies (from control folder)
   dash.sh                  talk to central board (serve / set / log) — auto-tags project name
   scaffold-all.sh · scaffold.sh   scaffold services per config (mode=new)
   cfg.js · verify-paths.sh        read config (from cwd) / verify folder access

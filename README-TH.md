@@ -24,7 +24,33 @@
 > โค้ดจริงอยู่ที่ `services[].path` ใน `loop.config.json` (relative หรือ absolute)
 > โฟลเดอร์ control (config + STATE) ถูกสร้างที่ `<base-dir>/<name>` ดีฟอลต์ `~/Documents/coding/agent-build`
 
+**อัปเดตล่าสุด (2026-07-01):** เลือก platform + model ต่อ agent — ดู [What's new](#whats-new-2026-07-01)
+
 **ทำไมชื่อ Loom?** แนวเดียวกับ Hermes (ส่งงาน) หรือ Ponytail (โค้ดน้อยที่สุด) — **Loom** คือที่ *ทอ* loop ซอฟต์แวร์: วางแผน → สร้าง → ตรวจ → วนใหม่ ด้วยทีม agent บนเส้นด้ายเดียว ชื่อสั้นของพิมพ์เขียว; แอปจริงยังอยู่ที่ control folder และ service path
+
+## What's new (2026-07-01)
+
+เลือก **editor + model ครั้งเดียว** ตอน `loom-start` — ทุก agent ใช้ค่าเดียวกัน (`loom-orch` ส่ง `model` ตอน delegate)
+
+| | |
+| --- | --- |
+| **`agent_platform`** | `auto` (detect Cursor / Claude Code / Hermes) · `cursor` · `claude` · `hermes` |
+| **`agent_models`** | model id แยกตาม platform — ดู [tools/agent-models.json](tools/agent-models.json) |
+| **ค่า default** | Cursor `composer-2.5` · Claude Code `sonnet` · Hermes `inherit` |
+
+**tools ใหม่:** `agent-models.json` · `resolve-agent-model.js` · `apply-agent-model.sh`
+
+**หลัง `git pull`:**
+
+```zsh
+zsh tools/refresh.sh                    # sync agents ไป Claude / Cursor / Hermes
+# Reload Cursor: Cmd+Shift+P → Developer: Reload Window
+Use loom-start                          # open existing → model gate (โปรเจกต์เก่า)
+# หรือแก้ loop.config.json แล้วจาก control folder:
+zsh "$(cat ~/.loop-base)/tools/apply-agent-model.sh"
+```
+
+config เก่าที่มีแค่ `"model": "…"` → ถือเป็น `agent_models.cursor` · Hermes ที่ไม่ใช่ `inherit` → `hermes -m "<id>"`
 
 ## Quick start — Claude Code
 
@@ -610,6 +636,13 @@ hermes bundles create frontend-dev -s fe -s loom-motion -s solid
   "project": "my-app",
   "mode": "new",
   "autonomy": "L1",
+  "agent_platform": "auto",
+  "agent_models": {
+    "cursor": "composer-2.5",
+    "claude": "sonnet",
+    "hermes": "inherit"
+  },
+  "improvement_policy": "guided",
   "services": [
     { "id": "web",     "side": "fe", "path": "web",                        "stack": "nextjs" },
     { "id": "admin",   "side": "fe", "path": "apps/admin",                 "stack": "vite-react" },
@@ -618,6 +651,27 @@ hermes bundles create frontend-dev -s fe -s loom-motion -s solid
   ]
 }
 ```
+
+### Agent platform & models
+
+ตั้ง **ครั้งเดียวตอน `loom-start`** — ทุก agent ใน loop ใช้ค่าเดียวกัน
+
+| ฟิลด์ | ความหมาย |
+| ----- | ------- |
+| `agent_platform` | `auto` = detect Cursor / Claude Code / Hermes · หรือล็อกเป็น `cursor` \| `claude` \| `hermes` |
+| `agent_models` | model id แยกตาม platform — ดู [tools/agent-models.json](tools/agent-models.json) |
+| `agent_model` | ตัวย่อเมื่อ `agent_platform` ไม่ใช่ `auto |
+
+**ค่า default:** Cursor `composer-2.5` · Claude Code `sonnet` · Hermes `inherit`
+
+```zsh
+B="$(cat ~/.loop-base)"
+node "$B/tools/resolve-agent-model.js"              # resolve ตาม editor ปัจจุบัน
+node "$B/tools/resolve-agent-model.js" list cursor  # แสดงตัวเลือก Cursor
+zsh "$B/tools/apply-agent-model.sh"               # sync → ~/.cursor/agents + ~/.claude/agents (จาก control folder)
+```
+
+config เก่าที่มีแค่ `"model": "…"` จะถือเป็น `agent_models.cursor` — ดู [What's new (2026-07-01)](#whats-new-2026-07-01)
 
 ### ฟิลด์ `services[]`
 
@@ -828,6 +882,10 @@ loom-start: mode? new = scaffold / existing = use code you already have
 You: existing
 loom-start: autonomy? [L1]
 You: (Enter)
+loom-start: Agent platform? (1) Auto  (2) Cursor  (3) Claude Code  (4) Hermes
+You: 1                                                 ← agent_platform: auto
+loom-start: Models per platform? [Cursor composer-2.5 · Claude sonnet · Hermes inherit]
+You: (Enter defaults)
 loom-start: service — id / side / path / stack (blank = done)
 You: frontend · fe · ~/Documents/coding/legacy/shop-frontend · (blank)
 You: core · be · ~/Documents/coding/legacy/shop-core · (blank)
@@ -1096,6 +1154,9 @@ tools/                     only in Base — every control folder shares via ~/.l
   new-project.sh             shortcut: loom-start --new NAME (Step 1 + 2b)
   base-dir.sh              resolve destination folder (arg > BASE_DIR > .base-dir > default)
   init-config.sh           wizard writes loop.config.json (run in control folder)
+  agent-models.json        รายการ model แยกตาม platform (Cursor / Claude / Hermes)
+  resolve-agent-model.js   detect editor + resolve model จาก loop.config.json
+  apply-agent-model.sh     sync agent_models → global agent copies (จาก control folder)
   dash.sh                  talk to central board (serve / set / log) — auto-tags project name
   scaffold-all.sh · scaffold.sh   scaffold services per config (mode=new)
   cfg.js · verify-paths.sh        read config (from cwd) / verify folder access
