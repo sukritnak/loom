@@ -56,7 +56,7 @@ HTTP Body → inbound adapter → Command/Query → use case → domain
 
 | `stack` value (examples) | Runtime | See section |
 |--------------------------|---------|-------------|
-| `nest`, `node`, `express` | Node/TS | [B1 NestJS/Node](#b1-nestjs--node-reference-tree) |
+| `nest`, `node`, `express` | Node/TS | [B1 NestJS/Node](#b1-nestjs--node-reference-tree) · TS packages → [typescript-packages.md](typescript-packages.md) |
 | `go`, `golang`, `fiber`, `gin`, `echo` | Go | [B2 Go](#b2-go) |
 | `fastapi`, `python` | Python | [B3 FastAPI](#b3-fastapi) |
 | `django` | Python | [B4 Django](#b4-django) |

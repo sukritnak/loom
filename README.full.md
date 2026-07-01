@@ -26,7 +26,9 @@ A team of **9 AI agents** working in a **loop** (plan → build → verify → i
 > Real code lives at `services[].path` in `loop.config.json` (relative or absolute).
 > Control folders (config + STATE) are created at `<base-dir>/<name>`, default `~/Documents/coding/agent-build`.
 
-**What's new (2026-07-01):** Per-platform agent model selection — see [below](#whats-new-2026-07-01).
+**What's new (v1.0.8):** Browser QA (local CDP + cloud), FE/BE verify split, optional test-master gate, TypeScript package stack — see [below](#whats-new-v108).
+
+**Earlier (2026-07-01):** Per-platform agent model selection — [below](#whats-new-2026-07-01).
 
 **Why “Loom”?** Like Hermes carries messages and Ponytail trims code to the bone, **Loom** is where software loops get *woven* — plan, build, verify, repeat — with a team of agents on one thread. Short name for the blueprint; your real apps still live in control folders and service paths.
 
@@ -53,6 +55,77 @@ zsh "$(cat ~/.loop-base)/tools/apply-agent-model.sh"
 ```
 
 Legacy `"model": "…"` only → treated as `agent_models.cursor`. Hermes explicit models → `hermes -m "<id>"` when not `inherit`.
+
+## What's new (v1.0.8)
+
+QA, verification, and TypeScript tooling — **pull and refresh** to get everything on your machine.
+
+### After `git pull` (everyone)
+
+```zsh
+cd /path/to/loom
+git pull
+zsh tools/refresh.sh          # agents + chrome-devtools-mcp + qa-browser skill
+# Cursor: Cmd+Shift+P → Developer: Reload Window
+```
+
+`refresh.sh` is also triggered by **git hooks** on merge/checkout. Skip browser stack only if `INIT_SKIP_EXTERNAL_SKILLS=1`.
+
+### Browser QA — two backends (FE/UI only)
+
+| `qa_browser` | Backend | API key? |
+|--------------|---------|----------|
+| **`local-cdp`** *(default via `auto`)* | [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) or Cursor `cursor-ide-browser` | No |
+| **`browser-use`** | [browser-use](https://github.com/browser-use/browser-use) + `qa-browser` skill | Yes — orch gate A/B/C |
+| **`auto`** | local-cdp if MCP installed, else browser-use | Depends |
+
+- **BE / API AC** → `npm test`, curl — **no browser**, no gate, no `BROWSER_USE_API_KEY`
+- **UI AC** → real browser PASS/FAIL per criterion
+- Keys → `~/.loom/browser-use.env` (gitignored) — see [docs/browser-qa.md](docs/browser-qa.md)
+
+`loom-start` / `init-config.sh` asks Browser QA preference; `loop.config.json` → `qa_browser`.
+
+### Verify path (FE vs BE)
+
+| AC type | Tool |
+|---------|------|
+| UI / layout / flow | `local-cdp` or `qa-browser` |
+| API / DB / jobs | Project tests + curl |
+| FE performance (CWV) | `perf-lighthouse` on **fe / fe-mo only** |
+| BE load / SLO | k6 / project scripts (not Lighthouse) |
+
+Full matrix → [docs/test-authoring.md](docs/test-authoring.md)
+
+### Optional: test-master (agent installs on your OK)
+
+When the loop needs test scaffolding (integration tests, formal matrix, flaky mocks, OWASP/load AC), agents offer **Yes / Not now** — **you never copy shell commands**. On Yes, agent runs `test-master-gate.sh install`. Not in default `init.sh`.
+
+### TypeScript standard packages
+
+After Nest / Express / Vite / Next init:
+
+```zsh
+zsh "$(cat ~/.loop-base)/tools/add-typescript-deps.sh" <service-path> --profile ts-nest --husky   # NestJS
+zsh "$(cat ~/.loop-base)/tools/add-typescript-deps.sh" <service-path> --profile ts-be --husky    # Express/Node
+zsh "$(cat ~/.loop-base)/tools/add-typescript-deps.sh" <service-path> --profile ts-common        # FE
+```
+
+Profiles: **radash**, **ts-pattern**, **lodash**, **dayjs**, **class-validator**, **passport/jwt**, **jest/eslint/prettier**, **husky** pre-commit — see [docs/typescript-packages.md](docs/typescript-packages.md).
+
+### Process gates (v1.0.7+)
+
+Same 9 agents, stricter order — [docs/loop-process.md](docs/loop-process.md): evidence · bug debug · SR 2-stage · plan batches · finish checklist.
+
+### New / updated tools
+
+| Tool | Role |
+|------|------|
+| `install-browser-qa.sh` | MCP + qa-browser (runs on `refresh.sh`) |
+| `qa-browser-gate.sh` | Mode resolve + API key gate before UI QA |
+| `test-master-gate.sh` | Optional skill install (agent-driven) |
+| `add-typescript-deps.sh` | Loom TS package profiles |
+| `ensure-loom-home.sh` | `~/.loom/` secrets layout |
+| `ensure-control-gitignore.sh` | Control folder gitignore for keys |
 
 ## Quick start — Claude Code
 
@@ -431,6 +504,7 @@ First command does everything:
 | Step                | What it does                                                |
 | ------------------- | ----------------------------------------------------------- |
 | **always**          | Register `~/.loop-base` · agents · dashboard hooks · git pull hooks |
+| **refresh.sh**      | On every pull: agents · **chrome-devtools-mcp** · **qa-browser** skill (unless `INIT_SKIP_EXTERNAL_SKILLS=1`) |
 | agents              | Copy subagents → `~/.claude/agents/` **if Claude detected** |
 | Hermes skills       | Install team skills → `~/.hermes/skills/` **if Hermes detected** |
 | **external skills** | Recommended → `~/.agents/skills/` (+ Hermes symlinks if Hermes) |
@@ -489,8 +563,9 @@ zsh tools/install-external-skills.sh && zsh tools/install-hermes-skills.sh
 | `docker-containerization` | all agents | [ailabs-393/ai-labs-claude-skills](https://skills.sh/ailabs-393/ai-labs-claude-skills/docker-containerization) |
 | `hexagonal-architecture`  | be, loom-full-stack  | Ports & Adapters — [affaan-m/ECC](https://github.com/affaan-m/ECC)                                             |
 | `threejs-animation`       | loom-motion    | 3D / motion                                                                                                    |
-| `perf-lighthouse`         | qa, fe     | Web performance audits                                                                                         |
+| `perf-lighthouse`         | fe, fe-mo  | FE web performance (Lighthouse / CWV) — not BE                                                                 |
 | `qa-browser`              | qa         | Real-browser FE/UI testing                                                                                     |
+| `test-master` *(optional)* | be, fe, qa, pm | Situational test authoring — agents offer install via `test-master-gate.sh` ([docs/test-authoring.md](docs/test-authoring.md)) |
 
 
 After editing agent definitions, sync all platforms:
@@ -610,7 +685,7 @@ Resume details → [Resume a session](#resume-a-session--reopen-a-project-you-al
 | `loom-motion`| Frontend Motion      | animation, Three.js/WebGL                                                          |
 | `loom-be`    | Backend              | API, business logic, data layer (maker)                                            |
 | `loom-full-stack` | Senior Fullstack | **SR code review** (2-stage) before QA · hex bootstrap · DB/security maker       |
-| `loom-qa`    | QA                   | AC → PASS/FAIL · FE/UI via **`qa-browser`** (checker — separate from makers)       |
+| `loom-qa`    | QA                   | AC → PASS/FAIL · **BE:** tests/curl · **FE/UI:** `local-cdp` or `qa-browser` (checker) |
 
 
 **Feedback loop:** QA FAIL → PM triage → feedback packet to `fe`/`be`/… → fix → QA re-test (max 3 rounds) — logged in `STATE.md` → `## Feedback history`
@@ -620,7 +695,7 @@ Resume details → [Resume a session](#resume-a-session--reopen-a-project-you-al
 | You ask for… | Loom does… |
 |--------------|------------|
 | New feature (full stack) | PM AC → UX spec → BE + FE in parallel → SR review → QA browser + tests |
-| API-only change | PM → BE → SR → QA (skips UX/FE) |
+| API-only change | PM → BE → SR → QA (tests/curl — **no browser**) |
 | UI / motion | PM → UX → FE or **fe-mo** (3D/WebGL) → SR → QA |
 | Bug fix | Repro + debug log → fix → evidence → SR → QA regression |
 | Architecture audit | **audit-only** fast path — fullstack L1 review, no feature build |
@@ -662,7 +737,7 @@ flowchart LR
 | Plan | `loom-pm`, `loom-ux-ui` | AC, flows, `## Plan` — no production code |
 | Make | `loom-be`, `loom-fe`, `loom-motion` | Implement + `Verified:` in handoff |
 | Review | `loom-full-stack` | SR Stage A (contract) → B (ponytail) — **after** makers, separate turn |
-| Verify | `loom-qa` | Tests + `qa-browser` — never trusts maker self-report |
+| Verify | `loom-qa` | **BE:** `npm test` / curl · **UI:** agent browser (`local-cdp` / `qa-browser`) — never trusts maker self-report |
 
 **Separation of roles (no overlap):**
 
@@ -701,9 +776,63 @@ See [`docs/handoff.md`](docs/handoff.md).
 | `task_kind` | feature · bug · audit-only | Bug path vs feature path |
 | `tdd_policy` | logic-only · off · always | When makers write tests first |
 
-`**qa-browser`** is included in `zsh tools/init.sh` — see [step 1](#1-install-the-team-once-per-machine--run-from-base)
+`**qa-browser`** + **`local-cdp`** install on `refresh.sh` / `init.sh` — [Browser QA](#browser-qa--verification) · [docs/browser-qa.md](docs/browser-qa.md)
 
-Full loop spec → [LOOP.md](LOOP.md) · Process gates → [docs/loop-process.md](docs/loop-process.md) · Architecture → [docs/hexagonal-project-structure.md](docs/hexagonal-project-structure.md)
+Full loop spec → [LOOP.md](LOOP.md) · Process gates → [docs/loop-process.md](docs/loop-process.md) · Architecture → [docs/hexagonal-project-structure.md](docs/hexagonal-project-structure.md) · Tests → [docs/test-authoring.md](docs/test-authoring.md) · TypeScript → [docs/typescript-packages.md](docs/typescript-packages.md)
+
+---
+
+## Browser QA & verification
+
+**FE/UI only.** `loom-orch` **skips** the browser gate for `api-only`, `audit-only`, or when AC has no UI items.
+
+### Modes (`loop.config.json` → `qa_browser`)
+
+| Value | Meaning |
+|-------|---------|
+| `auto` | `local-cdp` if chrome-devtools-mcp is installed (default after `refresh.sh`), else `browser-use` |
+| `local-cdp` | localhost via MCP — no API key |
+| `browser-use` | Cloud browser — needs `BROWSER_USE_API_KEY` (orch gate before QA) |
+
+### Runtime gate (UI AC in the loop)
+
+```zsh
+zsh "$(cat ~/.loop-base)/tools/qa-browser-gate.sh" gate   # from control folder
+```
+
+| Option | Action |
+|--------|--------|
+| **A** | Paste API key → `~/.loom/browser-use.env` |
+| **B** | Agent self-signup (qa skill) |
+| **C** | Switch to `local-cdp` + install MCP |
+
+`STATE.md` → `## Browser QA` records `mode` + `status`.
+
+### What `loom-qa` runs
+
+1. **Deterministic** — `npm test`, lint, build (all BE + shared AC)
+2. **Browser** — only UI/layout/flow AC (one real-browser check per item)
+3. **Never** PASS from maker self-report without re-running
+
+Details → [docs/browser-qa.md](docs/browser-qa.md) · FE vs BE matrix → [docs/test-authoring.md](docs/test-authoring.md)
+
+---
+
+## TypeScript standard stack
+
+Loom does **not** vendor npm packages in the blueprint — agents install the **recommended stack** into your service after framework init.
+
+| Profile | Use when |
+|---------|----------|
+| `ts-common` | Any TS project (FE or BE) — radash, ts-pattern, lodash, dayjs, jest, eslint, prettier |
+| `ts-be` | Node/Express API — + class-validator, passport/jwt, keyv, husky |
+| `ts-nest` | NestJS — + nestjs-pino |
+
+```zsh
+zsh "$(cat ~/.loop-base)/tools/add-typescript-deps.sh" ./api --profile ts-nest --husky
+```
+
+Manifest: `tools/typescript-deps.json` · Guide: [docs/typescript-packages.md](docs/typescript-packages.md)
 
 ---
 
@@ -813,6 +942,8 @@ One job can have many services; **each service can live at its own base path**.
     "hermes": "inherit"
   },
   "improvement_policy": "guided",
+  "locale": "auto",
+  "qa_browser": "auto",
   "services": [
     { "id": "web",     "side": "fe", "path": "web",                        "stack": "nextjs" },
     { "id": "admin",   "side": "fe", "path": "apps/admin",                 "stack": "vite-react" },
@@ -842,6 +973,13 @@ zsh "$B/tools/apply-agent-model.sh"               # sync → ~/.cursor/agents + 
 ```
 
 Legacy configs with only `"model": "…"` are treated as `agent_models.cursor`. See [What's new (2026-07-01)](#whats-new-2026-07-01) for upgrade steps.
+
+### `qa_browser` & `locale`
+
+| field | Meaning |
+| ----- | ------- |
+| `qa_browser` | `auto` \| `local-cdp` \| `browser-use` — FE/UI browser backend ([Browser QA](#browser-qa--verification)) |
+| `locale` | `en` \| `th` \| `auto` — user-facing agent text |
 
 ### `services[]` fields
 
@@ -1193,7 +1331,7 @@ zsh "$B/tools/dash.sh" set qa   done "PASS all criteria"
 ```zsh
 zsh "$B/tools/dash.sh" delegate orch pm "→ PM: write AC" activity="planning loop" skill=loom-orch
 zsh "$B/tools/dash.sh" skill be ponytail activity="trimming auth handler"
-zsh "$B/tools/dash.sh" cmd qa "npx playwright test" activity="regression" skill=qa-browser
+zsh "$B/tools/dash.sh" cmd qa "npm test" activity="regression" skill=qa-browser
 zsh "$B/tools/dash.sh" event orch "route fixes" kind=delegate to=be cmd="Task be" activity="triage"
 zsh "$B/tools/dash.sh" say fullstack title="core audit" kind=report --stdin <<'EOF'
 TL;DR + PASS/FAIL + decisions here
@@ -1294,11 +1432,12 @@ Installed to `~/.agents/skills/` on init (via `npx skills add` when available):
 | **postgres-best-practices**                             | loom-full-stack      | Postgres guidance                                                                                                      |
 | **docker-containerization**                             | all agents | [ailabs-393/ai-labs-claude-skills](https://skills.sh/ailabs-393/ai-labs-claude-skills/docker-containerization)         |
 | **hexagonal-architecture**                              | be, loom-full-stack  | Ports & Adapters — [affaan-m/ECC](https://github.com/affaan-m/ECC/blob/main/skills/hexagonal-architecture/SKILL.md)    |
-| **perf-lighthouse**                                     | fe         | Lighthouse audits                                                                                                      |
+| **perf-lighthouse**                                     | fe, fe-mo  | Lighthouse / CWV — FE only                                                                                             |
 | **threejs-animation**                                   | loom-motion    | Three.js animation helpers                                                                                             |
 | **loom-me**                                             | loom-pm    | Workflow grilling — adapted from [mattpocock/loop-me](https://github.com/mattpocock/skills/tree/main/skills/in-progress/loop-me) |
 | **ui-ux-pro-max**                                       | loom-ux-ui | Design intelligence — [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)   |
-| **qa** → Hermes `**qa-browser`**                        | qa         | Browser QA — [browser-use/browser-use](https://github.com/browser-use/browser-use) (`tools/install-browser-use-qa.sh`) |
+| **qa** → Hermes `**qa-browser`**                        | qa         | Cloud browser — [browser-use](https://github.com/browser-use/browser-use); **local-cdp** via MCP on `refresh.sh` |
+| **test-master** *(optional)*                            | be, fe, qa, pm | Test authoring — `test-master-gate.sh` ([docs/test-authoring.md](docs/test-authoring.md)) |
 
 
 ### Recommended skills (install separately — referenced by agents)
@@ -1311,6 +1450,7 @@ Installed to `~/.agents/skills/` on init (via `npx skills add` when available):
 | **pm-skills**                            | pm                     | [phuryn/loom-pm-skills](https://github.com/phuryn/loom-pm-skills) marketplace |
 | **threejs-skills**                       | loom-motion                | CloudAI-X Three.js skill bundle                                     |
 | **handoff**                              | all                    | Session / IDE continuity                                            |
+| **test-master** *(optional)*             | be, fe, qa, pm         | `zsh tools/install-optional-test-master.sh` or agent gate           |
 | **docx** · **pdf** · **pptx** · **xlsx** | pm, design, qa, orch   | Deliverables when asked                                             |
 
 
@@ -1325,13 +1465,29 @@ Loop flow is inspired by durable-state agent loops; see [LOOP.md](LOOP.md) and [
 ```
 README.md · README-TH.md       simple quick start (default on GitHub)
 README.full.md · README-TH.full.md   full documentation
+docs/
+  loop-process.md          process gates (evidence, debug, SR, finish)
+  browser-qa.md            FE/UI browser modes + API key gate
+  test-authoring.md        FE vs BE verify · optional test-master
+  typescript-packages.md   recommended npm profiles (ts-common / ts-be / ts-nest)
+  hexagonal-project-structure.md   BE hex + FE clean layers
+  handoff.md               editor switch / session continuity
 .claude/agents/            9 agents — source of truth (Claude Code global, Cursor reads in-project)
 hermes-skills/             SKILL.md for Hermes (generated via to-hermes-skills.sh)
 agent-dashboard/           **central** live status board (Star-Office — all projects report here)
 tools/                     only in Base — every control folder shares via ~/.loop-base
-  refresh.sh               idempotent sync: ~/.loop-base · CLI · agents · hooks (auto on ./loom / git pull)
+  refresh.sh               idempotent sync: ~/.loop-base · CLI · agents · hooks · browser QA (auto on pull)
   init.sh                full install: refresh + external skills + L3 + open dashboard
   sync-agents.sh           sync agent defs to all platforms (source = .claude/agents/)
+  install-browser-qa.sh    chrome-devtools-mcp + qa-browser skill
+  qa-browser-gate.sh       resolve qa_browser mode · API key gate
+  test-master-gate.sh      optional test-master install (agent asks user)
+  add-typescript-deps.sh   Loom TS npm profiles (ts-common / ts-be / ts-nest)
+  typescript-deps.json     package manifest for add-typescript-deps.sh
+  install-optional-test-master.sh   low-level test-master installer (prefer gate)
+  ensure-loom-home.sh      ~/.loom secrets + gitignore
+  ensure-control-gitignore.sh   control folder gitignore for keys
+  install-chrome-devtools-mcp.sh   MCP → Cursor + Claude
   loom-start.sh              wizard Steps 1–4: base folder → control folder → .active-project → hand off
   new-project.sh             shortcut: loom-start --new NAME (Step 1 + 2b)
   base-dir.sh              resolve destination folder (arg > BASE_DIR > .base-dir > default)

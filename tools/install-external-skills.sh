@@ -13,7 +13,7 @@ typeset -A SPECS=(
   solid                    ramziddin/solid-skills@solid
   postgres-best-practices  neondatabase/postgres-skills@postgres-best-practices
   docker-containerization  ailabs-393/ai-labs-claude-skills@docker-containerization
-  perf-lighthouse          tech-leads-club/agent-skills@perf-lighthouse
+  perf-lighthouse          tech-leads-club/agent-skills@perf-lighthouse  # FE/fe-mo agents only — not BE
   threejs-animation        cloudai-x/threejs-skills@threejs-animation
   ponytail                 dietrichgebert/ponytail@ponytail
   ponytail-review          dietrichgebert/ponytail@ponytail-review

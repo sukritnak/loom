@@ -34,6 +34,12 @@ fi
 
 zsh tools/install-git-hooks.sh
 
+# Browser QA: local MCP + qa-browser skill (idempotent — new pull gets local FE QA)
+if [[ "${INIT_SKIP_EXTERNAL_SKILLS:-}" != 1 ]]; then
+  zsh tools/install-browser-qa.sh >/dev/null 2>&1 && say "  ✓ browser QA (chrome-devtools-mcp + qa-browser)" || \
+    say "  ~ browser QA install partial — run: zsh tools/install-browser-qa.sh"
+fi
+
 say ""
 say "  ✓ blueprint → $ROOT"
 say "  ✓ ~/.loop-base · loom CLI · agents · dashboard hooks"

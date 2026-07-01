@@ -241,7 +241,19 @@ touches — don't repeat full audit every round.
    - Record which agents built code in `STATE.md` → `## Task scope` → `makers:` list.
    - **Evidence gate:** reject maker returns missing **`Verified:`** in `## Handoff summary` when they claimed tests/build passed — send back to fix or re-run (`$B/docs/loop-process.md` Gate 1).
 3b. **SR code review** (required when any maker changed code; skip if audit-only was already fullstack review) — delegate **`loom-full-stack` in reviewer mode only** — **not** the same sub-agent instance that was maker this iteration. Pass makers' reports + changed paths + `makers:` list + `Verified:` lines. **Stage A** (spec/contract/security boundaries) then **Stage B** (`/ponytail-review` + Part B/C). BE → Part B · FE → Part C. **Blockers** → route owners; re-run 3→3b. If `fullstack` was in `makers:`, SR review is a **separate** delegation after maker returns.
-4. **Verify** — delegate `loom-qa` unless `audit-only`. FE/UI AC → **`qa-browser`**. Record dev URL in `STATE.md` → `## Dev URLs`.
+3c. **Browser QA gate** — **skip entirely** when `scope: api-only`, `audit-only`, or **no UI AC** in the checklist (BE-only work: QA uses tests/curl/API — never browser, never this gate).  
+   When **any UI AC** exists: read `qa_browser` (`auto` | `local-cdp` | `browser-use`). Run `zsh "$B/tools/qa-browser-gate.sh" mode` from control folder.
+
+   - **`local-cdp`** (incl. `auto` when MCP present after refresh): run `install-chrome-devtools-mcp.sh` if missing — **no API key**. Remind user to reload editor once after first MCP install.
+   - **`browser-use`** without `~/.loom/browser-use.env` and no `BROWSER_USE_API_KEY`: **stop and ask** (Cursor: **AskQuestion**; Claude/Hermes: A/B/C table). **Do not** delegate UI QA until answered:
+
+     | **A** | Paste `BROWSER_USE_API_KEY` → orch runs `qa-browser-gate.sh save-key <key>` |
+     | **B** | Self-signup — delegate `loom-qa` to obtain free key (qa skill step 0) |
+     | **C** | **local-cdp** — run `install-chrome-devtools-mcp.sh`, set `qa_browser: local-cdp`, reload editor |
+
+   Write `STATE.md` → `## Browser QA` (`mode`, `status: ready|blocked`). Pass `mode` to `loom-qa`.
+3d. **test-master gate** (optional, situational) — when AC or build needs test authoring gaps (`$B/docs/test-authoring.md` triggers: no integration tests, formal test matrix, flaky mocks, OWASP/load AC): run `zsh "$B/tools/test-master-gate.sh" status`. If **missing** → **AskQuestion** / A/B per `$B/docs/snippets/test-master-gate.md` — on **Yes**, **you** run `install`; **Not now** → continue, ask again next time. Never paste install commands for the user.
+4. **Verify** — delegate `loom-qa` unless `audit-only`. FE/UI AC → **`local-cdp`** (chrome-devtools-mcp) or **`qa-browser`** (browser-use) per `## Browser QA`. Record dev URL in `STATE.md` → `## Dev URLs`.
 5. **Decide & feedback cycle** — if all PASS → step **5e** (recommendations), then step 6. If any FAIL (or partial):
    - **5a. PM lead triage** (required) — delegate `loom-pm` with the QA report + AC from `STATE.md`. PM acts as **lead**, not re-specifier: validate each finding (confirmed / rejected / needs-clarification), tag owner (`fe` | `fe-mo` | `be` | `fullstack`), reprioritize blockers first, write `## Feedback round {N}` to `STATE.md` as:
 
@@ -272,7 +284,7 @@ every line with THIS project's name, so the board can show many projects/session
 
 **Log richly** — the activity feed shows delegate chains, skills, and shell commands (`cmd=`).
 **Bubbles and guest subtitles use `speech=`** — conversational Thai/English (what the agent is doing / outcome),
-never raw commands like `npx playwright test`. For known skills/commands without `speech=`, the dashboard uses
+never raw shell commands without `speech=`. For known skills/commands without `speech=`, the dashboard uses
 fixed labels in `agent-dashboard/capability-labels.js` (what that capability is **for** — edit the file, no runtime guessing).
 For anything else, set `speech=` or `activity=` explicitly.
 
@@ -293,7 +305,7 @@ zsh "$B/tools/dash.sh" skill qa qa-browser activity="browser AC-2 checkout" spee
 
 # Shell commands — cmd= stays in the feed; speech= explains why / result for bubbles
 zsh "$B/tools/dash.sh" cmd be "npm test" activity="backend test suite" speech="รันเทส backend รอบแรก" skill=ponytail
-zsh "$B/tools/dash.sh" cmd qa "npx playwright test" activity="regression AC-1–4" speech="QA รันเทสผ่านเรียบร้อยแล้ว" skill=qa-browser
+zsh "$B/tools/dash.sh" cmd qa "npm test" activity="regression AC-1–4" speech="QA รันเทสผ่านเรียบร้อยแล้ว" skill=qa-browser
 zsh "$B/tools/dash.sh" cmd fe "npm run dev" activity="FE dev server" speech="เปิด dev server ให้ QA ลองหน้าใหม่"
 
 # File changes — path + what changed (makers call after every create/edit/delete)

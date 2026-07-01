@@ -105,6 +105,18 @@ case "$(menu_pick "Improvement policy" 2 \
   *) IMPROVEMENT="guided" ;;
 esac
 
+case "$(menu_pick "Browser QA (FE/UI tests)" 1 \
+  "local-cdp — localhost via chrome-devtools-mcp, no API key (recommended)" \
+  "auto — local if MCP installed, else cloud browser-use" \
+  "browser-use — cloud only (needs BROWSER_USE_API_KEY later)")" in
+  browser*) QA_BROWSER="browser-use" ;;
+  auto*) QA_BROWSER="auto" ;;
+  *) QA_BROWSER="local-cdp" ;;
+esac
+
+# Install local MCP now so pull+start works without extra steps
+zsh "$B/tools/install-chrome-devtools-mcp.sh" >/dev/null 2>&1 || true
+
 SVC_LINES=""
 case "$(menu_pick "Services setup" 1 \
   "web + api — Next.js + NestJS (recommended)" \
@@ -157,7 +169,7 @@ case "$(menu_pick "Services setup" 1 \
 esac
 
 AGENT_PLATFORM="$AGENT_PLATFORM" CURSOR_MODEL="$CURSOR_MODEL" CLAUDE_MODEL="$CLAUDE_MODEL" HERMES_MODEL="$HERMES_MODEL" \
-PROJECT="$PROJECT" MODE="$MODE" AUTO="$AUTO" IMPROVEMENT="$IMPROVEMENT" LOOM_LOCALE="${LOOM_LOCALE:-auto}" SVCS="$SVC_LINES" B="$B" node <<'NODE'
+PROJECT="$PROJECT" MODE="$MODE" AUTO="$AUTO" IMPROVEMENT="$IMPROVEMENT" QA_BROWSER="$QA_BROWSER" LOOM_LOCALE="${LOOM_LOCALE:-auto}" SVCS="$SVC_LINES" B="$B" node <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const B = process.env.B;
@@ -186,6 +198,7 @@ const cfg = {
   agent_platform: platform,
   agent_models,
   improvement_policy: process.env.IMPROVEMENT || 'guided',
+  qa_browser: process.env.QA_BROWSER || 'local-cdp',
 };
 if (platform !== 'auto') {
   cfg.agent_model = agent_models[platform];
@@ -195,5 +208,7 @@ console.log('\nWrote loop.config.json with ' + svcs.length + ' service(s).');
 console.log('Platform:', platform);
 console.log('Models:', JSON.stringify(agent_models));
 NODE
+
+zsh "$B/tools/ensure-control-gitignore.sh" 2>/dev/null || true
 
 echo "Next: node \"$B/tools/cfg.js\" resolved   (review)   then   zsh \"$B/tools/scaffold-all.sh\"   (scaffold, if mode=new)"

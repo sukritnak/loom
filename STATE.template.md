@@ -101,6 +101,15 @@ in-scope services: <!-- service ids from loop.config.json -->
 |------------|-----|---------|
 | web | http://localhost:5173 | npm run dev |
 
+## Optional skills
+<!-- Agents offer one-click install via test-master-gate.sh when needed -->
+- test-master: not-installed   <!-- installed | not-installed -->
+
+## Browser QA
+<!-- FE/UI iterations only — orch skips for api-only / no UI AC. BE uses tests/curl, not browser. -->
+mode: auto   <!-- auto | local-cdp | browser-use -->
+status: —    <!-- pending | ready | blocked | n/a -->
+
 ## Feedback history
 <!-- PM lead writes ## Feedback round N after each QA FAIL -->
 ### Feedback round 1

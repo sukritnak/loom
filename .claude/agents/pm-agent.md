@@ -70,6 +70,7 @@ Do not expand scope during triage. Rejected findings go back to QA with a one-li
   - `competitor-analysis` / `market-sizing` — when requirements need market context.
 - Use the `docx` skill to deliver a polished PRD or requirements document.
 - Use the `xlsx` skill to build a prioritized backlog or feature matrix.
+- **Formal test plan / matrix AC** — offer **`test-master gate`** (`$B/docs/snippets/test-master-gate.md`): user picks install; **you** run `test-master-gate.sh install` on Yes.
 - Use the `deep-research` skill for deeper market, competitor, or user research.
 - Use the **handoff** skill to hand work to another session/IDE (captures state + suggested skills).
 

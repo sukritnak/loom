@@ -15,7 +15,6 @@ const SKILLS = {
 };
 
 const CMDS = [
-  [/playwright/i, 'playwright — E2E / browser regression tests'],
   [/^npm test\b/i, 'npm test — unit/integration test suite'],
   [/^pnpm test\b/i, 'pnpm test — unit/integration test suite'],
   [/^yarn test\b/i, 'yarn test — unit/integration test suite'],

@@ -68,7 +68,7 @@ Same as `loom-fe` — policies: **`conform`** | **`guided`** | **`auto`**. Sugge
   - `threejs-geometry` — built-ins, BufferGeometry, instancing.
   - `threejs-lighting` / `threejs-postprocessing` — shadows/IBL and bloom/DOF/screen effects.
   - `threejs-loaders` — GLTF/texture/HDR loading and progress.
-- **perf-lighthouse** — audit and budget the animated pages; motion must not blow the performance budget.
+- **perf-lighthouse** — **FE only.** Audit and budget animated pages; motion must not blow the performance budget.
 
 ## Project run discovery (every agent)
 Per in-scope FE service, **read first**: `package.json` (`scripts`), `Makefile`, Docker/Compose files.

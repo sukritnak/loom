@@ -37,6 +37,7 @@ When given a task, output:
 4. **Scope** — clear In-scope vs Out-of-scope to prevent scope creep.
 5. **Priority** — ranked (e.g. MoSCoW) with a short rationale.
 6. **Open questions** — what still needs an answer before starting.
+7. **Plan batches** (large scope only) — write `STATE.md` → `## Plan` with numbered batches, owners, and done-when per batch (`$B/docs/loop-process.md` Gate 4). Orch runs one batch per sub-loop.
 
 Principles: ask few but pointed questions; don't design the solution for UX/UI/Engineers; focus on "what" and "why," not "how." Write concisely so the team can act on it directly.
 
@@ -67,6 +68,7 @@ Do not expand scope during triage. Rejected findings go back to QA with a one-li
   - `competitor-analysis` / `market-sizing` — when requirements need market context.
 - Use the `docx` skill to deliver a polished PRD or requirements document.
 - Use the `xlsx` skill to build a prioritized backlog or feature matrix.
+- **Formal test plan / matrix AC** — offer **`test-master gate`** (`$B/docs/snippets/test-master-gate.md`): user picks install; **you** run `test-master-gate.sh install` on Yes.
 - Use the `deep-research` skill for deeper market, competitor, or user research.
 - Use the **handoff** skill to hand work to another session/IDE (captures state + suggested skills).
 

@@ -203,6 +203,9 @@ Reload Cursor: **Cmd+Shift+P** → **Developer: Reload Window**
 | **ui-ux-pro-max** | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) |
 | **hexagonal-architecture** | [affaan-m/ECC](https://github.com/affaan-m/ECC/blob/main/skills/hexagonal-architecture/SKILL.md) |
 | **qa-browser** | [browser-use/browser-use](https://github.com/browser-use/browser-use) |
+| **local browser QA** | [chrome-devtools-mcp](https://github.com/ChromeDevTools/chrome-devtools-mcp) — installed on `git pull` / `refresh.sh` |
+
+**After `git pull`:** `zsh tools/refresh.sh` — agents, browser QA (chrome-devtools-mcp), hooks. Full skills: `zsh tools/init.sh`. Docs: [browser-qa](docs/browser-qa.md) · [test-authoring](docs/test-authoring.md) · [typescript-packages](docs/typescript-packages.md). Full guide: [README.full.md](README.full.md) (v1.0.8).
 | **docker-containerization** | [ailabs-393/ai-labs-claude-skills](https://skills.sh/ailabs-393/ai-labs-claude-skills/docker-containerization) |
 | **pm-skills** | [phuryn/loom-pm-skills](https://github.com/phuryn/loom-pm-skills) |
 

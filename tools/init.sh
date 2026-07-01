@@ -38,6 +38,9 @@ else
   echo "  (skipped external skills — INIT_SKIP_EXTERNAL_SKILLS=1)"
 fi
 
+echo "== local browser QA (chrome-devtools-mcp) =="
+zsh tools/install-browser-qa.sh
+
 cat <<'TXT'
 
 For Cursor personas (optional): Settings → Custom Modes → add one per agent,

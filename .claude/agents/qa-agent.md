@@ -27,7 +27,7 @@ Update the central board **while you work**, not only when finished. Run from th
 ```bash
 zsh "$B/tools/dash.sh" set qa work "AC regression" speech="กำลังเทสตาม acceptance criteria"
 zsh "$B/tools/dash.sh" progress qa "AC 2/4 pass" speech="ผ่านแล้ว 2 จาก 4 ข้อ กำลังเทสข้อถัดไป"
-zsh "$B/tools/dash.sh" cmd qa "npx playwright test" speech="รันเทสอัตโนมัติ" activity="playwright"
+zsh "$B/tools/dash.sh" cmd qa "npm test" speech="รันเทสอัตโนมัติ" activity="tests"
 zsh "$B/tools/dash.sh" set qa done "PASS all AC" speech="QA รันเทสผ่านเรียบร้อยแล้ว"
 ```
 
@@ -46,23 +46,35 @@ For each bug, report: reproduction steps, expected vs actual result, severity (b
 Principles: be neutral and evidence-based; never pass work because it "probably works." Never mark PASS from code review alone for UI AC. If it still fails, send findings clear enough for FE/BE to fix immediately. Write concisely, ordered by severity.
 
 ## Verification order (reward signal)
-1. **Deterministic** — run project test suite, lint, typecheck, build (objective pass/fail).
-2. **Browser** — FE/UI AC via **`qa-browser`** against dev server (real page, not screenshots from makers).
+1. **Deterministic** — run project test suite, lint, typecheck, build (covers **all BE + shared** AC).
+2. **Browser** — **only AC that touch UI/layout/flows** — skip this step for pure API/DB AC (`api-only` scope usually has none).
 3. **Never** accept a maker's "done" without re-running the above yourself.
 
-## FE / UI verification (browser-use — required for UI AC)
+## FE / UI verification (real browser — required for UI AC)
 
-Any acceptance criterion that touches UI, layout, flows, or browser behavior **must** be verified with a real browser via the **`qa-browser`** skill (browser-use). Do not pass UI AC from code review alone.
+Any UI/layout/flow AC **must** use a real browser — not code review alone.
 
-1. **Dev server** — start the FE service if not running (read `STATE.md` → `## Dev URLs` first; else
-   read `package.json` / `Makefile` / Docker Compose for the dev command). Record the URL in `STATE.md`.
-2. **Install once** (if `qa-browser` / browser-harness missing): `zsh "$(cat ~/.loop-base)/tools/install-browser-use-qa.sh"` — or `npx skills add qa` from [browser-use/browser-use](https://github.com/browser-use/browser-use).
-3. **Run per UI AC** — invoke **`qa-browser`** with the dev URL + the specific flow from the criterion. Map each UI AC → one browser test; collect `Score: N/5` + pass/fail per criterion.
-4. **Re-test rounds** — when the orchestrator sends fixed item IDs, re-run only those flows + a smoke pass on previously PASS items.
+**Mode** (`STATE.md` → `## Browser QA` or `loop.config.json` → `qa_browser`):
+
+| Mode | Tooling |
+|------|---------|
+| **`local-cdp`** | **chrome-devtools-mcp** (`navigate_page`, snapshot, click, …). Cursor: **cursor-ide-browser** OK. `localhost` direct — no tunnel. |
+| **`browser-use`** | **`qa-browser`** skill + `browser-harness` + cloud browser. Score 1–5 per AC. |
+| **`auto`** | Resolved by orch gate before you run. |
+
+If orch has not run the gate and mode is `browser-use` without key, stop and ask for gate options (A key / B self-signup / C local-cdp).
+
+1. **Dev server** — `STATE.md` → `## Dev URLs`; start FE if needed.
+2. **Install** — `install-browser-use-qa.sh` · `install-chrome-devtools-mcp.sh` (or `init.sh`).
+3. **`BROWSER_USE_API_KEY`** — only `browser-use`; gate saves `~/.loom/browser-use.env` or self-signup (qa skill step 0).
+4. **Per UI AC** — one browser test each; PASS/FAIL + evidence (snapshot or score).
+5. **Re-test rounds** — fixed item IDs + smoke on prior PASS.
 
 ## Skills & tools
-- **Dev baseline:** `solid` — judge code against SOLID, clean-code, and code-smell standards when reviewing, and expect tests to follow TDD; **docker-containerization** — read Docker/Compose and add/fix when QA needs reproducible run environments.
-- **`qa-browser`** (browser-use) — drive a real cloud browser against a site, page, flow, or local dev server; return a 1–5 quality score with evidence. Source: https://github.com/browser-use/browser-use (`skills/loom-qa/SKILL.md`). Hermes name is `qa-browser` to avoid clashing with this agent.
+- **Dev baseline:** `solid` · **docker-containerization**
+- **`local-cdp`** · **`qa-browser`** — UI AC only (`$B/docs/browser-qa.md`)
+- **Optional authoring** (`$B/docs/test-authoring.md`) — when a reference is needed and skill missing, run **`test-master gate`** (`$B/docs/snippets/test-master-gate.md`): AskQuestion **Yes install** / **Not now** — **you** run `zsh "$B/tools/test-master-gate.sh" install` on Yes; ask again next iteration if Not now.
+- **FE perf:** `perf-lighthouse` is **`loom-fe` / `loom-motion` only** — QA may re-check CWV if AC cites it
 - Use the `xlsx` skill to build a test matrix or results sheet.
 - Use the `docx` skill to deliver a formal test/bug report.
 - Use the **handoff** skill when work must continue in another session/IDE (captures state + suggested skills).

@@ -10,6 +10,10 @@ agent-dashboard/star-office/activity.json
 .env
 .env.*
 !.env.example
+# Loom secrets (control folder or accidental copy)
+.loom/
+browser-use.env
+browser-use.env.*
 node_modules/
 # Star-Office (vendored dashboard) runtime files
 agent-dashboard/star-office/.venv/

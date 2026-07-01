@@ -226,14 +226,18 @@ fi
 
 echo "Done. Next: run the framework generator in $DIR, e.g.:"
 case "$SIDE-$STACK" in
-  fe-*next*)    echo "  npx create-next-app@latest . --ts --eslint" ;;
-  fe-*vite*)    echo "  npm create vite@latest . -- --template react-ts" ;;
+  fe-*next*)    echo "  npx create-next-app@latest . --ts --eslint"
+                 echo "  zsh \"\$(cat ~/.loop-base)/tools/add-typescript-deps.sh\" . --profile ts-common" ;;
+  fe-*vite*)    echo "  npm create vite@latest . -- --template react-ts"
+                 echo "  zsh \"\$(cat ~/.loop-base)/tools/add-typescript-deps.sh\" . --profile ts-common" ;;
   fe-*svelte*)  echo "  npm create svelte@latest ." ;;
   fe-*astro*)   echo "  npm create astro@latest ." ;;
   fe-*)         echo "  (pick a FE framework and init it here)" ;;
   be-*fastapi*) echo "  python -m venv .venv && .venv/bin/pip install fastapi uvicorn[standard] && echo 'fastapi\\nuvicorn[standard]' > requirements.txt" ;;
-  be-*nest*)    echo "  npx @nestjs/cli new . " ;;
-  be-*node*|be-*express*) echo "  npm init -y && npm i express" ;;
+  be-*nest*)    echo "  npx @nestjs/cli new . --package-manager npm"
+                 echo "  zsh \"\$(cat ~/.loop-base)/tools/add-typescript-deps.sh\" . --profile ts-nest --husky" ;;
+  be-*node*|be-*express*) echo "  npm init -y && npm i express typescript @types/node @types/express -D ts-node"
+                 echo "  zsh \"\$(cat ~/.loop-base)/tools/add-typescript-deps.sh\" . --profile ts-be --husky" ;;
   be-*django*)  echo "  django-admin startproject config . && see docs/hexagonal-project-structure.md § B4" ;;
   be-*go*)      echo "  go mod init $(basename "$DIR") && mkdir -p cmd/api internal" ;;
   be-*)         echo "  (pick a BE framework and init it here)" ;;

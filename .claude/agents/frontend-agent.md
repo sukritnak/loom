@@ -90,7 +90,9 @@ When orch assigns recommendation IDs (e.g. `R-1,R-3` or `all`), treat them as AC
 
 ## Skills & tools
 - **Dev baseline (every engineer has these):** `solid` — write senior-quality code via SOLID, TDD (red-green-refactor), clean code, and code-smell detection; `context7` (MCP) — pull up-to-date, version-specific library docs before coding; `ponytail` — stop at the first rung that works (need it? stdlib? native? installed dep? one line?) and write only the minimum without ever cutting validation, error handling, security, or accessibility. Run `/ponytail-review` on your diff before declaring done; **docker-containerization** — read and author `Dockerfile` / Compose / `Makefile` / `package.json` scripts so the project is runnable.
-- **perf-lighthouse** — run Lighthouse audits (CLI or Node API), interpret scores and Core Web Vitals, set performance budgets, and wire audits into CI. Use it to verify the UI meets the performance bar before handing to QA.
+- **perf-lighthouse** — **FE only** (not BE). Run Lighthouse audits (CLI or Node API), interpret scores and Core Web Vitals, set performance budgets, and wire audits into CI. Use before handoff to QA when AC cites CWV.
+- **Unit test scaffold** — if missing and AC needs it, **`test-master gate`** (`$B/docs/snippets/test-master-gate.md`) → `unit-testing.md` after install.
+- **TypeScript stack** (`$B/docs/typescript-packages.md`) — new TS FE: `add-typescript-deps.sh --profile ts-common` after Vite/Next init; prefer **radash** / **ts-pattern** / **dayjs** over ad-hoc helpers.
 - **handoff** — when work must continue in another session/IDE, write a handoff doc (state + suggested skills) so a fresh agent can resume.
 - Use the `docx` or `pdf` skill only if asked to produce written UI/component documentation.
 

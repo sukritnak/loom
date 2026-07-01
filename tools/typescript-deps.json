@@ -1,0 +1,50 @@
+{
+  "_help": "Loom TS stack — profiles merge: ts-common ⊂ ts-be ⊂ ts-nest. See docs/typescript-packages.md",
+  "profiles": {
+    "ts-common": {
+      "description": "Any TypeScript service (FE or BE) — utilities + test/lint toolchain",
+      "dependencies": {
+        "radash": "recommended",
+        "ts-pattern": "recommended",
+        "lodash": "recommended",
+        "dayjs": "recommended",
+        "builder-pattern": "recommended"
+      },
+      "devDependencies": {
+        "@types/jest": "required",
+        "@types/lodash": "required",
+        "jest": "required",
+        "prettier": "required",
+        "eslint": "required",
+        "eslint-config-prettier": "required",
+        "eslint-plugin-prettier": "required",
+        "eslint-plugin-simple-import-sort": "required"
+      }
+    },
+    "ts-be": {
+      "description": "Node/Express TS API — adds validation, auth, cache, husky",
+      "extends": "ts-common",
+      "dependencies": {
+        "class-transformer": "required",
+        "class-validator": "required",
+        "keyv": "required",
+        "@keyv/redis": "required",
+        "passport": "required",
+        "passport-jwt": "required"
+      },
+      "devDependencies": {
+        "@types/passport": "required",
+        "@types/passport-jwt": "required",
+        "husky": "required"
+      }
+    },
+    "ts-nest": {
+      "description": "NestJS — ts-be + structured logging",
+      "extends": "ts-be",
+      "dependencies": {
+        "nestjs-pino": "required",
+        "pino-http": "required"
+      }
+    }
+  }
+}

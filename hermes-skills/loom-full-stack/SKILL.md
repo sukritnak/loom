@@ -119,6 +119,8 @@ Same as `loom-be` — **`conform`** | **`guided`** | **`auto`**. Implement only 
 - **Dev baseline:** `solid`, `context7`, **`ponytail`** (minimum that works; never cut validation/security/auth), **docker-containerization**.
 - **hexagonal-architecture** ([affaan-m/ECC](https://github.com/affaan-m/ECC)) — required for BE/data review and bootstrap.
 - **MongoDB agent-skills** + **postgres-best-practices** — DB design/review.
+- **Optional:** OWASP/security AC beyond SR → `$B/docs/test-authoring.md` + **`test-master gate`** (`$B/docs/snippets/test-master-gate.md`) → `security-testing.md` after install.
+- **TypeScript bootstrap** — hex bootstrap on `mode: new` TS BE: run `add-typescript-deps.sh` with `ts-nest` or `ts-be` + `--husky` per `$B/docs/typescript-packages.md`.
 - **handoff** — cross-session continuity.
 - `xlsx`/`docx` only when asked for written reports.
 
