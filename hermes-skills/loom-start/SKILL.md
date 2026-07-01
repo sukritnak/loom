@@ -110,19 +110,51 @@ Print `Step 2a — open existing (no new folder)`.
 - Let the user pick from the list or give a full absolute path (not the current/blueprint dir).
 - Read `<path>/loop.config.json` to confirm it's valid; restate project name + services to the user.
 - If there's no `loop.config.json` there, treat it as "new" below (offer to create one).
+- **Model gate** — if `loop.config.json` has no `agent_platform` / `agent_models` (legacy), ask once using the
+  platform + model picker below. Write to `loop.config.json` and `STATE.md` → `## Agent platform` / `## Agent models`.
+  Then run `zsh "$B/tools/apply-agent-model.sh" "<path>"`.
 
 ### 2b. New — ask in order, then write files
 Print `Step 2b — create new control folder + loop.config.json + STATE.md`.
 1. Project name.
 2. Mode: `new` (the loop scaffolds fresh folders under the project) or `existing` (drive code that
-   already lives somewhere — give absolute paths in step 4, nothing gets moved/copied).
+   already lives somewhere — give absolute paths in step 6, nothing gets moved/copied).
 3. Autonomy: L1 (report only, default) / L2 (assisted) / L3 (unattended).
-4. **Improvement policy** — how to handle existing code vs team recommendations (ask always; especially
+4. **Agent platform** — which editor Loom runs in (set once per project):
+   **Cursor:** use **AskQuestion**:
+   | Field | Value |
+   |-------|--------|
+   | **prompt** | Which editor will you use Loom in? |
+   | **option 1 (Recommended)** | Auto — detect Cursor / Claude Code / Hermes at runtime |
+   | **option 2** | Cursor |
+   | **option 3** | Claude Code |
+   | **option 4** | Hermes |
+
+   **Claude Code / Hermes:** ask in chat:
+   > **(1) Auto** *(default)* · **(2) Cursor** · **(3) Claude Code** · **(4) Hermes**
+
+   Write `agent_platform`: `auto` | `cursor` | `claude` | `hermes`.
+
+5. **Agent models** — pick from the **platform-specific list** in `tools/agent-models.json`
+   (run `node "$B/tools/resolve-agent-model.js" list <platform>` to show ids). Set once — every agent inherits.
+
+   - **`auto`** — ask model for **each** platform the user may use (defaults: Cursor `composer-2.5` · Claude `sonnet` · Hermes `inherit`).
+     Store in `agent_models`: `{ "cursor": "…", "claude": "…", "hermes": "…" }`.
+   - **`cursor` / `claude` / `hermes`** — show only that platform's list; store `agent_model` + `agent_models.<platform>`.
+
+   **Cursor model options** (ids): `inherit` · `composer-2.5` *(default)* · `claude-sonnet-5-thinking-medium` · `claude-opus-4-8-thinking-medium` · `composer-2.5-fast` · `gpt-5.3-codex` · `gemini-3.5-flash`
+
+   **Claude Code options** (ids): `inherit` · `sonnet` *(default)* · `opus` · `haiku` · `fable` · `claude-sonnet-5` · `claude-opus-4-8`
+
+   **Hermes options** (ids): `inherit` *(default — uses ~/.hermes/config.yaml)* · `anthropic/claude-sonnet-4.6` · `anthropic/claude-opus-4.8` · `anthropic/claude-haiku-4.5` · `openai/gpt-5.5` · `google/gemini-3.5-flash` · `deepseek/deepseek-v4-flash`
+   (Hermes explicit models need the matching provider configured — run `hermes model` if unsure.)
+
+6. **Improvement policy** — how to handle existing code vs team recommendations (ask always; especially
    important for `mode: existing`):
    > **(1) สไตล์เดิม** (`conform`) — ทำตาม convention เดิม แนะนำอย่างเดียว
    > **(2) แนะนำแล้วเลือก** (`guided`, default) — เสนอจุดแก้ คุณเลือกข้อที่จะทำ
    > **(3) auto** (`auto`) — แก้ตามที่ทีมแนะนำทั้งหมดโดยอัตโนมัติ
-5. Services — repeat until the user is done: `id`, `side` (fe/be), `path`, `stack`. Capture every
+6. Services — repeat until the user is done: `id`, `side` (fe/be), `path`, `stack`. Capture every
    FE and BE folder. For `path`:
    - **relative** (`web`, `apps/api`) → a subfolder under THIS project root (typical for `mode: new`).
    - **absolute or `~/…`** (`~/Documents/coding/legacy/old-api`) → existing code anywhere on disk; each
@@ -143,7 +175,12 @@ Then create the destination `DEST = <base>/<name>`:
 Print banner `== Step 3 — lock target (.active-project — no new folder) ==`.
 - If you know the blueprint path, record the choice: write the absolute `DEST` into
   `<blueprint>/.active-project` (so later runs resume the right project).
-- Announce clearly: **"Active project → <DEST>"**.
+- Sync the chosen model to all agent definitions (one-time per project lock):
+  ```bash
+  B="$(cat ~/.loop-base)"
+  zsh "$B/tools/apply-agent-model.sh" "<DEST>"
+  ```
+- Announce clearly: **"Active project → <DEST>"** and restate the model from `loop.config.json`.
 
 ## Step 4 — hand off
 Print banner `== Step 4 — hand off to loom-orch ==`.
@@ -179,6 +216,12 @@ New project that scaffolds fresh folders:
   "project": "<name>",
   "mode": "new",
   "autonomy": "L1",
+  "agent_platform": "auto",
+  "agent_models": {
+    "cursor": "composer-2.5",
+    "claude": "sonnet",
+    "hermes": "inherit"
+  },
   "improvement_policy": "guided",
   "services": [
     { "id": "web", "side": "fe", "path": "web", "stack": "nextjs" },
@@ -192,6 +235,13 @@ Wrapping existing code that lives elsewhere (note `mode: existing` + absolute pa
   "project": "<name>",
   "mode": "existing",
   "autonomy": "L1",
+  "agent_platform": "cursor",
+  "agent_model": "composer-2.5",
+  "agent_models": {
+    "cursor": "composer-2.5",
+    "claude": "sonnet",
+    "hermes": "inherit"
+  },
   "improvement_policy": "guided",
   "services": [
     { "id": "frontend", "side": "fe", "path": "~/Documents/coding/legacy/shop-frontend", "stack": "" },

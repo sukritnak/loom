@@ -16,6 +16,17 @@
 ## Autonomy level
 L1 (report only)   <!-- L1 | L2 (assisted, no merge) | L3 (unattended, allowlist only) -->
 
+## Agent platform
+auto   <!-- auto | cursor | claude | hermes — also in loop.config.json -->
+
+## Agent models
+<!-- Per-platform model ids — also in loop.config.json agent_models -->
+| Platform | Model |
+|----------|-------|
+| cursor | composer-2.5 |
+| claude | sonnet |
+| hermes | inherit |
+
 ## Improvement policy
 <!-- conform = match existing style, recommend only | guided = recommend then user picks | auto = apply all recommendations -->
 guided   <!-- conform | guided | auto — also in loop.config.json -->

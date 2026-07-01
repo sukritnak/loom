@@ -118,6 +118,12 @@ Never hand-write this in Base — `loom-start` or `zsh tools/init-config.sh` (fr
   "project": "my-app",
   "mode": "new",
   "autonomy": "L1",
+  "agent_platform": "auto",
+  "agent_models": {
+    "cursor": "composer-2.5",
+    "claude": "sonnet",
+    "hermes": "inherit"
+  },
   "improvement_policy": "guided",
   "services": [
     { "id": "web", "side": "fe", "path": "web",   "stack": "nextjs" },
@@ -128,6 +134,8 @@ Never hand-write this in Base — `loom-start` or `zsh tools/init-config.sh` (fr
 
 - `mode`: `new` = scaffold fresh folders; `existing` = operate on folders already there (no scaffold) — makers **match** existing naming, layering, and formatting in the main AC diff
 - `improvement_policy`: `conform` = สไตล์เดิม แนะนำอย่างเดียว · `guided` = แนะนำแล้ว user เลือกข้อ · `auto` = แก้ตาม recommendation ทั้งหมดอัตโนมัติ (orch ถามตอน start ถ้ายังไม่ตั้ง)
+- `agent_platform`: `auto` (detect editor) | `cursor` | `claude` | `hermes` — pick at `loom-start`
+- `agent_models`: per-platform model ids — see `tools/agent-models.json`. Synced via `zsh "$B/tools/apply-agent-model.sh"`. Resolve at runtime: `node "$B/tools/resolve-agent-model.js"`
 - `autonomy`: L1 = report only · L2 = makers write code, you merge · L3 = unattended
 - `path`: relative → under the control folder; absolute/`~` → anywhere on disk
 - `side`: `fe` → owned by fe/loom-motion · `be` → owned by be/loom-full-stack

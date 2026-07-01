@@ -58,6 +58,7 @@ lock_project() {
   [ -f "$dest/loop.config.json" ] || { echo "✗ no loop.config.json in $dest" >&2; exit 1; }
   step 3 "lock target (.active-project — no new folder)"
   printf '%s\n' "$dest" > "$ROOT/.active-project"
+  zsh "$ROOT/tools/apply-agent-model.sh" "$dest" 2>/dev/null || true
   echo "✓ Active project → $dest"
   step 4 "hand off to loom-orch"
   cat <<TXT
