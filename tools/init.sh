@@ -41,6 +41,9 @@ fi
 echo "== local browser QA (chrome-devtools-mcp) =="
 zsh tools/install-browser-qa.sh
 
+echo "== dashboard gemini image skill =="
+zsh tools/install-gemini-image-skill.sh || true
+
 cat <<'TXT'
 
 For Cursor personas (optional): Settings → Custom Modes → add one per agent,

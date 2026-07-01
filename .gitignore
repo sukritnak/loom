@@ -7,6 +7,9 @@ STATE.md
 status.json
 agent-dashboard/log-archive/
 agent-dashboard/star-office/activity.json
+# Dashboard optional skills — ship script; user creates .venv locally (SKILL.md §4.1)
+agent-dashboard/skills/**/.venv/
+agent-dashboard/skills/**/__pycache__/
 .env
 .env.*
 !.env.example

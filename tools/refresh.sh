@@ -40,6 +40,12 @@ if [[ "${INIT_SKIP_EXTERNAL_SKILLS:-}" != 1 ]]; then
     say "  ~ browser QA install partial — run: zsh tools/install-browser-qa.sh"
 fi
 
+# Dashboard: Gemini image skill venv (New Home / Custom Style — needs GEMINI_API_KEY at runtime)
+if command -v python3 >/dev/null 2>&1; then
+  zsh tools/install-gemini-image-skill.sh >/dev/null 2>&1 && say "  ✓ dashboard gemini image skill" || \
+    say "  ~ gemini image skill partial — run: zsh tools/install-gemini-image-skill.sh"
+fi
+
 say ""
 say "  ✓ blueprint → $ROOT"
 say "  ✓ ~/.loop-base · loom CLI · agents · dashboard hooks"

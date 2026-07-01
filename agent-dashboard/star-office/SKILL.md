@@ -128,15 +128,13 @@ For long-running services (systemd / pm2 / Docker), put this in the service conf
 
 ### 4.1 Install the image-generation skill (first time)
 
-The script ships in this repo at `star-office/scripts/gemini_image_generate.py`. The backend expects it under `agent-dashboard/skills/gemini-image-generate/`.
+The script is **in the repo** at `agent-dashboard/skills/gemini-image-generate/scripts/gemini_image_generate.py`.
 
-From `agent-dashboard/star-office/`:
+**Auto-install:** `zsh tools/refresh.sh`, `zsh tools/init.sh`, or `zsh tools/dash.sh serve` creates `.venv` + pip deps (idempotent). Manual:
 
 ```zsh
-mkdir -p ../skills/gemini-image-generate/scripts
-cp scripts/gemini_image_generate.py ../skills/gemini-image-generate/scripts/
-python3 -m venv ../skills/gemini-image-generate/.venv
-../skills/gemini-image-generate/.venv/bin/python -m pip install google-genai pillow
+zsh agent-dashboard/skills/gemini-image-generate/install.sh
+# or: zsh "$(cat ~/.loop-base)/tools/install-gemini-image-skill.sh"
 ```
 
 After install, restart the dashboard. **New Home** / **Custom Style** should work once an API key is set.

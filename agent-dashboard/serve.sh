@@ -32,6 +32,12 @@ if ! venv_ok; then
 fi
 "$PY" -m pip install -q --disable-pip-version-check flask pillow >/dev/null
 
+# Gemini image gen skill (optional feature — needs GEMINI_API_KEY)
+GEMINI_SKILL="$DASH/skills/gemini-image-generate"
+if [ -f "$GEMINI_SKILL/scripts/gemini_image_generate.py" ]; then
+  zsh "$GEMINI_SKILL/install.sh" >/dev/null 2>&1 || true
+fi
+
 # loop -> office bridge: seed once, then keep refreshing in the background
 node star-office-bridge.js --once >/dev/null 2>&1 || true
 node star-office-bridge.js >/dev/null 2>&1 &
