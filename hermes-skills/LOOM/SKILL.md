@@ -31,7 +31,7 @@ rounds that makers read before retrying.
 ## Anatomy of one iteration
 ```
 load STATE.md + loop.config.json (create config first if missing — use loom-start or zsh "$(cat ~/.loop-base)/tools/init-config.sh")
-   → dashboard gate — ask «เปิด dashboard ดู agent ทำงานไหม? [Y/n]» (default Y); if yes → dash.sh serve (opens browser)
+   → dashboard gate — options: **A** Yes open dashboard *(recommended)* · **B** No (Cursor: AskQuestion)
    → legacy sync (mode: existing) — explore in-scope services, /ponytail-review on task-relevant code,
      /ponytail-audit only if needed; write ## Project context to STATE.md
    → clarify (PM) → design (UX/UI, if UI)

@@ -1,13 +1,14 @@
 #!/usr/bin/env zsh
 # Interactive wizard (loom-start Step 2b) — writes loop.config.json in the CURRENT folder.
-# Run from a control folder: zsh tools/init-config.sh
 set -euo pipefail
 B="$(cat ~/.loop-base 2>/dev/null || true)"
 [ -n "$B" ] || B="$(cd "$(dirname "$0")/.." && pwd)"
 
-ask() { local p="$1" d="${2:-}" v; read -r "v?$p${d:+ [$d]}: " || true; echo "${v:-$d}"; }
-
+source "$(dirname "$0")/wizard-menu.sh"
 source "$(dirname "$0")/locale.sh"
+
+ask_text() { local p="$1" d="${2:-}" v; read -r "v?$p${d:+ [$d]}: " || true; echo "${v:-$d}"; }
+
 if [ -z "${LOOM_LOCALE:-}" ]; then
   LOOM_LOCALE="$(pick_locale)"
 fi
@@ -16,95 +17,149 @@ pick_model() {
   local platform="$1" default_n="${2:-1}"
   echo
   echo "Models for $platform:"
-  node "$B/tools/resolve-agent-model.js" list "$platform" | node -e "
-const lines = require('fs').readFileSync(0,'utf8');
-const opts = JSON.parse(lines);
-opts.forEach((o,i) => console.log('  ' + (i+1) + ') ' + o.label + (o.default ? ' (default)' : '')));
-process.stdout.write('DEFAULT_ID=' + (opts.find(o=>o.default)||opts[0]).id + '\n');
-" > /tmp/loom-model-pick.$$
-  local default_id
-  default_id="$(grep '^DEFAULT_ID=' /tmp/loom-model-pick.$$ | cut -d= -f2-)"
-  sed '/^DEFAULT_ID=/d' /tmp/loom-model-pick.$$
-  rm -f /tmp/loom-model-pick.$$
-  local pick
-  pick="$(ask "  Model choice (number)" "$default_n")"
-  node "$B/tools/resolve-agent-model.js" list "$platform" | node -e "
-const pick = Number(process.argv[1]);
+  local -a labels=()
+  local line default_n_actual=1
+  while IFS= read -r line; do
+    [[ "$line" == DEFAULT_N=* ]] && { default_n_actual="${line#DEFAULT_N=}"; continue; }
+    [[ -n "$line" ]] && labels+=("$line")
+  done < <(node "$B/tools/resolve-agent-model.js" list "$platform" | node -e "
 const opts = JSON.parse(require('fs').readFileSync(0,'utf8'));
-const o = opts[pick-1] || opts.find(x=>x.default) || opts[0];
+let def = 1;
+opts.forEach((o,i) => {
+  const n = i + 1;
+  if (o.default) def = n;
+  console.log(o.label + (o.default ? ' (default)' : ''));
+});
+console.log('DEFAULT_N=' + def);
+")
+  local pick_label
+  pick_label="$(menu_pick "  Pick model" "${default_n:-$default_n_actual}" "${labels[@]}")"
+  pick_label="${pick_label% (default)}"
+  node "$B/tools/resolve-agent-model.js" list "$platform" | node -e "
+const label = process.argv[1];
+const opts = JSON.parse(require('fs').readFileSync(0,'utf8'));
+const o = opts.find(x => x.label === label) || opts.find(x => x.default) || opts[0];
 process.stdout.write(o.id);
-" "$pick"
+" "$pick_label"
 }
 
 echo "== loom-start Step 2b — loop.config.json (writes into $(pwd)) =="
-[ -n "${LOOM_LOCALE:-}" ] || LOOM_LOCALE="$(pick_locale)"
 echo "Communication language → $(locale_label "$LOOM_LOCALE")"
-PROJECT=$(ask "Project name" "$(basename "$(pwd)")")
-MODE=$(ask "Mode (new = scaffold fresh folders / existing = use what's here)" "new")
-AUTO=$(ask "Autonomy (L1 report / L2 assisted / L3 unattended)" "L1")
-echo
-echo "Agent platform:"
-echo "  1) Auto — detect Cursor / Claude Code / Hermes at runtime (default)"
-echo "  2) Cursor"
-echo "  3) Claude Code"
-echo "  4) Hermes"
-PLAT_PICK=$(ask "Platform choice (1-4)" "1")
-case "$PLAT_PICK" in
-  2) AGENT_PLATFORM="cursor" ;;
-  3) AGENT_PLATFORM="claude" ;;
-  4) AGENT_PLATFORM="hermes" ;;
+
+DEFAULT_NAME="$(basename "$(pwd)")"
+NAME_PICK="$(menu_pick "Project name" 1 "$DEFAULT_NAME (use folder name)" "Type a different name…")"
+if [[ "$NAME_PICK" == "Type a different name…" ]]; then
+  PROJECT="$(ask_text "  Project name" "$DEFAULT_NAME")"
+else
+  PROJECT="$DEFAULT_NAME"
+fi
+
+case "$(menu_pick "Project mode" 1 \
+  "new — scaffold fresh folders (recommended)" \
+  "existing — use code folders already on disk")" in
+  existing*) MODE="existing" ;;
+  *) MODE="new" ;;
+esac
+
+case "$(menu_pick "Autonomy level" 1 \
+  "L1 — report only (recommended)" \
+  "L2 — assisted (makers write, you merge)" \
+  "L3 — unattended")" in
+  L2*) AUTO="L2" ;;
+  L3*) AUTO="L3" ;;
+  *) AUTO="L1" ;;
+esac
+
+case "$(menu_pick "Agent platform" 1 \
+  "Auto — detect Cursor / Claude Code / Hermes (recommended)" \
+  "Cursor" \
+  "Claude Code" \
+  "Hermes")" in
+  Cursor) AGENT_PLATFORM="cursor" ;;
+  "Claude Code") AGENT_PLATFORM="claude" ;;
+  Hermes) AGENT_PLATFORM="hermes" ;;
   *) AGENT_PLATFORM="auto" ;;
 esac
 
 CURSOR_MODEL=""; CLAUDE_MODEL=""; HERMES_MODEL=""
 if [ "$AGENT_PLATFORM" = "auto" ]; then
   echo
-  echo "Auto mode — pick a model for each editor you use (Enter = default):"
-  CURSOR_MODEL="$(pick_model cursor 2)"
-  CLAUDE_MODEL="$(pick_model claude 2)"
-  HERMES_MODEL="$(pick_model hermes 1)"
+  echo "Auto mode — pick a model for each editor:"
+  CURSOR_MODEL="$(pick_model cursor)"
+  CLAUDE_MODEL="$(pick_model claude)"
+  HERMES_MODEL="$(pick_model hermes)"
 elif [ "$AGENT_PLATFORM" = "cursor" ]; then
-  CURSOR_MODEL="$(pick_model cursor 2)"
+  CURSOR_MODEL="$(pick_model cursor)"
 elif [ "$AGENT_PLATFORM" = "claude" ]; then
-  CLAUDE_MODEL="$(pick_model claude 2)"
+  CLAUDE_MODEL="$(pick_model claude)"
 else
-  HERMES_MODEL="$(pick_model hermes 1)"
+  HERMES_MODEL="$(pick_model hermes)"
 fi
 
-echo
-echo "Improvement policy — existing code vs team recommendations:"
-echo "  conform = match existing style, recommend only"
-echo "  guided  = recommend, you pick which to implement (default)"
-echo "  auto    = apply all recommendations automatically"
-IMPROVEMENT=$(ask "Improvement policy (conform / guided / auto)" "guided")
-
-echo
-echo "Each service can sit in its OWN base path:"
-echo "  • relative (e.g. 'web', 'apps/api')        → a subfolder under THIS project"
-echo "  • absolute (e.g. '/Users/me/work/old-api') → anywhere on disk / a different base"
-echo "Add as many FE and BE folders as you want. Press Enter on an empty 'id' to finish."
-echo
+case "$(menu_pick "Improvement policy" 2 \
+  "conform — match existing style, recommend only" \
+  "guided — recommend, you pick (recommended)" \
+  "auto — apply all recommendations")" in
+  conform*) IMPROVEMENT="conform" ;;
+  auto*) IMPROVEMENT="auto" ;;
+  *) IMPROVEMENT="guided" ;;
+esac
 
 SVC_LINES=""
-while true; do
-  echo "-- new service --"
-  ID=$(ask "  service id — short name, e.g. web/admin/api (blank = done)" "")
-  [ -z "$ID" ] && break
-  SIDE=$(ask "  side — fe (frontend/UI) or be (backend/API/data)" "fe")
-  if [ "$SIDE" != "fe" ] && [ "$SIDE" != "be" ]; then echo "  side must be fe or be"; continue; fi
-  if [ "$SIDE" = "fe" ]; then DEFSTACK="nextjs"; else DEFSTACK="nestjs"; fi
-  PATH_=$(ask "  path — relative (under this project) or absolute (its own base)" "$ID")
-  STACK=$(ask "  stack hint — fe: nextjs|vite-react|sveltekit|astro / be: nestjs|fastapi|node-express|go" "$DEFSTACK")
-  SVC_LINES+="$ID|$SIDE|$PATH_|$STACK"$'\n'
-  echo "  added: $ID ($SIDE) -> $PATH_ [$STACK]"
-  echo
-done
+case "$(menu_pick "Services setup" 1 \
+  "web + api — Next.js + NestJS (recommended)" \
+  "Frontend only — Next.js" \
+  "Backend only — NestJS" \
+  "Custom — add services one by one")" in
+  "web + api"*)
+    SVC_LINES=$'web|fe|web|nextjs\napi|be|api|nestjs\n' ;;
+  "Frontend only"*)
+    SVC_LINES=$'web|fe|web|nextjs\n' ;;
+  "Backend only"*)
+    SVC_LINES=$'api|be|api|nestjs\n' ;;
+  *)
+    echo
+    echo "Custom services — pick options; type only when choosing custom path."
+    while true; do
+      echo "-- new service --"
+      ID="$(ask_text "  service id (blank = done)" "")"
+      [ -z "$ID" ] && break
+      case "$(menu_pick "  Side" 1 "fe — frontend/UI" "be — backend/API")" in
+        be*) SIDE="be"; DEFSTACK="nestjs" ;;
+        *) SIDE="fe"; DEFSTACK="nextjs" ;;
+      esac
+      case "$(menu_pick "  Path" 1 "Same as id ($ID)" "Custom path…")" in
+        "Custom path"*) PATH_="$(ask_text "  path" "$ID")" ;;
+        *) PATH_="$ID" ;;
+      esac
+      if [ "$SIDE" = "fe" ]; then
+        case "$(menu_pick "  Stack" 1 "nextjs (recommended)" "vite-react" "sveltekit" "astro" "none")" in
+          vite*) STACK="vite-react" ;;
+          svelte*) STACK="sveltekit" ;;
+          astro*) STACK="astro" ;;
+          none*) STACK="" ;;
+          *) STACK="nextjs" ;;
+        esac
+      else
+        case "$(menu_pick "  Stack" 1 "nestjs (recommended)" "fastapi" "node-express" "go" "none")" in
+          fastapi*) STACK="fastapi" ;;
+          node*) STACK="node-express" ;;
+          go*) STACK="go" ;;
+          none*) STACK="" ;;
+          *) STACK="nestjs" ;;
+        esac
+      fi
+      SVC_LINES+="$ID|$SIDE|$PATH_|$STACK"$'\n'
+      echo "  added: $ID ($SIDE) -> $PATH_ [$STACK]"
+      menu_yesno "Add another service?" 0 || break
+    done
+    ;;
+esac
 
 AGENT_PLATFORM="$AGENT_PLATFORM" CURSOR_MODEL="$CURSOR_MODEL" CLAUDE_MODEL="$CLAUDE_MODEL" HERMES_MODEL="$HERMES_MODEL" \
 PROJECT="$PROJECT" MODE="$MODE" AUTO="$AUTO" IMPROVEMENT="$IMPROVEMENT" LOOM_LOCALE="${LOOM_LOCALE:-auto}" SVCS="$SVC_LINES" B="$B" node <<'NODE'
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
 const B = process.env.B;
 const catalog = JSON.parse(fs.readFileSync(path.join(B, 'tools/agent-models.json'), 'utf8'));
 const validate = (platform, model) => {

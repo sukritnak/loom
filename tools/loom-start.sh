@@ -8,6 +8,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 step() { echo; echo "== Step $1 — $2 =="; echo; }
 
+source "$ROOT/tools/wizard-menu.sh"
+
 ask() { local p="$1" d="${2:-}" v; read -r "v?$p${d:+ [$d]}: " || true; echo "${v:-$d}"; }
 
 NEW_NAME=""
@@ -35,19 +37,16 @@ ensure_dashboard() {
     echo "✓ Dashboard already running → $url"
     return 0
   fi
-  local yn
-  yn="$(ask "Open the dashboard to watch agents? [Y/n]" "Y")"
-  case "${(L)yn}" in n|no)
-    echo "  (skipped — open later: zsh \"$ROOT/tools/dash.sh\" serve)"
-    return 0
-    ;;
-  esac
-  ( zsh "$ROOT/tools/dash.sh" serve >/dev/null 2>&1 & )
-  sleep 1
-  if url="$(zsh "$ROOT/tools/dash.sh" up 2>/dev/null)"; then
-    echo "✓ Dashboard → $url"
+  if menu_yesno "Open the dashboard to watch agents?" 1; then
+    ( zsh "$ROOT/tools/dash.sh" serve >/dev/null 2>&1 & )
+    sleep 1
+    if url="$(zsh "$ROOT/tools/dash.sh" up 2>/dev/null)"; then
+      echo "✓ Dashboard → $url"
+    else
+      echo "✓ Dashboard starting in background → http://localhost:$port"
+    fi
   else
-    echo "✓ Dashboard starting in background → http://localhost:$port"
+    echo "  (skipped — open later: zsh \"$ROOT/tools/dash.sh\" serve)"
   fi
 }
 
@@ -104,13 +103,21 @@ if [ -n "$BASE_ARG" ]; then
   echo "Using base → $BASE"
 else
   echo "Default: $SUGGEST  (outside Loom — not this repo)"
-  BASE="$(ask "Where should projects live? [Enter = default]" "$SUGGEST")"
+  case "$(menu_pick "Where should projects live?" 1 \
+    "$SUGGEST (recommended)" \
+    "Type a different path…")" in
+    "Type a different path"*)
+      BASE="$(ask "  Absolute path" "$SUGGEST")"
+      ;;
+    *)
+      BASE="$SUGGEST"
+      ;;
+  esac
   BASE="$(zsh "$ROOT/tools/base-dir.sh" "$BASE")"
 fi
 
 if [ ! -d "$BASE" ]; then
-  yn="$(ask "Create base folder $BASE?" "Y")"
-  case "${(L)yn}" in n|no) echo "aborted"; exit 1 ;; esac
+  menu_yesno "Create base folder $BASE?" 1 || { echo "aborted"; exit 1; }
   mkdir -p "$BASE"
   echo "✓ Created base folder → $BASE"
 else
@@ -134,24 +141,34 @@ else
     echo "No control folders under $BASE yet."
     CHOICE="2"
   else
-    echo "Existing control folders:"
-    i=1
+    MENU=("Create new project")
     for d in "${EXISTING[@]}"; do
-      echo "  $i) $(basename "$d") → $d"
-      (( i++ ))
+      MENU+=("Open: $(basename "$d")")
     done
-    echo
-    CHOICE="$(ask "(1) open existing  (2) create new" "1")"
+    PICK="$(menu_pick "Control folder" 2 "${MENU[@]}")"
+    if [[ "$PICK" == "Create new project" ]]; then
+      CHOICE="2"
+    elif [[ "$PICK" == Open:* ]]; then
+      PICK_NAME="${PICK#Open: }"
+      for d in "${EXISTING[@]}"; do
+        [[ "$(basename "$d")" == "$PICK_NAME" ]] && DEST="$d"
+      done
+      CHOICE="1"
+    else
+      CHOICE="2"
+    fi
   fi
 fi
 
 if [ "$CHOICE" = "1" ]; then
   echo "Step 2a — open existing (no new folder)"
-  pick="$(ask "Pick number or full path to control folder" "1")"
-  if [[ "$pick" == [0-9]* ]] && [ -n "${EXISTING[${pick:-0}-1]:-}" ]; then
-    DEST="${EXISTING[$((pick - 1))]}"
-  else
-    DEST="${pick/#\~/$HOME}"
+  if [ -z "${DEST:-}" ]; then
+    NAMES=()
+    for d in "${EXISTING[@]}"; do NAMES+=("$(basename "$d")"); done
+    PICK_NAME="$(menu_pick "Pick project" 1 "${NAMES[@]}")"
+    for d in "${EXISTING[@]}"; do
+      [[ "$(basename "$d")" == "$PICK_NAME" ]] && DEST="$d" && break
+    done
   fi
   lock_project "$DEST"
   exit 0

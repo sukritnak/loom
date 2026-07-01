@@ -1,24 +1,32 @@
 #!/usr/bin/env zsh
 # locale.sh — communication language for Loom (en | th | auto)
-# Usage:
-#   source tools/locale.sh
-#   LOOM_LOCALE="$(pick_locale)"
-#   ensure_locale_config "$control_dir" "$LOOM_LOCALE"
 set -euo pipefail
 
 pick_locale() {
-  local preset="${1:-}" default_n="${2:-3}"
+  local preset="${1:-}"
   case "$preset" in
     en|th|auto) echo "$preset"; return 0 ;;
   esac
+  local WIZARD_MENU="${WIZARD_MENU:-$(cd "$(dirname "$0")" && pwd)/wizard-menu.sh}"
+  if [[ -f "$WIZARD_MENU" ]]; then
+    # shellcheck source=wizard-menu.sh
+    source "$WIZARD_MENU"
+    case "$(menu_pick "Communication language / ภาษาในการสื่อสาร" 3 \
+      "English" "ไทย (Thai)" "Auto — match your messages (default)")" in
+      English) echo en ;;
+      "ไทย (Thai)") echo th ;;
+      *) echo auto ;;
+    esac
+    return 0
+  fi
   echo
   echo "Communication language / ภาษาในการสื่อสาร:"
   echo "  1) English"
   echo "  2) ไทย (Thai)"
   echo "  3) Auto — match your messages / ตามภาษาที่คุณพิมพ์ (default)"
   local pick v
-  read -r "v?Choice [1-3] [${default_n}]: " || true
-  pick="${v:-$default_n}"
+  read -r "v?Choice [1-3] [3]: " || true
+  pick="${v:-3}"
   case "$pick" in
     1|en|english|English) echo en ;;
     2|th|thai|ไทย) echo th ;;
